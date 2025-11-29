@@ -90,7 +90,7 @@
     "scratch-render-fonts": "^1.0.2",
     "scratch-storage": "^4.0.0",
     "scratch-svg-renderer": "^3.0.0",
-    "scratch-vm": "^5.0.0",
+    "scratch-vm": "git+https://github.com/GIT-tdrobotica-XSC/scratch-vm.git#claude/esp32-auto-config-install-01X9FFTTGdHktg3ndnYyt5EE",
     "startaudiocontext": "^1.2.1",
     "style-loader": "4.0.0",
     "to-style": "^1.3.3",
