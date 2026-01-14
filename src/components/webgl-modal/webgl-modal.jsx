@@ -75,7 +75,7 @@ const WebGlModal = ({intl, ...props}) => (
                             previewFaqLink: (
                                 <a
                                     className={styles.faqLink}
-                                    href="//scratch.mit.edu/3faq"
+                                    href="https://www.tdrobotica.co/"
                                 >
                                     <FormattedMessage
                                         defaultMessage="FAQ"

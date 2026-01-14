@@ -1,0 +1,285 @@
+.updaterButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
+    margin-left: 8px;
+    background-color: #ff6b00;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.updaterButton:hover:not(:disabled) {
+    background-color: #e55a00;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.updaterButton:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.updaterButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #ff6b00;
+}
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #ff6b00;
+    color: white;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: white;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+}
+
+.content {
+    padding: 30px;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.description {
+    text-align: center;
+    color: #666;
+    margin: 0;
+}
+
+.loading {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+}
+
+.portList {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.portOption {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.portOption:hover {
+    border-color: #ff6b00;
+    background-color: #fff9f5;
+}
+
+.portOption.selected {
+    border-color: #ff6b00;
+    background-color: #fff9f5;
+    color: #ff6b00;
+    font-weight: 600;
+}
+
+.checkmark {
+    font-weight: bold;
+}
+
+.noPort {
+    text-align: center;
+    color: #999;
+    margin: 20px 0;
+}
+
+.selectBtn {
+    padding: 8px 16px;
+    background-color: #f0f0f0;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    color: #666;
+    cursor: pointer;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #f0f0f0;
+    border-top-color: #ff6b00;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.statusText {
+    text-align: center;
+    color: #333;
+    font-weight: 500;
+    margin: 0;
+}
+
+.progressBar {
+    width: 100%;
+    height: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background-color: #ff6b00;
+    transition: width 0.3s ease;
+}
+
+.progressPercent {
+    color: #999;
+    font-size: 12px;
+    margin: 0;
+}
+
+.successIcon {
+    width: 64px;
+    height: 64px;
+    background-color: #4caf50;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: white;
+}
+
+.successTitle {
+    margin: 16px 0 8px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.successMessage {
+    text-align: center;
+    color: #666;
+    margin: 0;
+}
+
+.errorIcon {
+    width: 64px;
+    height: 64px;
+    background-color: #f44336;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: white;
+}
+
+.errorTitle {
+    margin: 16px 0 8px 0;
+    color: #d32f2f;
+    font-size: 16px;
+}
+
+.errorMessage {
+    text-align: center;
+    color: #d32f2f;
+    margin: 0;
+}
+
+.footer {
+    display: flex;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid #e0e0e0;
+    justify-content: flex-end;
+}
+
+.cancelBtn,
+.closeModalBtn {
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    color: #333;
+    cursor: pointer;
+}
+
+.startBtn {
+    padding: 10px 20px;
+    background-color: #ff6b00;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+}
+
+.startBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.closeModalBtn {
+    flex: 1;
+    background-color: #ff6b00;
+    color: white;
+    border: none;
+}

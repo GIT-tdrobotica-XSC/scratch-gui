@@ -181,7 +181,7 @@ const alerts = [
                 values={{
                     learnMoreLink: (
                         <a
-                            href="https://scratch.mit.edu/info/faq/#clouddata"
+                            href="https://www.tdrobotica.co/"
                             rel="noopener noreferrer"
                             target="_blank"
                         >
