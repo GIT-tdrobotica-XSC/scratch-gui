@@ -2,10 +2,11 @@ import React from 'react';
 
 // ✅ EXTENSIÓN ACTIVA
 import playiot from './playiot';
+import playme from './playme';
 
 /*
 // ❌ EXTENSIONES DESACTIVADAS
-import {FormattedMessage} from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 
 import musicIconURL from './music/music.png';
 import musicInsetIconURL from './music/music-small.svg';
@@ -45,5 +46,6 @@ import gdxforInsetIconURL from './gdxfor/gdxfor-small.svg';
 
 export default [
     //  ÚNICA EXTENSIÓN DISPONIBLE
-    playiot
+    playiot,
+    playme
 ];

@@ -18,7 +18,7 @@
     transition: all 0.25s ease;
 }
 
-.blocks :global(.injectionDiv){
+.blocks :global(.injectionDiv) {
     position: absolute;
     top: 0;
     right: 0;
@@ -81,7 +81,8 @@
         This does not prevent user interaction on the blocks themselves.
     */
     pointer-events: none;
-    z-index: $z-index-drag-layer; /* make blocks match gui drag layer */
+    z-index: $z-index-drag-layer;
+    /* make blocks match gui drag layer */
 }
 
 /*

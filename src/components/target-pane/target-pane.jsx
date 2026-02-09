@@ -6,7 +6,7 @@ import VM from 'scratch-vm';
 import SpriteLibrary from '../../containers/sprite-library.jsx';
 import SpriteSelectorComponent from '../sprite-selector/sprite-selector.jsx';
 import StageSelector from '../../containers/stage-selector.jsx';
-import {STAGE_DISPLAY_SIZES} from '../../lib/layout-constants';
+import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 
 import styles from './target-pane.css';
 
@@ -22,6 +22,9 @@ const TargetPane = ({
     hoveredTarget,
     spriteLibraryVisible,
     onActivateBlocksTab,
+    onLoadExtension,
+    onDeviceConnect,
+    onDeviceDisconnect,
     onChangeSpriteDirection,
     onChangeSpriteName,
     onChangeSpriteRotationStyle,
@@ -60,6 +63,10 @@ const TargetPane = ({
             spriteFileInput={fileInputRef}
             sprites={sprites}
             stageSize={stageSize}
+            vm={vm}
+            onLoadExtension={onLoadExtension}
+            onDeviceConnect={onDeviceConnect}
+            onDeviceDisconnect={onDeviceDisconnect}
             onChangeSpriteDirection={onChangeSpriteDirection}
             onChangeSpriteName={onChangeSpriteName}
             onChangeSpriteRotationStyle={onChangeSpriteRotationStyle}
@@ -134,6 +141,9 @@ TargetPane.propTypes = {
         receivedBlocks: PropTypes.bool
     }),
     onActivateBlocksTab: PropTypes.func.isRequired,
+    onLoadExtension: PropTypes.func,
+    onDeviceConnect: PropTypes.func,
+    onDeviceDisconnect: PropTypes.func,
     onChangeSpriteDirection: PropTypes.func,
     onChangeSpriteName: PropTypes.func,
     onChangeSpriteRotationStyle: PropTypes.func,

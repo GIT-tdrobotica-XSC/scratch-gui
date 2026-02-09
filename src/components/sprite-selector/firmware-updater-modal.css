@@ -1,0 +1,178 @@
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal {
+    background-color: white;
+    border-radius: 12px;
+    width: 450px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+}
+
+.closeButton:hover {
+    color: #666;
+}
+
+.selectionArea {
+    text-align: center;
+}
+
+.selectionText {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.buttonGrid {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.extensionButton {
+    flex: 1;
+    padding: 20px;
+    border-radius: 10px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.playIot {
+    border: 2px solid #3498db;
+}
+
+.playIot:hover {
+    background-color: #ebf5fb;
+}
+
+.playMe {
+    border: 2px solid #9b59b6;
+}
+
+.playMe:hover {
+    background-color: #f5eef8;
+}
+
+.label {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+.extensionName {
+    display: block;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.playIot .extensionName {
+    color: #2980b9;
+}
+
+.playMe .extensionName {
+    color: #8e44ad;
+}
+
+.progressArea {
+    margin-bottom: 20px;
+}
+
+.statusText {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.progressBarContainer {
+    height: 10px;
+    background-color: #ecf0f1;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.progressBar {
+    height: 100%;
+    background-color: #3498db;
+    transition: width 0.3s ease;
+}
+
+.progressPercent {
+    text-align: right;
+    font-size: 12px;
+    color: #999;
+}
+
+.error {
+    padding: 12px;
+    background-color: #fdecea;
+    color: #c0392b;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    border-left: 4px solid #c0392b;
+}
+
+.success {
+    padding: 12px;
+    background-color: #e9f7ef;
+    color: #186a3b;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border-left: 4px solid #186a3b;
+}
+
+.footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.actionButton {
+    padding: 10px 20px;
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.actionButton:hover {
+    background-color: #34495e;
+}

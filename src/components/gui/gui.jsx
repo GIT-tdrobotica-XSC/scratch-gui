@@ -2,10 +2,10 @@ import classNames from 'classnames';
 import omit from 'lodash.omit';
 import PropTypes from 'prop-types';
 import React from 'react';
-import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
-import {connect} from 'react-redux';
+import { defineMessages, FormattedMessage, injectIntl, intlShape } from 'react-intl';
+import { connect } from 'react-redux';
 import MediaQuery from 'react-responsive';
-import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import tabStyles from 'react-tabs/style/react-tabs.css';
 import VM from 'scratch-vm';
 import Renderer from 'scratch-render';
@@ -31,9 +31,9 @@ import DragLayer from '../../containers/drag-layer.jsx';
 import ConnectionModal from '../../containers/connection-modal.jsx';
 import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
-import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
-import {resolveStageSize} from '../../lib/screen-utils';
-import {themeMap} from '../../lib/themes';
+import layout, { STAGE_SIZE_MODES } from '../../lib/layout-constants';
+import { resolveStageSize } from '../../lib/screen-utils';
+import { themeMap } from '../../lib/themes';
 
 import { SerialProvider } from './SerialContext';
 
@@ -260,6 +260,21 @@ const GUIComponent = props => {
                         />
                         <Box className={styles.bodyWrapper}>
                             <Box className={styles.flexWrapper}>
+                                <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}>
+                                    <StageWrapper
+                                        isFullScreen={isFullScreen}
+                                        isRendererSupported={isRendererSupported}
+                                        isRtl={isRtl}
+                                        stageSize={stageSize}
+                                        vm={vm}
+                                    />
+                                    <Box className={styles.targetWrapper}>
+                                        <TargetPane
+                                            stageSize={stageSize}
+                                            vm={vm}
+                                        />
+                                    </Box>
+                                </Box>
                                 <Box className={styles.editorWrapper}>
                                     <Tabs
                                         forceRenderTabPanel
@@ -333,7 +348,7 @@ const GUIComponent = props => {
                                                     vm={vm}
                                                 />
                                             </Box>
-                                            <Box className={styles.extensionButtonContainer}>
+                                            {/* <Box className={styles.extensionButtonContainer}>
                                                 <button
                                                     className={styles.extensionButton}
                                                     title={intl.formatMessage(messages.addExtension)}
@@ -345,7 +360,7 @@ const GUIComponent = props => {
                                                         src={addExtensionIcon}
                                                     />
                                                 </button>
-                                            </Box>
+                                            </Box> */}
                                             <Box className={styles.watermark}>
                                                 <Watermark />
                                             </Box>
@@ -357,25 +372,9 @@ const GUIComponent = props => {
                                             {soundsTabVisible ? <SoundTab vm={vm} /> : null}
                                         </TabPanel>
                                     </Tabs>
-                                    {backpackVisible ? (
+                                    {/* {backpackVisible ? (
                                         <Backpack host={backpackHost} />
-                                    ) : null}
-                                </Box>
-
-                                <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}>
-                                    <StageWrapper
-                                        isFullScreen={isFullScreen}
-                                        isRendererSupported={isRendererSupported}
-                                        isRtl={isRtl}
-                                        stageSize={stageSize}
-                                        vm={vm}
-                                    />
-                                    <Box className={styles.targetWrapper}>
-                                        <TargetPane
-                                            stageSize={stageSize}
-                                            vm={vm}
-                                        />
-                                    </Box>
+                                    ) : null} */}
                                 </Box>
                             </Box>
                         </Box>

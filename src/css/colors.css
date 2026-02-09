@@ -2,45 +2,64 @@
    Colores base de la interfaz (UI)
    ================================ */
 
-$ui-primary: hsla(215, 100%, 95%, 1); /* #E5F0FF */
-$ui-secondary: hsla(215, 75%, 95%, 1); /* #E9F1FC */
-$ui-tertiary: hsla(215, 50%, 90%, 1); /* #D9E3F2 */
+$ui-primary: hsla(215, 100%, 95%, 1);
+/* #E5F0FF */
+$ui-secondary: hsla(215, 75%, 95%, 1);
+/* #E9F1FC */
+$ui-tertiary: hsla(215, 50%, 90%, 1);
+/* #D9E3F2 */
 
-$ui-modal-overlay: hsla(215, 100%, 65%, 0.9); /* Fondo translúcido del modal */
+$ui-modal-overlay: hsla(215, 100%, 65%, 0.9);
+/* Fondo translúcido del modal */
 
-$ui-white: hsla(0, 100%, 100%, 1); /* #FFFFFF */
-$ui-white-dim: hsla(0, 100%, 100%, 0.75); /* Blanco translúcido */
-$ui-white-transparent: hsla(0, 100%, 100%, 0.25); 
+$ui-white: hsla(0, 100%, 100%, 1);
+/* #FFFFFF */
+$ui-white-dim: hsla(0, 100%, 100%, 0.75);
+/* Blanco translúcido */
+$ui-white-transparent: hsla(0, 100%, 100%, 0.25);
 $ui-transparent: hsla(0, 100%, 100%, 0);
 
 $ui-black-transparent: hsla(0, 0%, 0%, 0.15);
 $ui-black-transparent-10: hsla(0, 0%, 0%, 0.10);
 
-$ui-green: hsla(163, 85%, 35%, 1); /* #0DA57A */
-$ui-green-2: hsla(163, 85%, 40%, 1); /* #0FBD8C */
+$ui-green: hsla(163, 85%, 35%, 1);
+/* #0DA57A */
+$ui-green-2: hsla(163, 85%, 40%, 1);
+/* #0FBD8C */
 
-$text-primary: hsla(225, 15%, 40%, 1); /* #575E75 */
+$text-primary: hsla(225, 15%, 40%, 1);
+/* #575E75 */
 $text-primary-transparent: hsla(225, 15%, 40%, 0.75);
 
 /* ================================
    Colores de categorías (bloques)
    ================================ */
 
-$motion-primary: hsla(215, 100%, 65%, 1); /* Azul movimiento */
-$motion-tertiary: hsla(215, 60%, 50%, 1); /* Azul más oscuro */
+$motion-primary: hsla(215, 100%, 65%, 1);
+/* Azul movimiento */
+$motion-tertiary: hsla(215, 60%, 50%, 1);
+/* Azul más oscuro */
 
-$red-primary: hsla(20, 100%, 55%, 1); /* #FF661A */
-$red-tertiary: hsla(20, 100%, 45%, 1); /* #E64D00 */
+$red-primary: hsla(20, 100%, 55%, 1);
+/* #FF661A */
+$red-tertiary: hsla(20, 100%, 45%, 1);
+/* #E64D00 */
 
-$sound-primary: hsla(300, 53%, 60%, 1); /* #CF63CF */
-$sound-tertiary: hsla(300, 48%, 50%, 1); /* #BD42BD */
+$sound-primary: hsla(300, 53%, 60%, 1);
+/* #CF63CF */
+$sound-tertiary: hsla(300, 48%, 50%, 1);
+/* #BD42BD */
 
-$control-primary: hsla(38, 100%, 55%, 1); /* #FFAB19 */
-$data-primary: hsla(30, 100%, 55%, 1); /* #FF8C1A */
+$control-primary: hsla(38, 100%, 55%, 1);
+/* #FFAB19 */
+$data-primary: hsla(30, 100%, 55%, 1);
+/* #FF8C1A */
 
-$pen-primary: hsla(163, 85%, 40%, 1); /* #0FBD8C */
+$pen-primary: hsla(163, 85%, 40%, 1);
+/* #0FBD8C */
 $pen-transparent: hsla(163, 85%, 40%, 0.25);
-$pen-tertiary: hsla(163, 86%, 30%, 1); /* #0B8E69 */
+$pen-tertiary: hsla(163, 86%, 30%, 1);
+/* #0B8E69 */
 
 /* ================================
    Tema visual (branding corporativo)
@@ -49,30 +68,40 @@ $pen-tertiary: hsla(163, 86%, 30%, 1); /* #0B8E69 */
 /* --- Antes morado (#855CD6) --- */
 /* --- Ahora rojo corporativo --- */
 
-$looks-secondary: hsla(0, 80%, 45%, 1);            /* #CC0000 rojo principal */
-$looks-transparent: hsla(0, 80%, 45%, 0.35);       /* translúcido */
-$looks-light-transparent: hsla(0, 80%, 45%, 0.15); /* más claro */
-$looks-secondary-dark: hsla(0, 75%, 35%, 1);       /* #990000 variante oscura */
+$looks-secondary: hsla(0, 80%, 45%, 1);
+/* #CC0000 rojo principal */
+$looks-transparent: hsla(0, 80%, 45%, 0.35);
+/* translúcido */
+$looks-light-transparent: hsla(0, 80%, 45%, 0.15);
+/* más claro */
+$looks-secondary-dark: hsla(0, 75%, 35%, 1);
+/* #990000 variante oscura */
 
 /* ================================
    Extensiones (antes verde)
    ================================ */
 
-$extensions-primary: hsla(0, 80%, 45%, 1);         /* rojo principal */
-$extensions-tertiary: hsla(0, 75%, 35%, 1);        /* rojo más oscuro */
+$extensions-primary: hsla(0, 80%, 45%, 1);
+/* rojo principal */
+$extensions-tertiary: hsla(0, 75%, 35%, 1);
+/* rojo más oscuro */
 $extensions-transparent: hsla(0, 80%, 45%, 0.35);
-$extensions-light: hsla(0, 100%, 90%, 1);          /* fondo claro */
+$extensions-light: hsla(0, 100%, 90%, 1);
+/* fondo claro */
 
 /* ================================
    Colores de error, advertencias, etc.
    ================================ */
 
-$error-primary: hsla(30, 100%, 55%, 1); /* #FF8C1A */
-$error-light: hsla(30, 100%, 70%, 1); /* #FFB366 */
+$error-primary: hsla(30, 100%, 55%, 1);
+/* #FF8C1A */
+$error-light: hsla(30, 100%, 70%, 1);
+/* #FFB366 */
 $error-transparent: hsla(30, 100%, 55%, 0.25);
 
 /* ================================
    Otros elementos y acentos
    ================================ */
 
-$drop-highlight: hsla(215, 100%, 77%, 1); /* sombreado claro para soltar bloques */
+$drop-highlight: hsla(215, 100%, 77%, 1);
+/* sombreado claro para soltar bloques */

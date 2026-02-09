@@ -1,5 +1,5 @@
 import ScratchBlocks from 'scratch-blocks';
-import {defaultColors} from './themes';
+import { defaultColors } from './themes';
 
 const categorySeparator = '<sep gap="36"/>';
 
@@ -144,11 +144,11 @@ const motion = function (isInitialSetup, isStage, targetId, colors) {
 const xmlEscape = function (unsafe) {
     return unsafe.replace(/[<>&'"]/g, c => {
         switch (c) {
-        case '<': return '&lt;';
-        case '>': return '&gt;';
-        case '&': return '&amp;';
-        case '\'': return '&apos;';
-        case '"': return '&quot;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
         }
     });
 };
@@ -786,6 +786,30 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     const operatorsXML = moveCategory('operators') || operators(isInitialSetup, isStage, targetId, colors.operators);
     const variablesXML = moveCategory('data') || variables(isInitialSetup, isStage, targetId, colors.data);
     const myBlocksXML = moveCategory('procedures') || myBlocks(isInitialSetup, isStage, targetId, colors.more);
+
+    // Logic for "Exclusive Device Display":
+    // Only show the most recent "device" extension to prevent accumulation in the toolbox.
+    // Other non-device extensions (utilities like music, pen) are preserved.
+    const deviceExtensionIds = ['playiot', 'playme']; // List of IDs considered "devices"
+
+    // Determine the active device ID from the UI (Global tracker) or fallback to the last loaded one
+    let activeDeviceId = window.activeDeviceExtensionId;
+
+    // Find all device extensions present in the current categories
+    const presentDevices = categoriesXML.filter(c => deviceExtensionIds.includes(c.id));
+
+    if (presentDevices.length > 0) {
+        // If we don't have an explicit active device from UI, assume the last one is active
+        if (!activeDeviceId && presentDevices.length > 0) {
+            activeDeviceId = presentDevices[presentDevices.length - 1].id;
+        }
+
+        // Filter out all devices except the active one
+        categoriesXML = categoriesXML.filter(c => {
+            // Keep if it's NOT a device OR if it is the active device
+            return !deviceExtensionIds.includes(c.id) || c.id === activeDeviceId;
+        });
+    }
 
     const everything = [
         xmlOpen,
