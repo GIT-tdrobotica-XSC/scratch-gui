@@ -6,6 +6,7 @@ import AppStateHOC from '../lib/app-state-hoc.jsx';
 import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import KeycloakHOC from '../lib/keycloak-hoc.jsx';
+import TutorialHOC from '../lib/tutorial-hoc.jsx';
 import log from '../lib/log.js';
 
 const onClickLogo = () => {
@@ -38,6 +39,7 @@ export default appTarget => {
     const WrappedGui = compose(
         KeycloakHOC,
         AppStateHOC,
+        TutorialHOC,
         HashParserHOC
     )(GUI);
 
