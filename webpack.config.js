@@ -56,7 +56,7 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.GTM_ID': process.env.GTM_ID ? `"${process.env.GTM_ID}"` : null,
         'process.env.KEYCLOAK_URL': `"${process.env.KEYCLOAK_URL || 'https://auth.xschool.co'}"`,
         'process.env.KEYCLOAK_REALM': `"${process.env.KEYCLOAK_REALM || 'xschool'}"`,
-        'process.env.KEYCLOAK_CLIENT_ID': `"${process.env.KEYCLOAK_CLIENT_ID || 'cliente-autolog'}"`
+        'process.env.KEYCLOAK_CLIENT_ID': `"${process.env.KEYCLOAK_CLIENT_ID || 'playcode-client'}"`
     }))
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
