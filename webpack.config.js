@@ -53,7 +53,10 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.DEBUG': Boolean(process.env.DEBUG),
         'process.env.GA_ID': `"${process.env.GA_ID || 'UA-000000-01'}"`,
         'process.env.GTM_ENV_AUTH': `"${process.env.GTM_ENV_AUTH || ''}"`,
-        'process.env.GTM_ID': process.env.GTM_ID ? `"${process.env.GTM_ID}"` : null
+        'process.env.GTM_ID': process.env.GTM_ID ? `"${process.env.GTM_ID}"` : null,
+        'process.env.KEYCLOAK_URL': `"${process.env.KEYCLOAK_URL || 'https://auth.xschool.co'}"`,
+        'process.env.KEYCLOAK_REALM': `"${process.env.KEYCLOAK_REALM || 'xschool'}"`,
+        'process.env.KEYCLOAK_CLIENT_ID': `"${process.env.KEYCLOAK_CLIENT_ID || 'cliente-autolog'}"`
     }))
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
