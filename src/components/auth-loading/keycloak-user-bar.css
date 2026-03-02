@@ -1,4 +1,4 @@
-.user-bar {
+.userBar {
     position: fixed;
     top: 0;
     right: 0;
@@ -22,7 +22,7 @@
     white-space: nowrap;
 }
 
-.logout-button {
+.logoutButton {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -40,11 +40,11 @@
     white-space: nowrap;
 }
 
-.logout-button:hover {
+.logoutButton:hover {
     background: rgba(0, 0, 0, 0.32);
     color: #fff;
 }
 
-.logout-button svg {
+.logoutButton svg {
     flex-shrink: 0;
 }
