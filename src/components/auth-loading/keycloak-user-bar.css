@@ -7,7 +7,7 @@
     align-items: center;
     gap: 8px;
     padding: 0 12px;
-    z-index: 450;
+    z-index: 492;
     pointer-events: auto;
 }
 
@@ -47,4 +47,18 @@
 
 .logoutButton svg {
     flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+    .username {
+        display: none;
+    }
+    .logoutButton span {
+        display: none;
+    }
+    .logoutButton {
+        padding: 5px 7px;
+        min-width: 32px;
+        justify-content: center;
+    }
 }

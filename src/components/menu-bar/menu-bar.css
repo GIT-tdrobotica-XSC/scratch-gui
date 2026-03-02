@@ -235,4 +235,8 @@
     .help-icon {
         margin-right: 0;
     }
+
+    .main-menu {
+        padding-right: 44px;
+    }
 }

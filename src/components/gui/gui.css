@@ -317,3 +317,11 @@ $fade-out-distance: 15px;
 :global(.ReactModal__Body--open) {
     overflow: hidden;
 }
+
+/* Responsividad para pantallas pequeñas (~1024px) */
+@media (max-width: 1096px) {
+    .editor-wrapper {
+        flex-shrink: 1;
+        min-width: 450px;
+    }
+}
