@@ -108,6 +108,9 @@ class TargetPane extends React.Component {
         this.props.vm.setEditingTarget(id);
         if (this.props.stage && id !== this.props.stage.id) {
             this.props.onHighlightTarget(id);
+            this.props.onActivateTab(BLOCKS_TAB_INDEX);
+        } else {
+            this.props.onActivateTab(COSTUMES_TAB_INDEX);
         }
     }
     handleSurpriseSpriteClick() {
