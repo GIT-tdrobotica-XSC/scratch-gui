@@ -227,6 +227,12 @@
     margin: 0 0.25rem 0 0.5rem;
 }
 
+@media only screen and (max-width: 1440px) {
+    .main-menu {
+        padding-right: 44px;
+    }
+}
+
 @media only screen and (max-width: 1024px) {
     .tutorials-label, .collapsible-label, .debug-label{
         display: none;
@@ -234,9 +240,5 @@
 
     .help-icon {
         margin-right: 0;
-    }
-
-    .main-menu {
-        padding-right: 44px;
     }
 }
