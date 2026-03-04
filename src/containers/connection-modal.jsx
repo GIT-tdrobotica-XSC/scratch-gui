@@ -27,7 +27,8 @@ class ConnectionModal extends React.Component {
         this.state = {
             extension: extensionData.find(ext => ext.extensionId === props.extensionId),
             phase: props.vm.getPeripheralIsConnected(props.extensionId) ?
-                PHASES.connected : PHASES.scanning
+                PHASES.connected : PHASES.scanning,
+            showComingSoon: false
         };
     }
     componentDidMount () {
@@ -101,7 +102,8 @@ class ConnectionModal extends React.Component {
         });
     }
     handleHelp () {
-        window.open(this.state.extension.helpLink, '_blank');
+        this.setState({showComingSoon: true});
+        setTimeout(() => this.setState({showComingSoon: false}), 3000);
         analytics.event({
             category: 'extensions',
             action: 'help',
@@ -144,6 +146,7 @@ class ConnectionModal extends React.Component {
                 extensionId={this.props.extensionId}
                 name={this.state.extension && this.state.extension.name}
                 phase={this.state.phase}
+                showComingSoon={this.state.showComingSoon}
                 title={this.props.extensionId}
                 useAutoScan={this.state.extension && this.state.extension.useAutoScan}
                 vm={this.props.vm}

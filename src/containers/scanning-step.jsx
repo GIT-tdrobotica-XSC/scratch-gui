@@ -55,6 +55,7 @@ class ScanningStep extends React.Component {
         return (
             <ScanningStepComponent
                 connectionSmallIconURL={this.props.connectionSmallIconURL}
+                extensionName={this.props.name}
                 peripheralList={this.state.peripheralList}
                 phase={this.state.phase}
                 scanning={this.state.scanning}

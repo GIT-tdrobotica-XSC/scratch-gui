@@ -125,3 +125,73 @@
     background: black;
     filter: opacity(15%) brightness(0%);
 }
+
+/* Popups de estado de firmware */
+.firmware-status-overlay {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    animation: slideInRight 0.25s ease;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(60px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+.firmware-status-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    padding: 20px 24px;
+    width: 280px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-align: center;
+}
+
+.firmware-status-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.firmware-status-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 6px;
+}
+
+.firmware-status-text {
+    font-size: 12px;
+    color: #666;
+    margin: 0 0 14px;
+    line-height: 1.5;
+}
+
+.firmware-status-button {
+    background-color: #4C97FF;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.firmware-status-button:hover {
+    background-color: #3d84e8;
+}
+
+.firmware-status-button-secondary {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 12px;
+    cursor: pointer;
+    width: 100%;
+    padding: 4px;
+}

@@ -14,6 +14,18 @@
     background: $ui-white;
 }
 
+.coming-soon-banner {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    color: #856404;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 8px 16px 0;
+    padding: 8px 12px;
+    text-align: center;
+}
+
 .label {
     font-weight: 500;
     margin: 0 0 0.75rem;

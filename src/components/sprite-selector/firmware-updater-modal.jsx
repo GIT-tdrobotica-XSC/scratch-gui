@@ -3,19 +3,24 @@ import PropTypes from 'prop-types';
 import { ESPLoader, Transport } from 'esptool-js';
 import styles from './firmware-updater-modal.css';
 
+const PLAYIOT_ID = 'playiot';
+
 const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) => {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState('Iniciando...');
     const [error, setError] = useState(null);
     const [isSuccess, setIsSuccess] = useState(false);
     const [selectedExtension, setSelectedExtension] = useState(null);
+    const [waitingForBoot, setWaitingForBoot] = useState(
+        extensionId === PLAYIOT_ID
+    );
 
-    // 🤖 Automatización: Iniciar flasheo automáticamente si tenemos el ID de extensión
+    // Iniciar flasheo automáticamente si no se requiere paso de Boot
     useEffect(() => {
-        if (extensionId && !selectedExtension && !error && !isSuccess) {
+        if (extensionId && !selectedExtension && !error && !isSuccess && !waitingForBoot) {
             handleStartFlasheo(extensionId);
         }
-    }, [extensionId]);
+    }, [extensionId, waitingForBoot]);
 
     const handleStartFlasheo = async extension => {
         if (!port) {
@@ -156,8 +161,27 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
                     )}
                 </div>
 
+                {/* --- PASO BOOT PARA PLAYIOT --- */}
+                {waitingForBoot && !error && !isSuccess && (
+                    <div className={styles.bootStep}>
+                        <div className={styles.bootStepIcon}>{'🔴'}</div>
+                        <p className={styles.bootStepTitle}>{'Preparar PlayIoT para actualización'}</p>
+                        <ol className={styles.bootStepList}>
+                            <li>{'Mantén presionado el botón '}<strong>{'BOOT'}</strong>{' de tu PlayIoT'}</li>
+                            <li>{'Haz clic en '}<strong>{'Actualizar'}</strong>{' sin soltar el botón'}</li>
+                            <li>{'Suelta el botón BOOT cuando veas el progreso'}</li>
+                        </ol>
+                        <button
+                            className={styles.actionButton}
+                            onClick={() => setWaitingForBoot(false)}
+                        >
+                            {'Actualizar →'}
+                        </button>
+                    </div>
+                )}
+
                 {/* --- MENSAJE INICIAL SI NO HAY EXTENSIÓN --- */}
-                {!selectedExtension && !error && !isSuccess && (
+                {!waitingForBoot && !selectedExtension && !error && !isSuccess && (
                     <div className={styles.selectionArea}>
                         <p className={styles.selectionText}>Identificando dispositivo...</p>
                     </div>

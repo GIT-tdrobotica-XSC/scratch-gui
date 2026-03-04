@@ -1,6 +1,5 @@
 import {FormattedMessage} from 'react-intl';
 import PropTypes from 'prop-types';
-import classNames from 'classnames';
 import React from 'react';
 import bindAll from 'lodash.bindall';
 import Box from '../box/box.jsx';
@@ -39,28 +38,6 @@ class PeripheralTile extends React.Component {
                     </Box>
                 </Box>
                 <Box className={styles.peripheralTileWidgets}>
-                    <Box className={styles.signalStrengthMeter}>
-                        <div
-                            className={classNames(styles.signalBar, {
-                                [styles.greenBar]: this.props.rssi > -80
-                            })}
-                        />
-                        <div
-                            className={classNames(styles.signalBar, {
-                                [styles.greenBar]: this.props.rssi > -60
-                            })}
-                        />
-                        <div
-                            className={classNames(styles.signalBar, {
-                                [styles.greenBar]: this.props.rssi > -40
-                            })}
-                        />
-                        <div
-                            className={classNames(styles.signalBar, {
-                                [styles.greenBar]: this.props.rssi > -20
-                            })}
-                        />
-                    </Box>
                     <button
                         onClick={this.handleConnecting}
                     >

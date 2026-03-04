@@ -35,6 +35,11 @@ const ConnectionModalComponent = props => (
         onRequestClose={props.onCancel}
     >
         <Box className={styles.body}>
+            {props.showComingSoon && (
+                <div className={styles.comingSoonBanner}>
+                    {'🚧 Ayuda — ¡Próximamente!'}
+                </div>
+            )}
             {props.phase === PHASES.scanning && !props.useAutoScan && <ScanningStep {...props} />}
             {props.phase === PHASES.scanning && props.useAutoScan && <AutoScanningStep {...props} />}
             {props.phase === PHASES.connecting && <ConnectingStep {...props} />}

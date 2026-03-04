@@ -176,3 +176,29 @@
 .actionButton:hover {
     background-color: #34495e;
 }
+
+.bootStep {
+    text-align: center;
+    padding: 8px 0 16px;
+}
+
+.bootStepIcon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.bootStepTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 14px;
+}
+
+.bootStepList {
+    text-align: left;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.8;
+    margin: 0 0 20px;
+    padding-left: 20px;
+}
