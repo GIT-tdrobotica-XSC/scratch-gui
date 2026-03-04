@@ -9,7 +9,6 @@ import defaultProject from './default-project';
 class Storage extends ScratchStorage {
     constructor () {
         super();
-        this.assetHost = 'https://assets.scratch.mit.edu';
         this.cacheDefaultProject();
     }
     addOfficialScratchWebStores () {
@@ -57,7 +56,7 @@ class Storage extends ScratchStorage {
         };
     }
     setAssetHost (assetHost) {
-        this.assetHost = assetHost || 'https://assets.scratch.mit.edu';
+        this.assetHost = assetHost;
     }
     getAssetGetConfig (asset) {
         return `${this.assetHost}/internalapi/asset/${asset.assetId}.${asset.dataFormat}/get/`;

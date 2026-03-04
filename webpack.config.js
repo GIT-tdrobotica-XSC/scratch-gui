@@ -81,8 +81,8 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 noErrorOnMissing: true
             },
             {
-                from: 'node_modules/scratch-storage/dist/web/chunks',
-                to: 'chunks',
+                context: 'node_modules/scratch-storage/dist/web',
+                from: 'chunks/fetch-worker.*.js',
                 noErrorOnMissing: true
             }
         ]
