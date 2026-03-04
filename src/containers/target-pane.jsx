@@ -105,14 +105,24 @@ class TargetPane extends React.Component {
         });
     }
     handleSelectSprite(id) {
-        console.log('[PlayCode] handleSelectSprite called, id:', id, 'stage:', this.props.stage && this.props.stage.id);
+        const isSprite = this.props.stage && id !== this.props.stage.id;
+        console.log('[PlayCode] handleSelectSprite:', {
+            id,
+            stageId: this.props.stage && this.props.stage.id,
+            isSprite,
+            BLOCKS_TAB_INDEX,
+            COSTUMES_TAB_INDEX,
+            onActivateTab: typeof this.props.onActivateTab
+        });
         this.props.vm.setEditingTarget(id);
         this.props.vm.refreshWorkspace();
-        if (this.props.stage && id !== this.props.stage.id) {
+        if (isSprite) {
             this.props.onHighlightTarget(id);
             this.props.onActivateTab(BLOCKS_TAB_INDEX);
+            console.log('[PlayCode] → activando Código tab (index', BLOCKS_TAB_INDEX, ')');
         } else {
             this.props.onActivateTab(COSTUMES_TAB_INDEX);
+            console.log('[PlayCode] → activando Fondos tab (index', COSTUMES_TAB_INDEX, ')');
         }
     }
     handleSurpriseSpriteClick() {
