@@ -33,7 +33,15 @@ class BackdropLibrary extends React.Component {
             skinId: null
         };
         // Do not switch to stage, just add the backdrop
-        this.props.vm.addBackdrop(item.md5ext, vmBackdrop);
+        console.log('[PlayCode] addBackdrop llamado:', item.name, 'md5ext:', item.md5ext);
+        this.props.vm.addBackdrop(item.md5ext, vmBackdrop)
+            .then(() => {
+                const stage = this.props.vm.runtime.getTargetForStage();
+                console.log('[PlayCode] addBackdrop OK:', item.name, '- fondos en stage:', stage.getCostumes().length, '- currentCostume:', stage.currentCostume);
+            })
+            .catch(err => {
+                console.error('[PlayCode] addBackdrop ERROR:', err);
+            });
     }
     render () {
         return (
