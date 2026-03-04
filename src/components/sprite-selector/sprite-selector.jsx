@@ -66,6 +66,7 @@ class SpriteSelectorComponent extends React.Component {
             showExtensionModal: false,
             showFirmwareModal: false,
             isUpdatingFirmware: false,
+            isReconnecting: false,
             firmwareStatus: null  // null | 'updated' | 'outdated'
         };
         this.connectionCheckInterval = null;
@@ -141,13 +142,9 @@ class SpriteSelectorComponent extends React.Component {
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[extensionId];
         if (!peripheral) return;
 
-        // Intentar detectar si se han recibido datos por RX
-        const hasRx = !!(
-            peripheral.rxCount > 0 ||
-            peripheral._rxCount > 0 ||
-            (peripheral.hasReceivedData && peripheral.hasReceivedData()) ||
-            (peripheral._lastRxTime && (Date.now() - peripheral._lastRxTime) < 5000)
-        );
+        // Verificar si el serial recibió datos JSON válidos (seteado en handleIncoming)
+        const lastRx = peripheral._serial && peripheral._serial._lastRxTime;
+        const hasRx = !!(lastRx && (Date.now() - lastRx) < 8000);
 
         this.setState({ firmwareStatus: hasRx ? 'updated' : 'outdated' });
     }
@@ -302,20 +299,16 @@ class SpriteSelectorComponent extends React.Component {
         if (device && activeUpdatingPort) {
             const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[device.extensionId];
 
-            // Usar el nuevo método reconnect() que asegura re-vincular handlers de datos
             if (peripheral && typeof peripheral.reconnect === 'function') {
-                console.log('⏳ Esperando a que el dispositivo reinicie...');
+                this.setState({ isReconnecting: true });
                 await new Promise(resolve => setTimeout(resolve, 2000));
-
-                console.log('🔐 Re-inicializando periférico post-flasheo...');
                 await peripheral.reconnect(activeUpdatingPort);
+                this.setState({ isReconnecting: false });
             } else if (peripheral && peripheral._serial) {
-                // Fallback si no existe reconnect() (por si acaso)
-                console.log('⏳ Esperando a que el dispositivo reinicie...');
+                this.setState({ isReconnecting: true });
                 await new Promise(resolve => setTimeout(resolve, 2000));
-
-                console.log('🔐 Reclamando puerto post-flasheo (fallback)...');
                 await peripheral._serial.claimPort(activeUpdatingPort);
+                this.setState({ isReconnecting: false });
             }
         }
     }
@@ -476,6 +469,16 @@ class SpriteSelectorComponent extends React.Component {
                                 onUpdatingChange={this.handleUpdatingChange}
                                 onClose={this.handleCloseFirmwareModal}
                             />
+                        )}
+
+                        {/* Loading de reconexión post-firmware */}
+                        {this.state.isReconnecting && (
+                            <div className={styles.reconnectingOverlay}>
+                                <div className={styles.reconnectingBox}>
+                                    <div className={styles.reconnectingSpinner} />
+                                    <p className={styles.reconnectingText}>{'Reconectando dispositivo...'}</p>
+                                </div>
+                            </div>
                         )}
                     </>
                 ) : (
