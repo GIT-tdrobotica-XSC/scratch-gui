@@ -105,7 +105,9 @@ class TargetPane extends React.Component {
         });
     }
     handleSelectSprite(id) {
+        console.log('[PlayCode] handleSelectSprite called, id:', id, 'stage:', this.props.stage && this.props.stage.id);
         this.props.vm.setEditingTarget(id);
+        this.props.vm.refreshWorkspace();
         if (this.props.stage && id !== this.props.stage.id) {
             this.props.onHighlightTarget(id);
             this.props.onActivateTab(BLOCKS_TAB_INDEX);
