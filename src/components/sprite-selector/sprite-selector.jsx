@@ -113,7 +113,7 @@ class SpriteSelectorComponent extends React.Component {
                     this._rxCheckTimers[extensionId] = setTimeout(() => {
                         this.checkRxStatus(extensionId);
                         delete this._rxCheckTimers[extensionId];
-                    }, 3000);
+                    }, 7000);
                 }
 
                 if (device.isConnected !== isConnected || device.port !== port) {
@@ -144,7 +144,7 @@ class SpriteSelectorComponent extends React.Component {
 
         // Verificar si el serial recibió datos JSON válidos (seteado en handleIncoming)
         const lastRx = peripheral._serial && peripheral._serial._lastRxTime;
-        const hasRx = !!(lastRx && (Date.now() - lastRx) < 8000);
+        const hasRx = !!(lastRx && (Date.now() - lastRx) < 12000);
 
         this.setState({ firmwareStatus: hasRx ? 'updated' : 'outdated' });
     }
@@ -301,12 +301,12 @@ class SpriteSelectorComponent extends React.Component {
 
             if (peripheral && typeof peripheral.reconnect === 'function') {
                 this.setState({ isReconnecting: true });
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 await peripheral.reconnect(activeUpdatingPort);
                 this.setState({ isReconnecting: false });
             } else if (peripheral && peripheral._serial) {
                 this.setState({ isReconnecting: true });
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 await peripheral._serial.claimPort(activeUpdatingPort);
                 this.setState({ isReconnecting: false });
             }
