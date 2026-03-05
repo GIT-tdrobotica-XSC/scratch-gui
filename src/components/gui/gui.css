@@ -1,6 +1,7 @@
 @import "../../css/units.css";
 @import "../../css/colors.css";
 @import "../../css/z-index.css";
+@import "../../css/responsive.css";
 
 .page-wrapper {
     height: 100%;
@@ -46,7 +47,7 @@
     */
     flex-basis: calc(1024px - 408px - (($space + $stage-standard-border-width) * 2));
     flex-grow: 1;
-    flex-shrink: 0;
+    flex-shrink: 1;
     position: relative;
 
     display: flex;

@@ -48,7 +48,7 @@ STAGE_DISPLAY_SCALES[STAGE_DISPLAY_SIZES.small] = 0.5; // small mode, regardless
 export default {
     standardStageWidth: 480,
     standardStageHeight: 360,
-    fullSizeMinWidth: 1096,
+    fullSizeMinWidth: 900,
     fullSizePaintMinWidth: 1250
 };
 
