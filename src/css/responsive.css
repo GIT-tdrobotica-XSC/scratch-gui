@@ -7,7 +7,7 @@
 /* Laptop 1366x768 (resolución más común) - el panel inferior queda cortado sin esto */
 @media screen and (max-width: 1366px) and (min-width: 1281px) {
     html {
-        zoom: 0.85;
+        zoom: 0.75;
     }
 }
 
@@ -35,6 +35,6 @@
 /* Pantallas cortas (altura ≤768px): también escalar para que no se corte el panel inferior */
 @media screen and (max-height: 768px) and (min-width: 1281px) {
     html {
-        zoom: 0.85;
+        zoom: 0.75;
     }
 }
