@@ -4,6 +4,7 @@ import { ESPLoader, Transport } from 'esptool-js';
 import styles from './firmware-updater-modal.css';
 
 const PLAYIOT_ID = 'playiot';
+const PLAYME_ID = 'playme';
 
 const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) => {
     const [progress, setProgress] = useState(0);
@@ -114,7 +115,7 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
 
             setProgress(95);
 
-            // ====== PASO 5: HARD RESET ======
+            // ====== PASO 5: RESET ======
             setStatus('Reiniciando dispositivo...');
             try {
                 await esploader.after('hard_reset');
@@ -122,10 +123,15 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
                 console.warn('Error en reset:', e);
             }
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // PlayMe: hard_reset no funciona con su chip USB-Serial → el bootloader
+            // hace timeout automático (~3s) y arranca el firmware por sí solo.
+            // Esperamos más tiempo para asegurar que el firmware haya arrancado
+            // antes de intentar reconectar.
+            const bootWait = extensionId === PLAYME_ID ? 5000 : 1500;
+            await new Promise(resolve => setTimeout(resolve, bootWait));
 
             setProgress(100);
-            setStatus('¡Actualización completada!');
+            setStatus('¡Firmware instalado!');
             setIsSuccess(true);
 
         } catch (err) {

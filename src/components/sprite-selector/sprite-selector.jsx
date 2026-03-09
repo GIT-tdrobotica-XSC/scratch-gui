@@ -146,7 +146,12 @@ class SpriteSelectorComponent extends React.Component {
         const lastRx = peripheral._serial && peripheral._serial._lastRxTime;
         const hasRx = !!(lastRx && (Date.now() - lastRx) < 12000);
 
-        this.setState({ firmwareStatus: hasRx ? 'updated' : 'outdated' });
+        if (hasRx) {
+            this.setState({ firmwareStatus: 'updated' });
+            setTimeout(() => this.setState({ firmwareStatus: null }), 2000);
+        } else {
+            this.setState({ firmwareStatus: 'outdated' });
+        }
     }
 
     handleTabChange = (tabIndex) => {
