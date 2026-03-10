@@ -109,10 +109,8 @@ class TargetPane extends React.Component {
         this.props.vm.refreshWorkspace();
         if (this.props.stage && id !== this.props.stage.id) {
             this.props.onHighlightTarget(id);
-            this.props.onActivateTab(BLOCKS_TAB_INDEX);
-        } else {
-            this.props.onActivateTab(COSTUMES_TAB_INDEX);
         }
+        this.props.onActivateTab(BLOCKS_TAB_INDEX);
     }
     handleSurpriseSpriteClick() {
         const surpriseSprites = spriteLibraryContent.filter(sprite =>
