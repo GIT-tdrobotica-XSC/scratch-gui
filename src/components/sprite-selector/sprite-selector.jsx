@@ -148,7 +148,7 @@ class SpriteSelectorComponent extends React.Component {
 
         if (hasRx) {
             this.setState({ firmwareStatus: 'updated' });
-            setTimeout(() => this.setState({ firmwareStatus: null }), 2000);
+            setTimeout(() => this.setState({ firmwareStatus: null }), 10000);
         } else {
             this.setState({ firmwareStatus: 'outdated' });
         }

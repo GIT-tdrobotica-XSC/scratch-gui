@@ -32,6 +32,9 @@
     box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.18);
     overflow: hidden;
     animation: slideUp 0.25s ease;
+    /* Debe aparecer por encima del box-shadow del spotlight */
+    position: relative;
+    z-index: 10001;
 }
 
 @keyframes slideUp {
@@ -110,6 +113,18 @@
     opacity: 0.85;
 }
 
+.zoomWarning {
+    margin: 12px 0 0;
+    padding: 10px 14px;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    color: #856404;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
 /* Footer */
 .footer {
     padding: 16px 24px 24px;
@@ -183,8 +198,6 @@
 /* Highlight de sección activa */
 .highlightBar {
     position: fixed;
-    top: 0;
-    bottom: 0;
     width: 28%;
     border: 3px solid #4C97FF;
     border-radius: 4px;
@@ -196,12 +209,30 @@
     animation: highlightPulse 1.8s ease-in-out infinite;
 }
 
+/* Columna completa */
 .highlightLeft {
     left: 0;
+    top: 0;
+    bottom: 0;
 }
 
 .highlightRight {
     right: 0;
+    top: 0;
+    bottom: 0;
+}
+
+/* Cuadrantes */
+.highlightTopLeft {
+    left: 0;
+    top: 0;
+    height: 50%;
+}
+
+.highlightBottomLeft {
+    left: 0;
+    bottom: 0;
+    height: 50%;
 }
 
 @keyframes highlightPulse {

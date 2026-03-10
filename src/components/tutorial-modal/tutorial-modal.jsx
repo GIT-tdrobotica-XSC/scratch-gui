@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import styles from './tutorial-modal.css';
 
@@ -15,7 +15,7 @@ const BASE_STEPS = [
         title: 'Panel de Dispositivos',
         description: 'En el panel de la izquierda encontrarás tu dispositivo (PlayIoT o PlayMe). ' +
             'Haz clic en "Conectar" y selecciona el puerto USB de tu placa para comenzar a enviar comandos.',
-        highlight: 'left'
+        highlight: 'bottomLeft'
     },
     {
         icon: '▶',
@@ -23,14 +23,15 @@ const BASE_STEPS = [
         description: 'En el área izquierda está la pantalla de ejecución. ' +
             'Usa la bandera verde para iniciar tu programa y el octágono rojo para detenerlo. ' +
             'Los resultados se verán en tiempo real.',
-        highlight: 'left'
+        highlight: 'topLeft'
     },
     {
         icon: '⬇',
         title: 'Actualización de Firmware',
         description: 'Si tu placa necesita actualización, haz clic en "Actualizar Firmware" en el panel de dispositivos a la izquierda. ' +
-            'El proceso descarga e instala automáticamente la última versión disponible.',
-        highlight: 'left'
+            'El proceso descarga e instala automáticamente la última versión disponible. ' +
+            'Asegúrate de tener el dispositivo conectado antes de iniciar la actualización.',
+        highlight: 'bottomLeft'
     }
 ];
 
@@ -52,11 +53,24 @@ const buildSteps = () => {
 
 const STEPS = buildSteps();
 
+const ZOOM_THRESHOLD = 1200;
+
 const TutorialModal = ({step, onNext, onSkip}) => {
     const current = STEPS[step];
     const isLastStep = step === STEPS.length - 1;
+    const isZoomStep = current === ZOOM_STEP;
+    const [zoomWarning, setZoomWarning] = useState(false);
 
     const hasHighlight = current.highlight !== 'none';
+
+    const handleNext = () => {
+        if (isZoomStep && typeof window !== 'undefined' && window.innerWidth < ZOOM_THRESHOLD) {
+            setZoomWarning(true);
+            return;
+        }
+        setZoomWarning(false);
+        onNext();
+    };
 
     return (
         <div className={`${styles.overlay} ${hasHighlight ? styles.overlaySpotlight : ''}`}>
@@ -81,6 +95,11 @@ const TutorialModal = ({step, onNext, onSkip}) => {
                     </div>
                     <h2 className={styles.title}>{current.title}</h2>
                     <p className={styles.description}>{current.description}</p>
+                    {zoomWarning && (
+                        <p className={styles.zoomWarning}>
+                            {'Tu pantalla sigue siendo pequeña. Presiona Ctrl + - hasta que todo sea visible y luego haz clic en "Listo".'}
+                        </p>
+                    )}
                 </div>
 
                 <div className={styles.footer}>
@@ -93,17 +112,19 @@ const TutorialModal = ({step, onNext, onSkip}) => {
                         ))}
                     </div>
                     <div className={styles.buttons}>
-                        <button
-                            className={styles.skipButton}
-                            onClick={onSkip}
-                        >
-                            {'Omitir'}
-                        </button>
+                        {!isZoomStep && (
+                            <button
+                                className={styles.skipButton}
+                                onClick={onSkip}
+                            >
+                                {'Omitir'}
+                            </button>
+                        )}
                         <button
                             className={styles.nextButton}
-                            onClick={onNext}
+                            onClick={handleNext}
                         >
-                            {isLastStep ? '¡Comenzar!' : 'Siguiente →'}
+                            {isLastStep ? '¡Comenzar!' : isZoomStep ? 'Listo, ajusté el zoom →' : 'Siguiente →'}
                         </button>
                     </div>
                 </div>
