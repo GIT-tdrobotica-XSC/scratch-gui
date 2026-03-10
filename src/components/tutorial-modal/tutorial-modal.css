@@ -14,6 +14,11 @@
     animation: fadeIn 0.2s ease;
 }
 
+/* Cuando hay spotlight, el overlay no pone fondo: lo pone el highlightBar via box-shadow */
+.overlaySpotlight {
+    background-color: transparent;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
@@ -183,9 +188,11 @@
     width: 28%;
     border: 3px solid #4C97FF;
     border-radius: 4px;
-    box-shadow: 0 0 0 4px rgba(76, 151, 255, 0.25), inset 0 0 20px rgba(76, 151, 255, 0.08);
     pointer-events: none;
     z-index: 10000;
+    /* Spotlight: oscurece TODO lo que está FUERA de esta zona, interior queda claro */
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.60),
+                0 0 0 5px rgba(76, 151, 255, 0.35);
     animation: highlightPulse 1.8s ease-in-out infinite;
 }
 
@@ -198,6 +205,6 @@
 }
 
 @keyframes highlightPulse {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(76, 151, 255, 0.25), inset 0 0 20px rgba(76, 151, 255, 0.08); }
-    50%       { box-shadow: 0 0 0 8px rgba(76, 151, 255, 0.40), inset 0 0 30px rgba(76, 151, 255, 0.15); }
+    0%, 100% { box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.60), 0 0 0 5px rgba(76, 151, 255, 0.35); }
+    50%       { box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.60), 0 0 0 8px rgba(76, 151, 255, 0.60); }
 }

@@ -115,18 +115,45 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
 
             setProgress(95);
 
-            // ====== PASO 5: RESET ======
+            // ====== PASO 5: RESET (condicional por placa) ======
             setStatus('Reiniciando dispositivo...');
-            try {
-                await esploader.after('hard_reset');
-            } catch (e) {
-                console.warn('Error en reset:', e);
+
+            if (extensionId === PLAYME_ID) {
+                // PlayMe: reset manual controlando señales DTR/RTS
+                // El hard_reset de esptool deja las señales en un estado
+                // que impide la reconexión posterior en esta placa.
+                try {
+                    await transport.setDTR(false);
+                    await transport.setRTS(true);   // Liberar GPIO0 (no modo boot)
+                    await new Promise(r => setTimeout(r, 100));
+                    await transport.setDTR(true);   // Pulso EN → reset
+                    await new Promise(r => setTimeout(r, 100));
+                    await transport.setDTR(false);  // Liberar EN → ESP32 arranca
+                } catch (e) {
+                    console.warn('Error en reset manual PlayMe:', e);
+                }
+            } else {
+                // PlayIoT: comportamiento original (funciona bien)
+                try {
+                    await esploader.after('hard_reset');
+                } catch (e) {
+                    console.warn('Error en reset:', e);
+                }
             }
 
-            // PlayMe: hard_reset no funciona con su chip USB-Serial → el bootloader
-            // hace timeout automático (~3s) y arranca el firmware por sí solo.
-            // Esperamos más tiempo para asegurar que el firmware haya arrancado
-            // antes de intentar reconectar.
+            // ====== PASO 6: DESCONECTAR TRANSPORTE ======
+            if (transport) {
+                try {
+                    await transport.disconnect();
+                    console.log('✅ Transporte de esptool-js desconectado.');
+                } catch (e) {
+                    console.warn('⚠️ Error al desconectar transporte:', e);
+                }
+                transport = null;
+            }
+
+            // Esperar que el firmware arranque antes de marcar éxito
+            // PlayMe necesita más tiempo porque su circuito de reset es diferente
             const bootWait = extensionId === PLAYME_ID ? 5000 : 1500;
             await new Promise(resolve => setTimeout(resolve, bootWait));
 
@@ -138,16 +165,16 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
             console.error('Error durante flasheo:', err);
             setError(err.message || 'Error durante la actualización');
             setSelectedExtension(null);
-        } finally {
-            // 🔌 ASEGURAR DESCONEXIÓN: Liberar el puerto físicamente para que Scratch pueda reclamarlo
+
+            // En caso de error, también liberar el transporte
             if (transport) {
                 try {
                     await transport.disconnect();
-                    console.log('✅ Transporte de esptool-js desconectado.');
                 } catch (e) {
-                    console.warn('⚠️ Error al desconectar transporte:', e);
+                    console.warn('⚠️ Error al desconectar transporte tras fallo:', e);
                 }
             }
+        } finally {
             onUpdatingChange(false);
         }
     };
