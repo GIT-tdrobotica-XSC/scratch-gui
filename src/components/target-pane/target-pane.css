@@ -1,4 +1,5 @@
 @import "../../css/units.css";
+@import "../../css/colors.css";
 
 .target-pane {
     display: flex;
