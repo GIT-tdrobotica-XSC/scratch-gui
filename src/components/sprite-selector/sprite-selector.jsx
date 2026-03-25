@@ -9,6 +9,7 @@ import ActionMenu from '../action-menu/action-menu.jsx';
 import Tabs from './tabs.jsx';
 import DevicePanel from './device-panel.jsx';
 import FirmwareUpdaterModal from './firmware-updater-modal.jsx';
+import StageSelector from '../../containers/stage-selector.jsx';
 import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 import { isRtl } from 'scratch-l10n';
 import extensionLibrary from '../../lib/libraries/extensions';
@@ -348,6 +349,7 @@ class SpriteSelectorComponent extends React.Component {
             selectedId,
             spriteFileInput,
             sprites,
+            stage,
             stageSize,
             ...componentProps
         } = this.props;
@@ -359,7 +361,7 @@ class SpriteSelectorComponent extends React.Component {
             spriteInfoDisabled = true;
         }
 
-        const tabs = ['Dispositivos', 'Objetos'];
+        const tabs = ['Dispositivos', 'Objetos', 'Fondo'];
         const { showExtensionModal, devices, selectedDeviceIndex } = this.state;
 
         return (
@@ -486,7 +488,7 @@ class SpriteSelectorComponent extends React.Component {
                             </div>
                         )}
                     </>
-                ) : (
+                ) : this.state.activeTab === 1 ? (
                     <>
                         <SpriteInfo
                             direction={selectedSprite.direction}
@@ -520,6 +522,18 @@ class SpriteSelectorComponent extends React.Component {
                             onSelectSprite={onSelectSprite}
                         />
                     </>
+                ) : (
+                    stage && stage.id ? (
+                        <div className={styles.scrollWrapper}>
+                            <StageSelector
+                                asset={stage.costume && stage.costume.asset}
+                                backdropCount={stage.costumeCount}
+                                id={stage.id}
+                                selected={stage.id === editingTarget}
+                                onSelect={onSelectSprite}
+                            />
+                        </div>
+                    ) : null
                 )}
 
                 {this.state.activeTab === 1 && <ActionMenu

@@ -6,27 +6,28 @@ $header-height: calc($stage-menu-height - 2px);
 .stage-selector {
     background-clip: padding-box;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    position: relative;
+    position: relative; /* For the add backdrop button */
     flex-grow: 1;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     background-color: $ui-white;
     color: $text-primary;
-    border-radius: $space;
+    border-top-left-radius: $space;
+    border-top-right-radius: $space;
     border-color: $ui-black-transparent;
     border-width: 1px;
     border-style: solid;
+    border-bottom: 0;
     cursor: pointer;
     transition: all 0.25s ease;
-    padding: 0.4rem 0.6rem;
-    gap: 0.5rem;
-    min-height: 56px;
 }
 
 .stage-selector.is-selected {
+    border-top-left-radius: .625rem;
+    border-top-right-radius: .625rem;
     border-color: $looks-secondary;
-    box-shadow: 0px 0px 0px 3px $looks-transparent;
+    box-shadow: 0px 0px 0px 4px $looks-transparent;
 }
 
 .stage-selector:hover {
@@ -36,66 +37,66 @@ $header-height: calc($stage-menu-height - 2px);
 .header {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    flex-grow: 1;
-    background-color: transparent;
+    height: $header-height;
+    background-color: white;
     color: $text-primary;
-    border: none;
-    width: auto;
-    height: auto;
-    transition: none;
-    border-radius: 0;
+    border-top-left-radius: $space;
+    border-top-right-radius: $space;
+    border-bottom: 1px solid $ui-black-transparent;
+    width: 100%;
+    transition: background-color 0.25s ease;
 }
 
 .header-title {
-    font-size: 0.65rem;
+    font-size: 0.625rem;
     font-weight: bold;
     color: $text-primary;
+
+    /* @todo: make this a mixin for all UI text labels */
     user-select: none;
+    transition: color 0.25s ease;
 }
 
 .stage-selector.is-selected .header {
-    background-color: transparent;
+    background-color: $looks-secondary;
 }
 
 .stage-selector.is-selected .header-title {
-    color: $looks-secondary;
+    color: $ui-white;
 }
 
 .count {
-    padding: 0;
-    font-size: 0.6rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.625rem;
     color: $text-primary;
     user-select: none;
-    opacity: 0.7;
 }
 
 .label {
-    margin: 0.1rem 0 0;
+    margin: 0.75rem 0 0.25rem;
     font-size: 0.6rem;
     color: $text-primary;
     user-select: none;
-    opacity: 0.7;
+    text-align: center;
 }
 
 .costume-canvas {
     display: block;
-    flex-shrink: 0;
+    margin-top: .25rem;
+    width: 100%;
     user-select: none;
     border: 1px solid $ui-black-transparent;
     border-radius: .25rem;
     box-shadow: inset 0 0 4px $ui-black-transparent;
-    width: 56px;
-    height: 42px;
-    object-fit: contain;
+    max-width: 64px;
+    max-height: 48px;
 }
 
 .add-button {
-    position: relative;
-    bottom: auto;
-    flex-shrink: 0;
-    margin-left: auto;
+    position: absolute;
+    bottom: 0.75rem;
 }
 
 .raised, .raised .header {
