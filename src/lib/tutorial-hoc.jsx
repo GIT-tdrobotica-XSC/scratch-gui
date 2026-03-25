@@ -1,20 +1,26 @@
 import React from 'react';
 import TutorialModal, {STEPS} from '../components/tutorial-modal/tutorial-modal.jsx';
 
+const STORAGE_KEY = 'playcode_tutorial_dismissed';
+
 const TutorialHOC = function (WrappedComponent) {
     class TutorialWrapper extends React.Component {
         constructor (props) {
             super(props);
+            const dismissed = localStorage.getItem(STORAGE_KEY) === 'true';
             this.state = {
-                visible: true,
+                visible: !dismissed,
                 step: 0
             };
             this.handleNext = this.handleNext.bind(this);
             this.handleSkip = this.handleSkip.bind(this);
         }
 
-        handleNext () {
+        handleNext (dontShowAgain) {
             const {step} = this.state;
+            if (dontShowAgain) {
+                localStorage.setItem(STORAGE_KEY, 'true');
+            }
             if (step < STEPS.length - 1) {
                 this.setState({step: step + 1});
             } else {
@@ -22,7 +28,10 @@ const TutorialHOC = function (WrappedComponent) {
             }
         }
 
-        handleSkip () {
+        handleSkip (dontShowAgain) {
+            if (dontShowAgain) {
+                localStorage.setItem(STORAGE_KEY, 'true');
+            }
             this.setState({visible: false});
         }
 

@@ -28,6 +28,7 @@ import TipsLibrary from '../../containers/tips-library.jsx';
 import Cards from '../../containers/cards.jsx';
 import Alerts from '../../containers/alerts.jsx';
 import DragLayer from '../../containers/drag-layer.jsx';
+import DeviceToast from '../device-toast/device-toast.jsx';
 import ConnectionModal from '../../containers/connection-modal.jsx';
 import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
@@ -385,6 +386,7 @@ const GUIComponent = props => {
                             </Box>
                         </Box>
                         <DragLayer />
+                        <DeviceToast vm={vm} />
                     </Box>
                 )}
             </SerialProvider>

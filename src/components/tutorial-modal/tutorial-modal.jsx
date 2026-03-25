@@ -68,6 +68,7 @@ const TutorialModal = ({step, onNext, onSkip}) => {
     const isZoomStep = current === ZOOM_STEP;
     const [zoomWarning, setZoomWarning] = useState(false);
     const [spotlightRect, setSpotlightRect] = useState(null);
+    const [dontShowAgain, setDontShowAgain] = useState(false);
 
     useEffect(() => {
         if (!current.targetSelector) {
@@ -88,7 +89,7 @@ const TutorialModal = ({step, onNext, onSkip}) => {
             return;
         }
         setZoomWarning(false);
-        onNext();
+        onNext(dontShowAgain);
     };
 
     return (
@@ -130,29 +131,40 @@ const TutorialModal = ({step, onNext, onSkip}) => {
                 </div>
 
                 <div className={styles.footer}>
-                    <div className={styles.stepDots}>
-                        {STEPS.map((_, i) => (
-                            <span
-                                key={i}
-                                className={i === step ? styles.dotActive : styles.dot}
-                            />
-                        ))}
-                    </div>
-                    <div className={styles.buttons}>
-                        {!isZoomStep && (
+                    <label className={styles.dontShowLabel}>
+                        <input
+                            checked={dontShowAgain}
+                            className={styles.dontShowCheck}
+                            type="checkbox"
+                            onChange={e => setDontShowAgain(e.target.checked)}
+                        />
+                        {'No mostrar de nuevo'}
+                    </label>
+                    <div className={styles.footerRight}>
+                        <div className={styles.stepDots}>
+                            {STEPS.map((_, i) => (
+                                <span
+                                    key={i}
+                                    className={i === step ? styles.dotActive : styles.dot}
+                                />
+                            ))}
+                        </div>
+                        <div className={styles.buttons}>
+                            {!isZoomStep && (
+                                <button
+                                    className={styles.skipButton}
+                                    onClick={() => onSkip(dontShowAgain)}
+                                >
+                                    {'Omitir'}
+                                </button>
+                            )}
                             <button
-                                className={styles.skipButton}
-                                onClick={onSkip}
+                                className={styles.nextButton}
+                                onClick={handleNext}
                             >
-                                {'Omitir'}
+                                {isLastStep ? '¡Comenzar!' : isZoomStep ? 'Listo, ajusté el zoom →' : 'Siguiente →'}
                             </button>
-                        )}
-                        <button
-                            className={styles.nextButton}
-                            onClick={handleNext}
-                        >
-                            {isLastStep ? '¡Comenzar!' : isZoomStep ? 'Listo, ajusté el zoom →' : 'Siguiente →'}
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
