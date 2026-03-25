@@ -260,7 +260,10 @@ const GUIComponent = props => {
                         />
                         <Box className={styles.bodyWrapper}>
                             <Box className={styles.flexWrapper}>
-                                <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}>
+                                <Box
+                                    className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}
+                                    data-tutorial="left-panel"
+                                >
                                     <StageWrapper
                                         isFullScreen={isFullScreen}
                                         isRendererSupported={isRendererSupported}
@@ -275,7 +278,10 @@ const GUIComponent = props => {
                                         />
                                     </Box>
                                 </Box>
-                                <Box className={styles.editorWrapper}>
+                                <Box
+                                    className={styles.editorWrapper}
+                                    data-tutorial="editor"
+                                >
                                     <Tabs
                                         forceRenderTabPanel
                                         className={tabClassNames.tabs}

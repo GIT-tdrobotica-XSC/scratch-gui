@@ -195,44 +195,16 @@
     background-color: #3d84e8;
 }
 
-/* Highlight de sección activa */
-.highlightBar {
+/* Spotlight dinámico: posición y tamaño se setean via inline style desde getBoundingClientRect() */
+.spotlight {
     position: fixed;
-    width: 28%;
-    border: 3px solid #4C97FF;
-    border-radius: 4px;
     pointer-events: none;
     z-index: 10000;
-    /* Spotlight: oscurece TODO lo que está FUERA de esta zona, interior queda claro */
+    border: 3px solid rgba(76, 151, 255, 0.9);
+    border-radius: 6px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.60),
                 0 0 0 5px rgba(76, 151, 255, 0.35);
     animation: highlightPulse 1.8s ease-in-out infinite;
-}
-
-/* Columna completa */
-.highlightLeft {
-    left: 0;
-    top: 0;
-    bottom: 0;
-}
-
-.highlightRight {
-    right: 0;
-    top: 0;
-    bottom: 0;
-}
-
-/* Cuadrantes */
-.highlightTopLeft {
-    left: 0;
-    top: 0;
-    height: 50%;
-}
-
-.highlightBottomLeft {
-    left: 0;
-    bottom: 0;
-    height: 50%;
 }
 
 @keyframes highlightPulse {
