@@ -86,16 +86,21 @@ const TargetPane = ({
             onSurpriseSpriteClick={onSurpriseSpriteClick}
         />
         <div className={styles.stageSelectorWrapper}>
-            {stage.id && <StageSelector
-                asset={
-                    stage.costume &&
-                    stage.costume.asset
-                }
-                backdropCount={stage.costumeCount}
-                id={stage.id}
-                selected={stage.id === editingTarget}
-                onSelect={onSelectSprite}
-            />}
+            {stage.id && (
+                <>
+                    <div className={styles.stageSectionLabel}>{'Fondos'}</div>
+                    <StageSelector
+                        asset={
+                            stage.costume &&
+                            stage.costume.asset
+                        }
+                        backdropCount={stage.costumeCount}
+                        id={stage.id}
+                        selected={stage.id === editingTarget}
+                        onSelect={onSelectSprite}
+                    />
+                </>
+            )}
             <div>
                 {spriteLibraryVisible ? (
                     <SpriteLibrary

@@ -1,22 +1,25 @@
 @import "../../css/units.css";
 
 .target-pane {
-    /* Makes columns for the sprite library selector + and the stage selector */
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-grow: 1;
+    overflow: hidden;
 }
 
 .stage-selector-wrapper {
     display: flex;
-    flex-basis: 72px;
     flex-shrink: 0;
+    width: 100%;
+    padding-top: calc($space / 2);
 }
 
-[dir="ltr"] .stage-selector-wrapper {
-    margin-left: calc($space / 2);
-}
-
-[dir="rtl"] .stage-selector-wrapper {
-    margin-right: calc($space / 2);
+.stage-section-label {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.625rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: $text-primary;
+    padding: 0.25rem 0.5rem 0.15rem;
+    user-select: none;
 }
