@@ -5,7 +5,7 @@ import {compose} from 'redux';
 import AppStateHOC from '../lib/app-state-hoc.jsx';
 import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
-import KeycloakHOC from '../lib/keycloak-hoc.jsx';
+// import KeycloakHOC from '../lib/keycloak-hoc.jsx';
 import TutorialHOC from '../lib/tutorial-hoc.jsx';
 import log from '../lib/log.js';
 
@@ -37,7 +37,7 @@ export default appTarget => {
     // the hierarchy of HOC constructor calls clearer here; it has nothing to do with redux's
     // ability to compose reducers.
     const WrappedGui = compose(
-        KeycloakHOC,
+        // KeycloakHOC,  // Login desactivado temporalmente
         AppStateHOC,
         TutorialHOC,
         HashParserHOC
