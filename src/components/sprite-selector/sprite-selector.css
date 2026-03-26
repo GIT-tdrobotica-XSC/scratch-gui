@@ -143,6 +143,14 @@
     border-bottom: 1px solid $ui-black-transparent !important;
 }
 
+/* Thumbnail del fondo más grande */
+.fondo-wrapper img {
+    max-width: 160px !important;
+    max-height: 120px !important;
+    width: auto;
+    height: auto;
+}
+
 /* Popups de estado de firmware */
 .firmware-status-overlay {
     position: fixed;

@@ -27,7 +27,6 @@ $more-button-size: 2.25rem;
 
 .button:hover {
     background: lighten($extensions-primary, 5%); /* rojo más claro al pasar */
-    transform: scale(1.05);
 }
 
 .button:active {
@@ -92,7 +91,7 @@ $more-button-size: 2.25rem;
 
 .more-buttons {
     max-height: 0;
-    transition: max-height 1s;
+    transition: max-height 0.2s ease-out;
     overflow-x: visible;
     display: flex;
     flex-direction: column;

@@ -98,3 +98,13 @@
     min-width: auto;
     min-height: auto;
 }
+
+/* Insertion marker más visible al arrastrar un bloque sobre otro */
+.blocks :global(.blocklyInsertionMarker) > :global(.blocklyPath),
+.blocks :global(.blocklyInsertionMarker) > :global(.blocklyPathLight),
+.blocks :global(.blocklyInsertionMarker) > :global(.blocklyPathDark) {
+    fill: rgba(255, 255, 255, 0.6) !important;
+    stroke: #4C97FF !important;
+    stroke-width: 3 !important;
+    stroke-opacity: 0.9 !important;
+}

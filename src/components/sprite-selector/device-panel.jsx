@@ -57,32 +57,43 @@ class DevicePanel extends React.Component {
                     <div className={styles.deviceList}>
                         {devices && devices.length > 0 ? (
                             devices.map((device, index) => (
-                                <button
+                                <div
                                     key={device.id}
-                                    className={classNames(styles.deviceListItem, {
-                                        [styles.deviceListItemActive]: selectedDeviceIndex === index
-                                    })}
-                                    onClick={() => this.handleSelectDevice(index)}
+                                    className={styles.deviceListItemWrapper}
                                 >
-                                    <div className={styles.deviceListItemContent}>
-                                        {device.icon && (
-                                            <img
-                                                className={styles.deviceListItemIcon}
-                                                src={device.icon}
-                                                draggable={false}
-                                            />
-                                        )}
-                                        <span className={styles.deviceListItemName}>
-                                            {device.name}
-                                        </span>
-                                    </div>
-                                    <span
-                                        className={styles.deviceListItemStatus}
-                                        style={{
-                                            backgroundColor: device.isConnected ? '#51C141' : '#FF6B6B'
-                                        }}
-                                    />
-                                </button>
+                                    <button
+                                        className={classNames(styles.deviceListItem, {
+                                            [styles.deviceListItemActive]: selectedDeviceIndex === index
+                                        })}
+                                        onClick={() => this.handleSelectDevice(index)}
+                                    >
+                                        <div className={styles.deviceListItemContent}>
+                                            {device.icon && (
+                                                <img
+                                                    className={styles.deviceListItemIcon}
+                                                    src={device.icon}
+                                                    draggable={false}
+                                                />
+                                            )}
+                                            <span className={styles.deviceListItemName}>
+                                                {device.name}
+                                            </span>
+                                        </div>
+                                        <span
+                                            className={styles.deviceListItemStatus}
+                                            style={{
+                                                backgroundColor: device.isConnected ? '#51C141' : '#FF6B6B'
+                                            }}
+                                        />
+                                    </button>
+                                    <button
+                                        className={styles.deviceListItemDelete}
+                                        title="Eliminar dispositivo"
+                                        onClick={e => { e.stopPropagation(); onRemoveDevice(index); }}
+                                    >
+                                        {'×'}
+                                    </button>
+                                </div>
                             ))
                         ) : null}
                     </div>
@@ -100,20 +111,9 @@ class DevicePanel extends React.Component {
                     {selectedDevice ? (
                         <div className={styles.deviceDetails}>
                             <div className={styles.detailsHeader}>
-                                <div>
-                                    <h2 className={styles.detailsTitle}>
-                                        {selectedDevice.name}
-                                    </h2>
-                                </div>
-                                {devices.length > 1 && (
-                                    <button
-                                        className={styles.removeDeviceButton}
-                                        onClick={() => onRemoveDevice(selectedDeviceIndex)}
-                                        title="Eliminar dispositivo"
-                                    >
-                                        ✕
-                                    </button>
-                                )}
+                                <h2 className={styles.detailsTitle}>
+                                    {selectedDevice.name}
+                                </h2>
                             </div>
 
                             <div className={styles.detailsInfo}>
@@ -178,7 +178,15 @@ class DevicePanel extends React.Component {
                         </div>
                     ) : (
                         <div className={styles.emptyState}>
-                            <p>No hay dispositivos añadidos</p>
+                            <span className={styles.emptyStateIcon}>{'🔌'}</span>
+                            <p className={styles.emptyStateTitle}>{'Sin dispositivos'}</p>
+                            <p className={styles.emptyStateText}>{'Agrega un dispositivo para comenzar'}</p>
+                            <button
+                                className={styles.emptyStateAddButton}
+                                onClick={onAddDevice}
+                            >
+                                {'+ Añadir dispositivo'}
+                            </button>
                         </div>
                     )}
                 </div>
