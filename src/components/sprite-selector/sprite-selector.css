@@ -126,6 +126,31 @@
     filter: opacity(15%) brightness(0%);
 }
 
+/* Tab de Fondo */
+.fondo-wrapper {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    padding: calc($space / 2);
+    gap: calc($space / 2);
+    height: calc(100% - $sprite-info-height);
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Cada item de fondo (stage selector) dentro del tab */
+.fondo-wrapper > * {
+    width: calc((100% / $sprites-per-row) - $space);
+    max-width: 6rem;
+    min-width: 4rem;
+    min-height: 5rem;
+    flex-grow: 0 !important;
+    flex-shrink: 0;
+    border-radius: $space !important;
+    border-bottom: 1px solid $ui-black-transparent !important;
+}
+
 /* Popups de estado de firmware */
 .firmware-status-overlay {
     position: fixed;

@@ -157,6 +157,17 @@ class SpriteSelectorComponent extends React.Component {
 
     handleTabChange = (tabIndex) => {
         this.setState({ activeTab: tabIndex });
+        const { onSelectSprite, selectedId, stage } = this.props;
+        if (!onSelectSprite) return;
+        if (tabIndex === 0 || tabIndex === 1) {
+            // Dispositivos y Objetos: mostrar código del sprite seleccionado
+            if (selectedId && (!stage || selectedId !== stage.id)) {
+                onSelectSprite(selectedId);
+            }
+        } else if (tabIndex === 2 && stage && stage.id) {
+            // Fondo: mostrar código del escenario
+            onSelectSprite(stage.id);
+        }
     }
 
     handleSelectDevice = (index) => {
@@ -524,7 +535,7 @@ class SpriteSelectorComponent extends React.Component {
                     </>
                 ) : (
                     stage && stage.id ? (
-                        <div className={styles.scrollWrapper}>
+                        <div className={styles.fondoWrapper}>
                             <StageSelector
                                 asset={stage.costume && stage.costume.asset}
                                 backdropCount={stage.costumeCount}
