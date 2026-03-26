@@ -9,15 +9,9 @@
 }
 
 .stage-selector-wrapper {
-    display: flex;
-    flex-basis: 72px;
-    flex-shrink: 0;
-}
-
-[dir="ltr"] .stage-selector-wrapper {
-    margin-left: calc($space / 2);
-}
-
-[dir="rtl"] .stage-selector-wrapper {
-    margin-right: calc($space / 2);
+    /* StageSelector was moved to Fondo tab — this wrapper only holds SpriteLibrary overlay */
+    flex-basis: 0;
+    width: 0;
+    overflow: visible;
+    position: relative;
 }

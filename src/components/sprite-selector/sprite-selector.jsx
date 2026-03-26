@@ -157,16 +157,34 @@ class SpriteSelectorComponent extends React.Component {
 
     handleTabChange = (tabIndex) => {
         this.setState({ activeTab: tabIndex });
-        const { onSelectSprite, selectedId, stage } = this.props;
-        if (!onSelectSprite) return;
-        if (tabIndex === 0 || tabIndex === 1) {
-            // Dispositivos y Objetos: mostrar código del sprite seleccionado
-            if (selectedId && (!stage || selectedId !== stage.id)) {
+        const { onSelectSprite, selectedId, stage, sprites } = this.props;
+
+        if (tabIndex === 0) {
+            // Dispositivos: no cambia el target, solo refresca el toolbox al dispositivo activo
+            const { selectedDeviceIndex, devices } = this.state;
+            const device = devices[selectedDeviceIndex];
+            if (device) {
+                window.activeDeviceExtensionId = device.extensionId;
+                window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
+                    detail: { extensionId: device.extensionId }
+                }));
+            }
+        } else if (tabIndex === 1) {
+            // Objetos: si el target actual es el escenario, auto-seleccionar el primer sprite
+            if (!onSelectSprite) return;
+            const isOnStage = stage && selectedId === stage.id;
+            if (isOnStage || !selectedId) {
+                const spriteList = Object.values(sprites || {})
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+                if (spriteList.length > 0 && spriteList[0].id) {
+                    onSelectSprite(spriteList[0].id);
+                }
+            } else {
                 onSelectSprite(selectedId);
             }
         } else if (tabIndex === 2 && stage && stage.id) {
             // Fondo: mostrar código del escenario
-            onSelectSprite(stage.id);
+            if (onSelectSprite) onSelectSprite(stage.id);
         }
     }
 
