@@ -82,21 +82,51 @@ $header-height: calc($stage-menu-height - 2px);
     text-align: center;
 }
 
+.costume-canvas-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    padding: 0.75rem;
+    box-sizing: border-box;
+}
+
 .costume-canvas {
     display: block;
-    margin-top: .25rem;
     width: 100%;
+    height: 100%;
+    object-fit: contain;
     user-select: none;
-    border: 1px solid $ui-black-transparent;
-    border-radius: .25rem;
-    box-shadow: inset 0 0 4px $ui-black-transparent;
-    max-width: 64px;
-    max-height: 48px;
+    border: 1.5px solid $ui-black-transparent;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 240px;
+    max-height: 180px;
+    background-color: #f8f9fb;
+}
+
+.costume-canvas-empty {
+    width: 100%;
+    max-width: 240px;
+    max-height: 180px;
+    min-height: 120px;
+    border: 2px dashed $ui-black-transparent;
+    border-radius: 6px;
+    background-color: #f8f9fb;
+    background-image:
+        linear-gradient(45deg, #eeeff2 25%, transparent 25%),
+        linear-gradient(-45deg, #eeeff2 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eeeff2 75%),
+        linear-gradient(-45deg, transparent 75%, #eeeff2 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 0 6px, 6px -6px, -6px 0;
 }
 
 .add-button {
     position: absolute;
     bottom: 0.75rem;
+    right: 0.75rem;
 }
 
 .raised, .raised .header {

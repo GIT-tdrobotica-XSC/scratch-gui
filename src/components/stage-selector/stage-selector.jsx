@@ -80,12 +80,16 @@ const StageSelector = props => {
                     />
                 </div>
             </div>
-            {url ? (
-                <img
-                    className={styles.costumeCanvas}
-                    src={url}
-                />
-            ) : null}
+            <div className={styles.costumeCanvasWrapper}>
+                {url ? (
+                    <img
+                        className={styles.costumeCanvas}
+                        src={url}
+                    />
+                ) : (
+                    <div className={styles.costumeCanvasEmpty} />
+                )}
+            </div>
             <div className={styles.label}>
                 <FormattedMessage
                     defaultMessage="Backdrops"
