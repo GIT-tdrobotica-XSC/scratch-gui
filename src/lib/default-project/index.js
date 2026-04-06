@@ -3,10 +3,10 @@ import projectData from './project-data';
 /* eslint-disable import/no-unresolved */
 import popWav from '!arraybuffer-loader!./83a9787d4cb6f3b7632b4ddfebf74367.wav?';
 import backdrop from '!raw-loader!./cd21514d0531fdffb22204e0ec5ed84a.svg?';
-// Disfraces Daneel (robot por defecto). SVGs del gato se mantienen como backup en el directorio.
-import daneel1 from '!arraybuffer-loader!./be9d07b3e85e3d539833c8544d16b5dc.png?';
-import daneel2 from '!arraybuffer-loader!./d115264f6bbe5a7d2fb546ed3928a3e3.png?';
-import daneel3 from '!arraybuffer-loader!./8aaa757c0a4ad65e56b599009b8f11c6.png?';
+// Disfraces Daneel (robot por defecto) en SVG. PNGs del gato se mantienen como backup en el directorio.
+import daneel1 from '!raw-loader!./437d84c1ef5e6b6a1efd41089ca0057a.svg?';
+import daneel2 from '!raw-loader!./1291b0483c49f9ac32277df3d99378fc.svg?';
+import daneel3 from '!raw-loader!./580538f54f3ca996775a23b295b4f0cd.svg?';
 /* eslint-enable import/no-unresolved */
 
 const defaultProject = translator => {
@@ -35,20 +35,20 @@ const defaultProject = translator => {
         dataFormat: 'SVG',
         data: encoder.encode(backdrop)
     }, {
-        id: 'be9d07b3e85e3d539833c8544d16b5dc',
-        assetType: 'ImageBitmap',
-        dataFormat: 'PNG',
-        data: new Uint8Array(daneel1)
+        id: '437d84c1ef5e6b6a1efd41089ca0057a',
+        assetType: 'ImageVector',
+        dataFormat: 'SVG',
+        data: encoder.encode(daneel1)
     }, {
-        id: 'd115264f6bbe5a7d2fb546ed3928a3e3',
-        assetType: 'ImageBitmap',
-        dataFormat: 'PNG',
-        data: new Uint8Array(daneel2)
+        id: '1291b0483c49f9ac32277df3d99378fc',
+        assetType: 'ImageVector',
+        dataFormat: 'SVG',
+        data: encoder.encode(daneel2)
     }, {
-        id: '8aaa757c0a4ad65e56b599009b8f11c6',
-        assetType: 'ImageBitmap',
-        dataFormat: 'PNG',
-        data: new Uint8Array(daneel3)
+        id: '580538f54f3ca996775a23b295b4f0cd',
+        assetType: 'ImageVector',
+        dataFormat: 'SVG',
+        data: encoder.encode(daneel3)
     }];
 };
 
