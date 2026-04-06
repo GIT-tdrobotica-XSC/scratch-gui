@@ -4,9 +4,9 @@ import projectData from './project-data';
 import popWav from '!arraybuffer-loader!./83a9787d4cb6f3b7632b4ddfebf74367.wav?';
 import backdrop from '!raw-loader!./cd21514d0531fdffb22204e0ec5ed84a.svg?';
 // Disfraces Daneel (robot por defecto). SVGs del gato se mantienen como backup en el directorio.
-import daneel1 from '!arraybuffer-loader!./3cd831ff9bae823b28b4f3a547f169a6.png?';
-import daneel2 from '!arraybuffer-loader!./3a7e255b201098534399ab4843a30eb0.png?';
-import daneel3 from '!arraybuffer-loader!./7c7b235c58fa70089697d13a02579ac0.png?';
+import daneel1 from '!arraybuffer-loader!./be9d07b3e85e3d539833c8544d16b5dc.png?';
+import daneel2 from '!arraybuffer-loader!./d115264f6bbe5a7d2fb546ed3928a3e3.png?';
+import daneel3 from '!arraybuffer-loader!./8aaa757c0a4ad65e56b599009b8f11c6.png?';
 /* eslint-enable import/no-unresolved */
 
 const defaultProject = translator => {
@@ -35,17 +35,17 @@ const defaultProject = translator => {
         dataFormat: 'SVG',
         data: encoder.encode(backdrop)
     }, {
-        id: '3cd831ff9bae823b28b4f3a547f169a6',
+        id: 'be9d07b3e85e3d539833c8544d16b5dc',
         assetType: 'ImageBitmap',
         dataFormat: 'PNG',
         data: new Uint8Array(daneel1)
     }, {
-        id: '3a7e255b201098534399ab4843a30eb0',
+        id: 'd115264f6bbe5a7d2fb546ed3928a3e3',
         assetType: 'ImageBitmap',
         dataFormat: 'PNG',
         data: new Uint8Array(daneel2)
     }, {
-        id: '7c7b235c58fa70089697d13a02579ac0',
+        id: '8aaa757c0a4ad65e56b599009b8f11c6',
         assetType: 'ImageBitmap',
         dataFormat: 'PNG',
         data: new Uint8Array(daneel3)

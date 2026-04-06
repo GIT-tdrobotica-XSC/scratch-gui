@@ -69,31 +69,31 @@ const projectData = translateFunction => {
                 currentCostume: 0,
                 costumes: [
                     {
-                        assetId: '3cd831ff9bae823b28b4f3a547f169a6',
+                        assetId: 'be9d07b3e85e3d539833c8544d16b5dc',
                         name: 'Daneel-1',
-                        bitmapResolution: 2,
-                        md5ext: '3cd831ff9bae823b28b4f3a547f169a6.png',
+                        bitmapResolution: 1,
+                        md5ext: 'be9d07b3e85e3d539833c8544d16b5dc.png',
                         dataFormat: 'png',
-                        rotationCenterX: 500,
-                        rotationCenterY: 500
+                        rotationCenterX: 120,
+                        rotationCenterY: 120
                     },
                     {
-                        assetId: '3a7e255b201098534399ab4843a30eb0',
+                        assetId: 'd115264f6bbe5a7d2fb546ed3928a3e3',
                         name: 'Daneel-2',
-                        bitmapResolution: 2,
-                        md5ext: '3a7e255b201098534399ab4843a30eb0.png',
+                        bitmapResolution: 1,
+                        md5ext: 'd115264f6bbe5a7d2fb546ed3928a3e3.png',
                         dataFormat: 'png',
-                        rotationCenterX: 501,
-                        rotationCenterY: 500
+                        rotationCenterX: 120,
+                        rotationCenterY: 120
                     },
                     {
-                        assetId: '7c7b235c58fa70089697d13a02579ac0',
+                        assetId: '8aaa757c0a4ad65e56b599009b8f11c6',
                         name: 'Daneel-3',
-                        bitmapResolution: 2,
-                        md5ext: '7c7b235c58fa70089697d13a02579ac0.png',
+                        bitmapResolution: 1,
+                        md5ext: '8aaa757c0a4ad65e56b599009b8f11c6.png',
                         dataFormat: 'png',
-                        rotationCenterX: 501,
-                        rotationCenterY: 500
+                        rotationCenterX: 120,
+                        rotationCenterY: 120
                     }
                 ],
                 sounds: [],
