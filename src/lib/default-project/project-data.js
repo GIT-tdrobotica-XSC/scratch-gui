@@ -69,31 +69,31 @@ const projectData = translateFunction => {
                 currentCostume: 0,
                 costumes: [
                     {
-                        assetId: '437d84c1ef5e6b6a1efd41089ca0057a',
+                        assetId: '14a3e0d41d648b4415b4a78cb65ba725',
                         name: 'Daneel-1',
                         bitmapResolution: 1,
-                        md5ext: '437d84c1ef5e6b6a1efd41089ca0057a.svg',
+                        md5ext: '14a3e0d41d648b4415b4a78cb65ba725.svg',
                         dataFormat: 'svg',
-                        rotationCenterX: 500,
-                        rotationCenterY: 500
+                        rotationCenterX: 50,
+                        rotationCenterY: 50
                     },
                     {
-                        assetId: '1291b0483c49f9ac32277df3d99378fc',
+                        assetId: '54ae922e118ccf76a22e935737e2a579',
                         name: 'Daneel-2',
                         bitmapResolution: 1,
-                        md5ext: '1291b0483c49f9ac32277df3d99378fc.svg',
+                        md5ext: '54ae922e118ccf76a22e935737e2a579.svg',
                         dataFormat: 'svg',
-                        rotationCenterX: 500,
-                        rotationCenterY: 500
+                        rotationCenterX: 50,
+                        rotationCenterY: 50
                     },
                     {
-                        assetId: '580538f54f3ca996775a23b295b4f0cd',
+                        assetId: '82d8ed9bb53b3f026a5d9d59086a4d6e',
                         name: 'Daneel-3',
                         bitmapResolution: 1,
-                        md5ext: '580538f54f3ca996775a23b295b4f0cd.svg',
+                        md5ext: '82d8ed9bb53b3f026a5d9d59086a4d6e.svg',
                         dataFormat: 'svg',
-                        rotationCenterX: 500,
-                        rotationCenterY: 500
+                        rotationCenterX: 50,
+                        rotationCenterY: 50
                     }
                 ],
                 sounds: [],
@@ -101,7 +101,7 @@ const projectData = translateFunction => {
                 visible: true,
                 x: 0,
                 y: 0,
-                size: 10,
+                size: 100,
                 direction: 90,
                 draggable: false,
                 rotationStyle: 'all around'
