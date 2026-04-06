@@ -1,13 +1,18 @@
 /* ================================
+   Tipografía
+   ================================ */
+$font-primary: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+/* ================================
    Colores base de la interfaz (UI)
    ================================ */
 
-$ui-primary: hsla(215, 100%, 95%, 1);
-/* #E5F0FF */
-$ui-secondary: hsla(215, 75%, 95%, 1);
-/* #E9F1FC */
-$ui-tertiary: hsla(215, 50%, 90%, 1);
-/* #D9E3F2 */
+$ui-primary: hsla(220, 30%, 96%, 1);
+/* #F0F2F8 — fondo gris azulado suave */
+$ui-secondary: hsla(220, 25%, 94%, 1);
+/* #ECEEF5 */
+$ui-tertiary: hsla(220, 20%, 88%, 1);
+/* #D8DCE8 */
 
 $ui-modal-overlay: hsla(215, 100%, 65%, 0.9);
 /* Fondo translúcido del modal */
