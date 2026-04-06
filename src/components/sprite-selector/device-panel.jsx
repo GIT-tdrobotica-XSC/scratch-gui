@@ -211,7 +211,8 @@ DevicePanel.propTypes = {
     onUpdateFirmware: PropTypes.func,
     onAddDevice: PropTypes.func,
     onRemoveDevice: PropTypes.func,
-    onLoadExtension: PropTypes.func
+    onLoadExtension: PropTypes.func,
+    stageSize: PropTypes.string
 };
 
 DevicePanel.defaultProps = {

@@ -1,25 +1,31 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import PropTypes from 'prop-types';
 import styles from './device-toast.css';
 
-let toastId = 0;
-
 const DeviceToast = ({vm}) => {
     const [toasts, setToasts] = useState([]);
+    const toastIdRef = useRef(0);
+    const timersRef = useRef([]);
 
     const addToast = (type, message) => {
-        const id = ++toastId;
+        const id = ++toastIdRef.current;
         setToasts(prev => [...prev, {id, type, message, exiting: false}]);
 
         // Inicia salida antes de remover para animar
-        setTimeout(() => {
+        const t1 = setTimeout(() => {
             setToasts(prev => prev.map(t => t.id === id ? {...t, exiting: true} : t));
         }, 3000);
-
-        setTimeout(() => {
+        const t2 = setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
         }, 3250);
+        timersRef.current.push(t1, t2);
     };
+
+    useEffect(() => {
+        return () => {
+            timersRef.current.forEach(clearTimeout);
+        };
+    }, []);
 
     useEffect(() => {
         if (!vm) return;

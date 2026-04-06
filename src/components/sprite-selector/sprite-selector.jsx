@@ -92,6 +92,9 @@ class SpriteSelectorComponent extends React.Component {
         if (this.connectionCheckInterval) {
             clearInterval(this.connectionCheckInterval);
         }
+        // Limpiar timers de check de RX pendientes
+        Object.values(this._rxCheckTimers).forEach(timer => clearTimeout(timer));
+        this._rxCheckTimers = {};
     }
 
     checkConnectionStatus = () => {
@@ -249,6 +252,13 @@ class SpriteSelectorComponent extends React.Component {
     }
 
     handleRemoveDevice = (index) => {
+        const deviceToRemove = this.state.devices[index];
+
+        // Si el dispositivo está conectado, desconectarlo antes de eliminarlo
+        if (deviceToRemove && deviceToRemove.isConnected && this.props.onDeviceDisconnect) {
+            this.props.onDeviceDisconnect(deviceToRemove.extensionId);
+        }
+
         const newDevices = this.state.devices.filter((_, i) => i !== index);
         const newSelectedIndex = Math.max(0, index - 1);
 

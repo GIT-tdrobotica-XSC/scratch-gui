@@ -2,10 +2,11 @@ import projectData from './project-data';
 
 /* eslint-disable import/no-unresolved */
 import popWav from '!arraybuffer-loader!./83a9787d4cb6f3b7632b4ddfebf74367.wav?';
-import meowWav from '!arraybuffer-loader!./83c36d806dc92327b9e7049a565c6bff.wav?';
 import backdrop from '!raw-loader!./cd21514d0531fdffb22204e0ec5ed84a.svg?';
-import costume1 from '!raw-loader!./bcf454acf82e4504149f7ffe07081dbc.svg?';
-import costume2 from '!raw-loader!./0fb9be3e8397c983338cb71dc84d0b25.svg?';
+// Disfraces Daneel (robot por defecto). SVGs del gato se mantienen como backup en el directorio.
+import daneel1 from '!arraybuffer-loader!./3cd831ff9bae823b28b4f3a547f169a6.png?';
+import daneel2 from '!arraybuffer-loader!./3a7e255b201098534399ab4843a30eb0.png?';
+import daneel3 from '!arraybuffer-loader!./7c7b235c58fa70089697d13a02579ac0.png?';
 /* eslint-enable import/no-unresolved */
 
 const defaultProject = translator => {
@@ -29,25 +30,25 @@ const defaultProject = translator => {
         dataFormat: 'WAV',
         data: new Uint8Array(popWav)
     }, {
-        id: '83c36d806dc92327b9e7049a565c6bff',
-        assetType: 'Sound',
-        dataFormat: 'WAV',
-        data: new Uint8Array(meowWav)
-    }, {
         id: 'cd21514d0531fdffb22204e0ec5ed84a',
         assetType: 'ImageVector',
         dataFormat: 'SVG',
         data: encoder.encode(backdrop)
     }, {
-        id: 'bcf454acf82e4504149f7ffe07081dbc',
-        assetType: 'ImageVector',
-        dataFormat: 'SVG',
-        data: encoder.encode(costume1)
+        id: '3cd831ff9bae823b28b4f3a547f169a6',
+        assetType: 'ImageBitmap',
+        dataFormat: 'PNG',
+        data: new Uint8Array(daneel1)
     }, {
-        id: '0fb9be3e8397c983338cb71dc84d0b25',
-        assetType: 'ImageVector',
-        dataFormat: 'SVG',
-        data: encoder.encode(costume2)
+        id: '3a7e255b201098534399ab4843a30eb0',
+        assetType: 'ImageBitmap',
+        dataFormat: 'PNG',
+        data: new Uint8Array(daneel2)
+    }, {
+        id: '7c7b235c58fa70089697d13a02579ac0',
+        assetType: 'ImageBitmap',
+        dataFormat: 'PNG',
+        data: new Uint8Array(daneel3)
     }];
 };
 

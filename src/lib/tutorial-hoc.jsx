@@ -7,7 +7,8 @@ const TutorialHOC = function (WrappedComponent) {
     class TutorialWrapper extends React.Component {
         constructor (props) {
             super(props);
-            const dismissed = localStorage.getItem(STORAGE_KEY) === 'true';
+            let dismissed = false;
+            try { dismissed = localStorage.getItem(STORAGE_KEY) === 'true'; } catch (e) { /* restricted context */ }
             this.state = {
                 visible: !dismissed,
                 step: 0
