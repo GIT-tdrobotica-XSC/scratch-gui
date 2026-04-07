@@ -77,6 +77,7 @@ class SpriteSelectorComponent extends React.Component {
     componentDidMount() {
         // Establecer PlayIoT como dispositivo por defecto (Global tracker init)
         window.activeDeviceExtensionId = 'playiot';
+        window.activeDeviceIds = new Set(['playiot']);
 
         // Cargar la extensión PlayIoT por defecto
         if (this.props.onLoadExtension) {
@@ -235,6 +236,8 @@ class SpriteSelectorComponent extends React.Component {
 
         // Set global tracker
         window.activeDeviceExtensionId = extension.extensionId;
+        if (!(window.activeDeviceIds instanceof Set)) window.activeDeviceIds = new Set();
+        window.activeDeviceIds.add(extension.extensionId);
 
         // Cargar la extensión
         if (this.props.onLoadExtension) {
@@ -266,6 +269,11 @@ class SpriteSelectorComponent extends React.Component {
             devices: newDevices,
             selectedDeviceIndex: newSelectedIndex
         });
+
+        // Quitar del set de dispositivos permitidos
+        if (window.activeDeviceIds instanceof Set) {
+            window.activeDeviceIds.delete(deviceToRemove.extensionId);
+        }
 
         // Update active tracker to the newly selected device after removal
         if (newDevices.length > 0) {

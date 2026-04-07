@@ -788,28 +788,22 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     const myBlocksXML = moveCategory('procedures') || myBlocks(isInitialSetup, isStage, targetId, colors.more);
 
     // Logic for "Exclusive Device Display":
-    // Only show the most recent "device" extension to prevent accumulation in the toolbox.
-    // Other non-device extensions (utilities like music, pen) are preserved.
-    const deviceExtensionIds = ['playiot', 'playme']; // List of IDs considered "devices"
+    // - window.activeDeviceIds: Set of extensionIds currently added in the device panel
+    // - window.activeDeviceExtensionId: the one currently selected (shown in toolbox)
+    // Only the selected device's blocks appear. Removed devices disappear entirely.
+    const deviceExtensionIds = ['playiot', 'playme'];
 
-    // Determine the active device ID from the UI (Global tracker) or fallback to the last loaded one
+    const allowedDeviceIds = window.activeDeviceIds instanceof Set
+        ? window.activeDeviceIds
+        : null; // null means "no panel info yet — show all" (first load fallback)
+
     let activeDeviceId = window.activeDeviceExtensionId;
 
-    // Find all device extensions present in the current categories
-    const presentDevices = categoriesXML.filter(c => deviceExtensionIds.includes(c.id));
-
-    if (presentDevices.length > 0) {
-        // If we don't have an explicit active device from UI, assume the last one is active
-        if (!activeDeviceId && presentDevices.length > 0) {
-            activeDeviceId = presentDevices[presentDevices.length - 1].id;
-        }
-
-        // Filter out all devices except the active one
-        categoriesXML = categoriesXML.filter(c => {
-            // Keep if it's NOT a device OR if it is the active device
-            return !deviceExtensionIds.includes(c.id) || c.id === activeDeviceId;
-        });
-    }
+    categoriesXML = categoriesXML.filter(c => {
+        if (!deviceExtensionIds.includes(c.id)) return true; // keep non-device categories
+        if (allowedDeviceIds && !allowedDeviceIds.has(c.id)) return false; // device was removed
+        return c.id === activeDeviceId; // only show the selected device
+    });
 
     const everything = [
         xmlOpen,
