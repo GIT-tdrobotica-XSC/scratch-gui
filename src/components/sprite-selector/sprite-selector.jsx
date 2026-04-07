@@ -75,25 +75,14 @@ class SpriteSelectorComponent extends React.Component {
     }
 
     componentDidMount() {
-        // Cargar la extensión PlayIoT por defecto
+        // Cargar la extensión PlayIoT por defecto (necesario para registrar bloques en ScratchBlocks)
         if (this.props.onLoadExtension) {
             this.props.onLoadExtension('playiot');
         }
 
-        // Crear el device target para PlayIoT en la VM
-        // No llamar setEditingTarget aquí — la VM no está completamente lista en componentDidMount
-        // Se llamará cuando el usuario cambie a la pestaña Dispositivos (handleTabChange)
-        if (this.props.vm) {
-            const targetId = this.props.vm.createDeviceTarget('playiot', 'PlayIoT');
-            this.setState(prevState => ({
-                devices: prevState.devices.map(d =>
-                    d.extensionId === 'playiot' ? {...d, targetId} : d
-                )
-            }));
-        }
+        // NO crear el device target aquí — la VM puede no estar lista.
+        // Se crea de forma lazy en handleTabChange cuando el usuario abre Dispositivos por primera vez.
 
-        // Global trackers — activeDeviceExtensionId se setea null hasta que el usuario
-        // abra la pestaña Dispositivos, para que el toolbox muestre bloques de sprite por defecto
         window.activeDeviceExtensionId = null;
         window.activeDeviceIds = new Set(['playiot']);
 
@@ -180,12 +169,24 @@ class SpriteSelectorComponent extends React.Component {
             // Dispositivos: cambiar editing target al del dispositivo seleccionado
             const { selectedDeviceIndex, devices } = this.state;
             const device = devices[selectedDeviceIndex];
-            if (device) {
+            if (device && this.props.vm) {
                 window.activeDeviceExtensionId = device.extensionId;
-                if (device.targetId && this.props.vm) {
-                    this.props.vm.setEditingTarget(device.targetId);
-                    this.props.vm.refreshWorkspace();
+
+                // Creación lazy del device target: se hace aquí porque la VM está
+                // definitivamente lista cuando el usuario hace clic en la pestaña.
+                let { targetId } = device;
+                if (!targetId) {
+                    targetId = this.props.vm.createDeviceTarget(device.extensionId, device.name);
+                    this.setState(prevState => ({
+                        devices: prevState.devices.map(d =>
+                            d.extensionId === device.extensionId ? {...d, targetId} : d
+                        )
+                    }));
                 }
+
+                this.props.vm.setEditingTarget(targetId);
+                this.props.vm.refreshWorkspace();
+
                 window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
                     detail: { extensionId: device.extensionId }
                 }));
@@ -225,9 +226,18 @@ class SpriteSelectorComponent extends React.Component {
                 window.activeDeviceIds.add(device.extensionId);
             }
 
-            // Cambiar el editing target al target del dispositivo
-            if (device.targetId && this.props.vm) {
-                this.props.vm.setEditingTarget(device.targetId);
+            if (this.props.vm) {
+                // Creación lazy del device target si aún no existe
+                let { targetId } = device;
+                if (!targetId) {
+                    targetId = this.props.vm.createDeviceTarget(device.extensionId, device.name);
+                    this.setState(prevState => ({
+                        devices: prevState.devices.map(d =>
+                            d.extensionId === device.extensionId ? {...d, targetId} : d
+                        )
+                    }));
+                }
+                this.props.vm.setEditingTarget(targetId);
                 this.props.vm.refreshWorkspace();
             }
 
