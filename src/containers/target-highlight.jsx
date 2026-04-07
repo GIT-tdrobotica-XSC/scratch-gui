@@ -36,6 +36,9 @@ class TargetHighlight extends React.Component {
             vm.runtime.getTargetById(highlightedTargetId))) return null;
 
         const target = vm.runtime.getTargetById(highlightedTargetId);
+        // Device targets have no drawable — skip highlight to avoid renderer crash
+        if (target.isDeviceTarget || target.drawableID == null) return null;
+
         const bounds = vm.renderer.getBounds(target.drawableID);
         const [left, top] = this.getPageCoords(bounds.left, bounds.top);
         const [right, bottom] = this.getPageCoords(bounds.right, bounds.bottom);

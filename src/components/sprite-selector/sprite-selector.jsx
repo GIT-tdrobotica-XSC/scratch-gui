@@ -195,10 +195,12 @@ class SpriteSelectorComponent extends React.Component {
             window.activeDeviceExtensionId = null;
             window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {}));
             if (!onSelectSprite) return;
+            const spriteList = Object.values(sprites || {})
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
             const isOnStage = stage && selectedId === stage.id;
-            if (isOnStage || !selectedId) {
-                const spriteList = Object.values(sprites || {})
-                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+            // Si el selectedId actual es un device target o el escenario, buscar el primer sprite real
+            const isDeviceSelected = !sprites[selectedId] && !isOnStage;
+            if (isOnStage || !selectedId || isDeviceSelected) {
                 if (spriteList.length > 0 && spriteList[0].id) {
                     onSelectSprite(spriteList[0].id);
                 }
