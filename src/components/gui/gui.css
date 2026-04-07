@@ -208,7 +208,7 @@
     padding-left: $space;
     padding-right: $space;
     flex-basis: 0;
-    filter: drop-shadow(0 4px 24px hsla(220, 30%, 40%, 0.13));
+    /* No usar filter: drop-shadow aquí — rompe position:fixed de hijos (stage fullscreen, overlays) */
 }
 
 .target-wrapper {
@@ -218,6 +218,7 @@
 
     padding-top: $space;
     min-height: 0; /* this makes it work in Firefox */
+    box-shadow: 0 4px 24px hsla(220, 30%, 40%, 0.13); /* sombra segura — no rompe position:fixed */
 
     /*
         For making the sprite-selector a scrollable pane

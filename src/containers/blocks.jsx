@@ -402,14 +402,22 @@ class Blocks extends React.Component {
             const stageCostumes = stage.getCostumes();
             const targetCostumes = target.getCostumes();
             const targetSounds = target.getSounds();
+            // Device targets have no costumes/sounds — fall back to stage values
+            const costumeName = targetCostumes.length > 0
+                ? targetCostumes[targetCostumes.length - 1].name
+                : (stageCostumes.length > 0 ? stageCostumes[stageCostumes.length - 1].name : '');
+            const backdropName = stageCostumes.length > 0
+                ? stageCostumes[stageCostumes.length - 1].name : '';
+            const soundName = targetSounds.length > 0
+                ? targetSounds[targetSounds.length - 1].name : '';
             const dynamicBlocksXML = injectExtensionCategoryTheme(
                 this.props.vm.runtime.getBlocksXML(target),
                 this.props.theme
             );
             return makeToolboxXML(false, target.isStage, target.id, dynamicBlocksXML,
-                targetCostumes[targetCostumes.length - 1].name,
-                stageCostumes[stageCostumes.length - 1].name,
-                targetSounds.length > 0 ? targetSounds[targetSounds.length - 1].name : '',
+                costumeName,
+                backdropName,
+                soundName,
                 getColorsForTheme(this.props.theme)
             );
         } catch {

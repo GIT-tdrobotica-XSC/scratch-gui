@@ -768,40 +768,14 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
 
     categoriesXML = categoriesXML.slice();
 
-    // ── Device Target Mode ──────────────────────────────────────────────────
-    // Cuando el editing target es un device target, mostrar SOLO los bloques
-    // de su extensión. Sin Motion, Looks, Eventos, etc.
+    // ── Modo Dispositivo vs Sprite/Escenario ────────────────────────────────
+    // isDeviceTarget: el usuario está en la pestaña Dispositivos
+    //   → muestra TODOS los bloques normales + categoría del dispositivo activo
+    // Modo sprite/escenario:
+    //   → muestra todos los bloques normales, SIN categorías de dispositivo
     const deviceExtensionIds = ['playiot', 'playme'];
     const activeDeviceId = window.activeDeviceExtensionId;
-
-    const isDeviceTarget = activeDeviceId &&
-        deviceExtensionIds.includes(activeDeviceId) &&
-        !isStage;
-
-    if (isDeviceTarget) {
-        // Filtrar solo la categoría del dispositivo activo
-        const allowedDeviceIds = window.activeDeviceIds instanceof Set
-            ? window.activeDeviceIds
-            : null;
-
-        const deviceCategories = categoriesXML.filter(c => {
-            if (!deviceExtensionIds.includes(c.id)) return false;
-            if (allowedDeviceIds && !allowedDeviceIds.has(c.id)) return false;
-            return c.id === activeDeviceId;
-        });
-
-        // Toolbox exclusivo: solo variables/mis bloques + bloques del dispositivo
-        const variablesXML = variables(isInitialSetup, false, targetId, colors.data);
-        const myBlocksXML = myBlocks(isInitialSetup, false, targetId, colors.more);
-
-        const everything = [xmlOpen, variablesXML, gap, myBlocksXML];
-        for (const cat of deviceCategories) {
-            everything.push(gap, cat.xml);
-        }
-        everything.push(xmlClose);
-        return everything.join('\n');
-    }
-    // ── Modo normal (sprites y escenario) ───────────────────────────────────
+    const isDeviceTarget = !!(activeDeviceId && deviceExtensionIds.includes(activeDeviceId) && !isStage);
 
     const moveCategory = categoryId => {
         const index = categoriesXML.findIndex(categoryInfo => categoryInfo.id === categoryId);
@@ -821,14 +795,12 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     const variablesXML = moveCategory('data') || variables(isInitialSetup, isStage, targetId, colors.data);
     const myBlocksXML = moveCategory('procedures') || myBlocks(isInitialSetup, isStage, targetId, colors.more);
 
-    // En modo sprite/escenario, excluir todas las extensiones de dispositivo del toolbox
-    const allowedDeviceIds = window.activeDeviceIds instanceof Set
-        ? window.activeDeviceIds
-        : null;
-
+    // Filtrar categorías de extensión: en modo dispositivo incluir solo la del dispositivo activo,
+    // en modo sprite/escenario excluir todas las categorías de dispositivo.
     categoriesXML = categoriesXML.filter(c => {
-        if (!deviceExtensionIds.includes(c.id)) return true;
-        return false; // nunca mostrar bloques de dispositivo en modo sprite
+        if (!deviceExtensionIds.includes(c.id)) return true; // extensiones normales: siempre
+        if (isDeviceTarget && c.id === activeDeviceId) return true; // dispositivo activo en modo dispositivo
+        return false; // excluir en todos los demás casos
     });
 
     const everything = [

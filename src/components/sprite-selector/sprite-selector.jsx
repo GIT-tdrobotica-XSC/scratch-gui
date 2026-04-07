@@ -193,6 +193,7 @@ class SpriteSelectorComponent extends React.Component {
         } else if (tabIndex === 1) {
             // Objetos: resetear device mode y restaurar editing target al sprite
             window.activeDeviceExtensionId = null;
+            window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {}));
             if (!onSelectSprite) return;
             const isOnStage = stage && selectedId === stage.id;
             if (isOnStage || !selectedId) {
@@ -207,6 +208,7 @@ class SpriteSelectorComponent extends React.Component {
         } else if (tabIndex === 2 && stage && stage.id) {
             // Fondo: resetear device mode y mostrar código del escenario
             window.activeDeviceExtensionId = null;
+            window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {}));
             if (onSelectSprite) onSelectSprite(stage.id);
         }
     }
