@@ -51,7 +51,7 @@ class SpriteSelectorComponent extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            activeTab: 0,
+            activeTab: 1,
             selectedDeviceIndex: 0,
             devices: [
                 {
@@ -81,22 +81,20 @@ class SpriteSelectorComponent extends React.Component {
         }
 
         // Crear el device target para PlayIoT en la VM
+        // No llamar setEditingTarget aquí — la VM no está completamente lista en componentDidMount
+        // Se llamará cuando el usuario cambie a la pestaña Dispositivos (handleTabChange)
         if (this.props.vm) {
             const targetId = this.props.vm.createDeviceTarget('playiot', 'PlayIoT');
-            // Actualizar state con el targetId
             this.setState(prevState => ({
                 devices: prevState.devices.map(d =>
                     d.extensionId === 'playiot' ? {...d, targetId} : d
                 )
-            }), () => {
-                // Seleccionar el target del dispositivo
-                this.props.vm.setEditingTarget(targetId);
-                this.props.vm.refreshWorkspace();
-            });
+            }));
         }
 
-        // Global trackers
-        window.activeDeviceExtensionId = 'playiot';
+        // Global trackers — activeDeviceExtensionId se setea null hasta que el usuario
+        // abra la pestaña Dispositivos, para que el toolbox muestre bloques de sprite por defecto
+        window.activeDeviceExtensionId = null;
         window.activeDeviceIds = new Set(['playiot']);
 
         // Actualizar estado de conexión cada 500ms
@@ -193,7 +191,8 @@ class SpriteSelectorComponent extends React.Component {
                 }));
             }
         } else if (tabIndex === 1) {
-            // Objetos: si el target actual es el escenario, auto-seleccionar el primer sprite
+            // Objetos: resetear device mode y restaurar editing target al sprite
+            window.activeDeviceExtensionId = null;
             if (!onSelectSprite) return;
             const isOnStage = stage && selectedId === stage.id;
             if (isOnStage || !selectedId) {
@@ -206,7 +205,8 @@ class SpriteSelectorComponent extends React.Component {
                 onSelectSprite(selectedId);
             }
         } else if (tabIndex === 2 && stage && stage.id) {
-            // Fondo: mostrar código del escenario
+            // Fondo: resetear device mode y mostrar código del escenario
+            window.activeDeviceExtensionId = null;
             if (onSelectSprite) onSelectSprite(stage.id);
         }
     }
