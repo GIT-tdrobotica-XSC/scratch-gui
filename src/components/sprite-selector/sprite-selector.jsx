@@ -75,16 +75,31 @@ class SpriteSelectorComponent extends React.Component {
     }
 
     componentDidMount() {
-        // Establecer PlayIoT como dispositivo por defecto (Global tracker init)
-        window.activeDeviceExtensionId = 'playiot';
-        window.activeDeviceIds = new Set(['playiot']);
-
         // Cargar la extensión PlayIoT por defecto
         if (this.props.onLoadExtension) {
             this.props.onLoadExtension('playiot');
         }
 
-        // Actualizar estado cada 500ms
+        // Crear el device target para PlayIoT en la VM
+        if (this.props.vm) {
+            const targetId = this.props.vm.createDeviceTarget('playiot', 'PlayIoT');
+            // Actualizar state con el targetId
+            this.setState(prevState => ({
+                devices: prevState.devices.map(d =>
+                    d.extensionId === 'playiot' ? {...d, targetId} : d
+                )
+            }), () => {
+                // Seleccionar el target del dispositivo
+                this.props.vm.setEditingTarget(targetId);
+                this.props.vm.refreshWorkspace();
+            });
+        }
+
+        // Global trackers
+        window.activeDeviceExtensionId = 'playiot';
+        window.activeDeviceIds = new Set(['playiot']);
+
+        // Actualizar estado de conexión cada 500ms
         this.connectionCheckInterval = setInterval(this.checkConnectionStatus, 500);
     }
 
@@ -164,11 +179,15 @@ class SpriteSelectorComponent extends React.Component {
         const { onSelectSprite, selectedId, stage, sprites } = this.props;
 
         if (tabIndex === 0) {
-            // Dispositivos: no cambia el target, solo refresca el toolbox al dispositivo activo
+            // Dispositivos: cambiar editing target al del dispositivo seleccionado
             const { selectedDeviceIndex, devices } = this.state;
             const device = devices[selectedDeviceIndex];
             if (device) {
                 window.activeDeviceExtensionId = device.extensionId;
+                if (device.targetId && this.props.vm) {
+                    this.props.vm.setEditingTarget(device.targetId);
+                    this.props.vm.refreshWorkspace();
+                }
                 window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
                     detail: { extensionId: device.extensionId }
                 }));
@@ -193,7 +212,26 @@ class SpriteSelectorComponent extends React.Component {
     }
 
     handleSelectDevice = (index) => {
-        this.setState({ selectedDeviceIndex: index });
+        this.setState({ selectedDeviceIndex: index }, () => {
+            const device = this.state.devices[index];
+            if (!device) return;
+
+            window.activeDeviceExtensionId = device.extensionId;
+            if (window.activeDeviceIds instanceof Set) {
+                window.activeDeviceIds.add(device.extensionId);
+            }
+
+            // Cambiar el editing target al target del dispositivo
+            if (device.targetId && this.props.vm) {
+                this.props.vm.setEditingTarget(device.targetId);
+                this.props.vm.refreshWorkspace();
+            }
+
+            // Refrescar toolbox para mostrar bloques del dispositivo
+            window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
+                detail: { extensionId: device.extensionId }
+            }));
+        });
     }
 
     handleOpenExtensionModal = () => {
@@ -214,9 +252,19 @@ class SpriteSelectorComponent extends React.Component {
             this.setState({
                 selectedDeviceIndex: index,
                 showExtensionModal: false
+            }, () => {
+                if (existingDevice.targetId && this.props.vm) {
+                    this.props.vm.setEditingTarget(existingDevice.targetId);
+                    this.props.vm.refreshWorkspace();
+                }
             });
         } else {
-            // Si no existe, créalo
+            // Crear target en la VM para este dispositivo
+            let targetId = null;
+            if (this.props.vm) {
+                targetId = this.props.vm.createDeviceTarget(extension.extensionId, extension.name);
+            }
+
             const newDevice = {
                 id: `${extension.extensionId}_${Date.now()}`,
                 name: extension.name,
@@ -224,14 +272,20 @@ class SpriteSelectorComponent extends React.Component {
                 isConnected: false,
                 port: null,
                 baudRate: 115200,
-                extensionId: extension.extensionId
+                extensionId: extension.extensionId,
+                targetId
             };
 
             this.setState(prevState => ({
                 devices: [...prevState.devices, newDevice],
                 selectedDeviceIndex: prevState.devices.length,
                 showExtensionModal: false
-            }));
+            }), () => {
+                if (targetId && this.props.vm) {
+                    this.props.vm.setEditingTarget(targetId);
+                    this.props.vm.refreshWorkspace();
+                }
+            });
         }
 
         // Set global tracker
@@ -256,38 +310,54 @@ class SpriteSelectorComponent extends React.Component {
 
     handleRemoveDevice = (index) => {
         const deviceToRemove = this.state.devices[index];
+        if (!deviceToRemove) return;
 
-        // Si el dispositivo está conectado, desconectarlo antes de eliminarlo
-        if (deviceToRemove && deviceToRemove.isConnected && this.props.onDeviceDisconnect) {
+        // Si está conectado, desconectarlo primero
+        if (deviceToRemove.isConnected && this.props.onDeviceDisconnect) {
             this.props.onDeviceDisconnect(deviceToRemove.extensionId);
+        }
+
+        // Eliminar el target de la VM
+        if (deviceToRemove.targetId && this.props.vm) {
+            this.props.vm.deleteDeviceTarget(deviceToRemove.targetId);
         }
 
         const newDevices = this.state.devices.filter((_, i) => i !== index);
         const newSelectedIndex = Math.max(0, index - 1);
-
-        this.setState({
-            devices: newDevices,
-            selectedDeviceIndex: newSelectedIndex
-        });
 
         // Quitar del set de dispositivos permitidos
         if (window.activeDeviceIds instanceof Set) {
             window.activeDeviceIds.delete(deviceToRemove.extensionId);
         }
 
-        // Update active tracker to the newly selected device after removal
         if (newDevices.length > 0) {
             window.activeDeviceExtensionId = newDevices[newSelectedIndex].extensionId;
         } else {
             window.activeDeviceExtensionId = null;
         }
 
-        // Force toolbox refresh and scroll to extension
-        window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
-            detail: {
-                extensionId: newDevices.length > 0 ? newDevices[newSelectedIndex].extensionId : null
+        this.setState({
+            devices: newDevices,
+            selectedDeviceIndex: newSelectedIndex
+        }, () => {
+            // Cambiar editing target al nuevo dispositivo seleccionado (o al escenario)
+            if (newDevices.length > 0 && newDevices[newSelectedIndex].targetId && this.props.vm) {
+                this.props.vm.setEditingTarget(newDevices[newSelectedIndex].targetId);
+                this.props.vm.refreshWorkspace();
+            } else if (newDevices.length === 0 && this.props.vm) {
+                const stage = this.props.vm.runtime.getTargetForStage();
+                if (stage) {
+                    this.props.vm.setEditingTarget(stage.id);
+                    this.props.vm.refreshWorkspace();
+                }
             }
-        }));
+
+            window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
+                detail: {
+                    extensionId: newDevices.length > 0 ? newDevices[newSelectedIndex].extensionId : null
+                }
+            }));
+        });
     }
 
     handleDeviceConnect = () => {

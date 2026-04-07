@@ -767,14 +767,48 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     soundName = xmlEscape(soundName);
 
     categoriesXML = categoriesXML.slice();
+
+    // ── Device Target Mode ──────────────────────────────────────────────────
+    // Cuando el editing target es un device target, mostrar SOLO los bloques
+    // de su extensión. Sin Motion, Looks, Eventos, etc.
+    const deviceExtensionIds = ['playiot', 'playme'];
+    const activeDeviceId = window.activeDeviceExtensionId;
+
+    const isDeviceTarget = activeDeviceId &&
+        deviceExtensionIds.includes(activeDeviceId) &&
+        !isStage;
+
+    if (isDeviceTarget) {
+        // Filtrar solo la categoría del dispositivo activo
+        const allowedDeviceIds = window.activeDeviceIds instanceof Set
+            ? window.activeDeviceIds
+            : null;
+
+        const deviceCategories = categoriesXML.filter(c => {
+            if (!deviceExtensionIds.includes(c.id)) return false;
+            if (allowedDeviceIds && !allowedDeviceIds.has(c.id)) return false;
+            return c.id === activeDeviceId;
+        });
+
+        // Toolbox exclusivo: solo variables/mis bloques + bloques del dispositivo
+        const variablesXML = variables(isInitialSetup, false, targetId, colors.data);
+        const myBlocksXML = myBlocks(isInitialSetup, false, targetId, colors.more);
+
+        const everything = [xmlOpen, variablesXML, gap, myBlocksXML];
+        for (const cat of deviceCategories) {
+            everything.push(gap, cat.xml);
+        }
+        everything.push(xmlClose);
+        return everything.join('\n');
+    }
+    // ── Modo normal (sprites y escenario) ───────────────────────────────────
+
     const moveCategory = categoryId => {
         const index = categoriesXML.findIndex(categoryInfo => categoryInfo.id === categoryId);
         if (index >= 0) {
-            // remove the category from categoriesXML and return its XML
             const [categoryInfo] = categoriesXML.splice(index, 1);
             return categoryInfo.xml;
         }
-        // return `undefined`
     };
     const motionXML = moveCategory('motion') || motion(isInitialSetup, isStage, targetId, colors.motion);
     const looksXML = moveCategory('looks') ||
@@ -787,22 +821,14 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     const variablesXML = moveCategory('data') || variables(isInitialSetup, isStage, targetId, colors.data);
     const myBlocksXML = moveCategory('procedures') || myBlocks(isInitialSetup, isStage, targetId, colors.more);
 
-    // Logic for "Exclusive Device Display":
-    // - window.activeDeviceIds: Set of extensionIds currently added in the device panel
-    // - window.activeDeviceExtensionId: the one currently selected (shown in toolbox)
-    // Only the selected device's blocks appear. Removed devices disappear entirely.
-    const deviceExtensionIds = ['playiot', 'playme'];
-
+    // En modo sprite/escenario, excluir todas las extensiones de dispositivo del toolbox
     const allowedDeviceIds = window.activeDeviceIds instanceof Set
         ? window.activeDeviceIds
-        : null; // null means "no panel info yet — show all" (first load fallback)
-
-    let activeDeviceId = window.activeDeviceExtensionId;
+        : null;
 
     categoriesXML = categoriesXML.filter(c => {
-        if (!deviceExtensionIds.includes(c.id)) return true; // keep non-device categories
-        if (allowedDeviceIds && !allowedDeviceIds.has(c.id)) return false; // device was removed
-        return c.id === activeDeviceId; // only show the selected device
+        if (!deviceExtensionIds.includes(c.id)) return true;
+        return false; // nunca mostrar bloques de dispositivo en modo sprite
     });
 
     const everything = [

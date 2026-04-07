@@ -14,7 +14,7 @@ const reducer = function (state, action) {
     case UPDATE_TARGET_LIST:
         return Object.assign({}, state, {
             sprites: action.targets
-                .filter(target => !target.isStage)
+                .filter(target => !target.isStage && !target.isDeviceTarget)
                 .reduce(
                     (targets, target, listId) => Object.assign(
                         targets,
