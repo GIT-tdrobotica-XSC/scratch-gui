@@ -87,6 +87,7 @@ const GUIComponent = props => {
         costumeLibraryVisible,
         costumesTabVisible,
         debugModalVisible,
+        editingTargetIsDevice,
         enableCommunity,
         intl,
         isCreating,
@@ -303,7 +304,7 @@ const GUIComponent = props => {
                                                     id="gui.gui.codeTab"
                                                 />
                                             </Tab>
-                                            <Tab
+                                            {!editingTargetIsDevice && <Tab
                                                 className={tabClassNames.tab}
                                                 onClick={onActivateCostumesTab}
                                             >
@@ -324,8 +325,8 @@ const GUIComponent = props => {
                                                         id="gui.gui.costumesTab"
                                                     />
                                                 )}
-                                            </Tab>
-                                            <Tab
+                                            </Tab>}
+                                            {!editingTargetIsDevice && <Tab
                                                 className={tabClassNames.tab}
                                                 onClick={onActivateSoundsTab}
                                             >
@@ -338,7 +339,7 @@ const GUIComponent = props => {
                                                     description="Button to get to the sounds panel"
                                                     id="gui.gui.soundsTab"
                                                 />
-                                            </Tab>
+                                            </Tab>}
                                         </TabList>
                                         <TabPanel className={tabClassNames.tabPanel}>
                                             <Box className={styles.blocksWrapper}>
@@ -420,6 +421,7 @@ GUIComponent.propTypes = {
     children: PropTypes.node,
     costumeLibraryVisible: PropTypes.bool,
     costumesTabVisible: PropTypes.bool,
+    editingTargetIsDevice: PropTypes.bool,
     debugModalVisible: PropTypes.bool,
     enableCommunity: PropTypes.bool,
     intl: intlShape.isRequired,

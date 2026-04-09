@@ -173,6 +173,13 @@ const mapStateToProps = state => {
             state.scratchGui.targets.stage &&
             state.scratchGui.targets.stage.id === state.scratchGui.targets.editingTarget
         ),
+        editingTargetIsDevice: (() => {
+            const vm = state.scratchGui.vm;
+            const editingId = state.scratchGui.targets.editingTarget;
+            if (!vm || !editingId) return false;
+            const target = vm.runtime.getTargetById(editingId);
+            return !!(target && target.isDeviceTarget);
+        })(),
         telemetryModalVisible: state.scratchGui.modals.telemetryModal,
         tipsLibraryVisible: state.scratchGui.modals.tipsLibrary,
         vm: state.scratchGui.vm
