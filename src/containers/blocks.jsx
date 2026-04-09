@@ -530,8 +530,13 @@ class Blocks extends React.Component {
         }
     }
     handleBlocksInfoUpdate(categoryInfo) {
-        // @todo Later we should replace this to avoid all the warnings from redefining blocks.
-        this.handleExtensionAdded(categoryInfo);
+        // Skip re-registering blocks that are already defined to avoid Blockly warnings
+        const alreadyDefined = type => !!this.ScratchBlocks.Blocks[type];
+        const filteredCategoryInfo = Object.assign({}, categoryInfo, {
+            menus: (categoryInfo.menus || []).filter(b => !b.json || !alreadyDefined(b.json.type)),
+            blocks: (categoryInfo.blocks || []).filter(b => !b.json || !alreadyDefined(b.json.type))
+        });
+        this.handleExtensionAdded(filteredCategoryInfo);
     }
     handleCategorySelected(categoryId) {
         const extension = extensionData.find(ext => ext.extensionId === categoryId);
