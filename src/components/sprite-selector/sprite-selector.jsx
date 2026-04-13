@@ -86,22 +86,14 @@ class SpriteSelectorComponent extends React.Component {
         window.activeDeviceExtensionId = null;
         window.activeDeviceIds = new Set(['playiot']);
 
-        // Al cargar un proyecto nuevo, resetear al tab Objetos y reconectar device targets cargados
+        // Al cargar un proyecto nuevo: volver a tab Objetos y limpiar targetIds cacheados.
+        // handleTabChange los redescubrirá desde la VM cuando el usuario abra Dispositivos.
         this._handleProjectLoaded = () => {
             window.activeDeviceExtensionId = null;
-            this.setState({ activeTab: 1 });
-
-            // Esperar a que la VM termine de procesar todos los targets antes de reconectar
-            setTimeout(() => {
-                if (!this.props.vm) return;
-                const loadedDeviceTargets = this.props.vm.runtime.targets.filter(t => t.isDeviceTarget);
-                this.setState(prevState => ({
-                    devices: prevState.devices.map(d => {
-                        const match = loadedDeviceTargets.find(t => t.deviceExtensionId === d.extensionId);
-                        return match ? { ...d, targetId: match.id } : { ...d, targetId: null };
-                    })
-                }));
-            }, 100);
+            this.setState(prevState => ({
+                activeTab: 1,
+                devices: prevState.devices.map(d => ({ ...d, targetId: null }))
+            }));
         };
         if (this.props.vm) {
             this.props.vm.on('PROJECT_LOADED', this._handleProjectLoaded);
@@ -198,20 +190,32 @@ class SpriteSelectorComponent extends React.Component {
             if (device && this.props.vm) {
                 window.activeDeviceExtensionId = device.extensionId;
 
-                // Creación lazy del device target: se hace aquí porque la VM está
-                // definitivamente lista cuando el usuario hace clic en la pestaña.
+                // Buscar el target correcto: primero verificar si el cacheado sigue válido,
+                // luego buscar en la VM (puede haber sido cargado desde archivo),
+                // finalmente crear uno nuevo si no existe.
                 let { targetId } = device;
-                if (!targetId) {
-                    targetId = this.props.vm.createDeviceTarget(device.extensionId, device.name);
+                const vm = this.props.vm;
+
+                const cachedStillValid = targetId && !!vm.runtime.getTargetById(targetId);
+                if (!cachedStillValid) {
+                    // Buscar en la VM un device target con el mismo extensionId (cargado desde archivo)
+                    const existingInVM = vm.runtime.targets.find(
+                        t => t.isDeviceTarget && t.deviceExtensionId === device.extensionId
+                    );
+                    if (existingInVM) {
+                        targetId = existingInVM.id;
+                    } else {
+                        targetId = vm.createDeviceTarget(device.extensionId, device.name);
+                    }
                     this.setState(prevState => ({
                         devices: prevState.devices.map(d =>
-                            d.extensionId === device.extensionId ? {...d, targetId} : d
+                            d.extensionId === device.extensionId ? { ...d, targetId } : d
                         )
                     }));
                 }
 
-                this.props.vm.setEditingTarget(targetId);
-                this.props.vm.refreshWorkspace();
+                vm.setEditingTarget(targetId);
+                vm.refreshWorkspace();
 
                 window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {
                     detail: { extensionId: device.extensionId }
@@ -253,18 +257,23 @@ class SpriteSelectorComponent extends React.Component {
             }
 
             if (this.props.vm) {
-                // Creación lazy del device target si aún no existe
+                const vm = this.props.vm;
                 let { targetId } = device;
-                if (!targetId) {
-                    targetId = this.props.vm.createDeviceTarget(device.extensionId, device.name);
+                const cachedStillValid = targetId && !!vm.runtime.getTargetById(targetId);
+                if (!cachedStillValid) {
+                    const existingInVM = vm.runtime.targets.find(
+                        t => t.isDeviceTarget && t.deviceExtensionId === device.extensionId
+                    );
+                    targetId = existingInVM ? existingInVM.id
+                        : vm.createDeviceTarget(device.extensionId, device.name);
                     this.setState(prevState => ({
                         devices: prevState.devices.map(d =>
-                            d.extensionId === device.extensionId ? {...d, targetId} : d
+                            d.extensionId === device.extensionId ? { ...d, targetId } : d
                         )
                     }));
                 }
-                this.props.vm.setEditingTarget(targetId);
-                this.props.vm.refreshWorkspace();
+                vm.setEditingTarget(targetId);
+                vm.refreshWorkspace();
             }
 
             // Refrescar toolbox para mostrar bloques del dispositivo
