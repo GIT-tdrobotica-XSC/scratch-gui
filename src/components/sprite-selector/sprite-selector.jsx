@@ -86,14 +86,22 @@ class SpriteSelectorComponent extends React.Component {
         window.activeDeviceExtensionId = null;
         window.activeDeviceIds = new Set(['playiot']);
 
-        // Al cargar un proyecto nuevo, resetear al tab Objetos y limpiar estado de dispositivo
+        // Al cargar un proyecto nuevo, resetear al tab Objetos y reconectar device targets cargados
         this._handleProjectLoaded = () => {
             window.activeDeviceExtensionId = null;
             this.setState({ activeTab: 1 });
-            // Limpiar targetIds cacheados de dispositivos para recrearlos lazy en el nuevo proyecto
-            this.setState(prevState => ({
-                devices: prevState.devices.map(d => ({ ...d, targetId: null }))
-            }));
+
+            // Esperar a que la VM termine de procesar todos los targets antes de reconectar
+            setTimeout(() => {
+                if (!this.props.vm) return;
+                const loadedDeviceTargets = this.props.vm.runtime.targets.filter(t => t.isDeviceTarget);
+                this.setState(prevState => ({
+                    devices: prevState.devices.map(d => {
+                        const match = loadedDeviceTargets.find(t => t.deviceExtensionId === d.extensionId);
+                        return match ? { ...d, targetId: match.id } : { ...d, targetId: null };
+                    })
+                }));
+            }, 100);
         };
         if (this.props.vm) {
             this.props.vm.on('PROJECT_LOADED', this._handleProjectLoaded);
