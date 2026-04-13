@@ -109,7 +109,7 @@ class SpriteSelectorComponent extends React.Component {
             }
         };
         if (this.props.vm) {
-            this.props.vm.on('PROJECT_LOADED', this._handleProjectLoaded);
+            this.props.vm.runtime.on('PROJECT_LOADED', this._handleProjectLoaded);
         }
 
         // Actualizar estado de conexión cada 500ms
@@ -126,7 +126,7 @@ class SpriteSelectorComponent extends React.Component {
         this._rxCheckTimers = {};
         // Limpiar listener de proyecto
         if (this.props.vm && this._handleProjectLoaded) {
-            this.props.vm.off('PROJECT_LOADED', this._handleProjectLoaded);
+            this.props.vm.runtime.off('PROJECT_LOADED', this._handleProjectLoaded);
         }
     }
 
