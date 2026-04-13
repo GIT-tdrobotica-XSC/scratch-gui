@@ -89,11 +89,12 @@ class SpriteSelectorComponent extends React.Component {
         // Al cargar un proyecto nuevo: volver a tab Objetos y limpiar targetIds cacheados.
         // handleTabChange los redescubrirá desde la VM cuando el usuario abra Dispositivos.
         this._handleProjectLoaded = () => {
-            window.activeDeviceExtensionId = null;
+            // Limpiar device targets cacheados para que se redescubran desde la VM
             this.setState(prevState => ({
-                activeTab: 1,
                 devices: prevState.devices.map(d => ({ ...d, targetId: null }))
             }));
+            // Usar handleTabChange(1) para que actualice editing target en la VM también
+            this.handleTabChange(1);
         };
         if (this.props.vm) {
             this.props.vm.on('PROJECT_LOADED', this._handleProjectLoaded);
