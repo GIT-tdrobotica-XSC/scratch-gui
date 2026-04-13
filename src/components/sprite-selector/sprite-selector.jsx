@@ -86,6 +86,19 @@ class SpriteSelectorComponent extends React.Component {
         window.activeDeviceExtensionId = null;
         window.activeDeviceIds = new Set(['playiot']);
 
+        // Al cargar un proyecto nuevo, resetear al tab Objetos y limpiar estado de dispositivo
+        this._handleProjectLoaded = () => {
+            window.activeDeviceExtensionId = null;
+            this.setState({ activeTab: 1 });
+            // Limpiar targetIds cacheados de dispositivos para recrearlos lazy en el nuevo proyecto
+            this.setState(prevState => ({
+                devices: prevState.devices.map(d => ({ ...d, targetId: null }))
+            }));
+        };
+        if (this.props.vm) {
+            this.props.vm.on('PROJECT_LOADED', this._handleProjectLoaded);
+        }
+
         // Actualizar estado de conexión cada 500ms
         this.connectionCheckInterval = setInterval(this.checkConnectionStatus, 500);
     }
@@ -98,6 +111,10 @@ class SpriteSelectorComponent extends React.Component {
         // Limpiar timers de check de RX pendientes
         Object.values(this._rxCheckTimers).forEach(timer => clearTimeout(timer));
         this._rxCheckTimers = {};
+        // Limpiar listener de proyecto
+        if (this.props.vm && this._handleProjectLoaded) {
+            this.props.vm.off('PROJECT_LOADED', this._handleProjectLoaded);
+        }
     }
 
     checkConnectionStatus = () => {
@@ -163,6 +180,7 @@ class SpriteSelectorComponent extends React.Component {
 
     handleTabChange = (tabIndex) => {
         this.setState({ activeTab: tabIndex });
+        window.dispatchEvent(new CustomEvent('scratch_workspace_reset_scroll'));
         const { onSelectSprite, selectedId, stage, sprites } = this.props;
 
         if (tabIndex === 0) {

@@ -141,6 +141,11 @@ class Blocks extends React.Component {
 
         // Listen for custom toolbox refresh requests (e.g., from DevicePanel)
         window.addEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
+        // Reset workspace scroll when switching tabs
+        this._handleResetScroll = () => {
+            if (this.workspace) this.workspace.scrollCenter();
+        };
+        window.addEventListener('scratch_workspace_reset_scroll', this._handleResetScroll);
 
         this.attachVM();
         // Only update blocks/vm locale when visible to avoid sizing issues
@@ -207,6 +212,7 @@ class Blocks extends React.Component {
         // Clear the flyout blocks so that they can be recreated on mount.
         this.props.vm.clearFlyoutBlocks();
         window.removeEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
+        window.removeEventListener('scratch_workspace_reset_scroll', this._handleResetScroll);
     }
     handleRefreshToolboxRequest = (event) => {
         const extensionId = event.detail && event.detail.extensionId;
