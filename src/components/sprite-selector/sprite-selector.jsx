@@ -86,15 +86,27 @@ class SpriteSelectorComponent extends React.Component {
         window.activeDeviceExtensionId = null;
         window.activeDeviceIds = new Set(['playiot']);
 
-        // Al cargar un proyecto nuevo: volver a tab Objetos y limpiar targetIds cacheados.
-        // handleTabChange los redescubrirá desde la VM cuando el usuario abra Dispositivos.
+        // Al cargar un proyecto nuevo: volver a tab Objetos con el primer sprite.
         this._handleProjectLoaded = () => {
-            // Limpiar device targets cacheados para que se redescubran desde la VM
+            const vm = this.props.vm;
+
+            // Limpiar device targets cacheados
             this.setState(prevState => ({
+                activeTab: 1,
                 devices: prevState.devices.map(d => ({ ...d, targetId: null }))
             }));
-            // Usar handleTabChange(1) para que actualice editing target en la VM también
-            this.handleTabChange(1);
+
+            window.activeDeviceExtensionId = null;
+            window.dispatchEvent(new CustomEvent('scratch_workspace_reset_scroll'));
+            window.dispatchEvent(new CustomEvent('scratch_toolbox_refresh_requested', {}));
+
+            // Seleccionar el primer sprite directamente desde la VM (los props aún no se actualizaron)
+            if (vm) {
+                const firstSprite = vm.runtime.targets.find(t => !t.isStage && !t.isDeviceTarget);
+                if (firstSprite) {
+                    vm.setEditingTarget(firstSprite.id);
+                }
+            }
         };
         if (this.props.vm) {
             this.props.vm.on('PROJECT_LOADED', this._handleProjectLoaded);
