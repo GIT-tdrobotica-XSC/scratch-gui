@@ -627,7 +627,13 @@ class SpriteSelectorComponent extends React.Component {
                                 <div className={styles.firmwareStatusModal}>
                                     <div className={styles.firmwareStatusIcon}>{'⚠️'}</div>
                                     <p className={styles.firmwareStatusTitle}>{'Firmware desactualizado'}</p>
-                                    <p className={styles.firmwareStatusText}>{'Tu dispositivo no está enviando datos. Es posible que necesite una actualización de firmware.'}</p>
+                                    <p className={styles.firmwareStatusText}>{'Tu dispositivo necesita una actualización de firmware para funcionar correctamente.'}</p>
+                                    <ol className={styles.firmwareGuideList}>
+                                        <li>{'Mantén presionado el botón '}<strong>{'BOOT'}</strong>{' de tu dispositivo'}</li>
+                                        <li>{'Haz clic en '}<strong>{'Actualizar firmware'}</strong>{' sin soltar el botón'}</li>
+                                        <li>{'Suelta BOOT cuando veas que el progreso avanza'}</li>
+                                        <li>{'Espera a que finalice y reconecta tu dispositivo'}</li>
+                                    </ol>
                                     <button
                                         className={styles.firmwareStatusButton}
                                         onClick={() => {

@@ -6,39 +6,40 @@ const BASE_STEPS = [
     {
         icon: '🚀',
         title: '¡Bienvenido a PlayCode!',
-        description: 'Tu entorno de programación visual para controlar dispositivos electrónicos. ' +
-            'En los siguientes pasos aprenderás lo esencial para comenzar a programar.',
+        description: 'Un entorno de programación visual diseñado para aprender creando. ' +
+            'A través de este breve recorrido descubrirás las principales herramientas de la plataforma ' +
+            'y cómo utilizarlas para desarrollar tus primeros programas.',
         targetSelector: null
     },
     {
         icon: '🔌',
         title: 'Panel de Dispositivos',
-        description: 'En el panel de la izquierda encontrarás tu dispositivo (PlayIoT o PlayMe). ' +
-            'Haz clic en "Conectar" y selecciona el puerto USB de tu placa para comenzar a enviar comandos.',
+        description: 'En la parte superior encontrarás el Escenario, donde podrás ver cómo interactúan ' +
+            'tus objetos y dispositivos. Debajo encontrarás el panel de configuración, donde podrás ' +
+            'agregar y conectar dispositivos como PlayIoT o PlayMe para enviar comandos y empezar a programar.',
         targetSelector: '[data-tutorial="left-panel"]'
     },
     {
         icon: '🧩',
         title: 'Los Bloques',
-        description: 'Aquí encontrarás todas las categorías de bloques disponibles. ' +
-            'Selecciona una categoría para ver sus bloques y arrástralos al área de trabajo para programar.',
+        description: 'Aquí encontrarás todas las categorías de bloques para crear programas increíbles. ' +
+            '¡Haz clic en una categoría, arrastra los bloques al área de trabajo y descubre cómo dar vida a tus proyectos!',
         targetSelector: '.blocklyToolboxDiv'
     },
     {
         icon: '▶',
         title: 'Área de Trabajo',
-        description: 'Este es tu espacio de programación. ' +
-            'Arrastra y conecta bloques para crear tu programa. ' +
-            'Usa la bandera verde para ejecutarlo y el octágono rojo para detenerlo.',
+        description: 'Este es el espacio donde crearás tus programas. ' +
+            'Arrastra los bloques y conéctalos para formar instrucciones. ' +
+            'Usa la bandera verde para ejecutar tu programa y el botón rojo para detenerlo.',
         targetSelector: '[data-tutorial="editor"]'
     },
     {
-        icon: '⬇',
-        title: 'Actualización de Firmware',
-        description: 'Si tu placa necesita actualización, haz clic en "Actualizar Firmware" en el panel de dispositivos a la izquierda. ' +
-            'El proceso descarga e instala automáticamente la última versión disponible. ' +
-            'Asegúrate de tener el dispositivo conectado antes de iniciar la actualización.',
-        targetSelector: '[data-tutorial="left-panel"]'
+        icon: '🎉',
+        title: '¡Todo listo para programar!',
+        description: 'Ahora ya conoces las principales herramientas de PlayCode. ' +
+            'Crea programas, conecta dispositivos y dale vida a tus proyectos de forma fácil y divertida.',
+        targetSelector: null
     }
 ];
 
@@ -162,7 +163,7 @@ const TutorialModal = ({step, onNext, onSkip}) => {
                                 className={styles.nextButton}
                                 onClick={handleNext}
                             >
-                                {isLastStep ? '¡Comenzar!' : isZoomStep ? 'Listo, ajusté el zoom →' : 'Siguiente →'}
+                                {isLastStep ? '¡Comienza a programar!' : isZoomStep ? 'Listo, ajusté el zoom →' : 'Siguiente →'}
                             </button>
                         </div>
                     </div>
