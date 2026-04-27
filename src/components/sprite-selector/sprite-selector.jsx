@@ -90,6 +90,15 @@ class SpriteSelectorComponent extends React.Component {
         this._handleProjectLoaded = () => {
             const vm = this.props.vm;
 
+            // Desconectar dispositivos activos al cambiar de proyecto
+            this.state.devices.forEach(device => {
+                const peripheral = vm.runtime.peripheralExtensions &&
+                    vm.runtime.peripheralExtensions[device.extensionId];
+                if (peripheral && peripheral.isConnected()) {
+                    peripheral.disconnect();
+                }
+            });
+
             // Limpiar device targets cacheados
             this.setState(prevState => ({
                 activeTab: 1,
@@ -179,7 +188,20 @@ class SpriteSelectorComponent extends React.Component {
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[extensionId];
         if (!peripheral) return;
 
-        // Verificar si el serial recibió datos JSON válidos (seteado en handleIncoming)
+        // Usar getFirmwareStatus si está disponible (compara versión real vs servidor)
+        if (typeof peripheral.getFirmwareStatus === 'function') {
+            const status = peripheral.getFirmwareStatus();
+            if (status === 'updated') {
+                this.setState({ firmwareStatus: 'updated' });
+                setTimeout(() => this.setState({ firmwareStatus: null }), 10000);
+            } else if (status === 'outdated') {
+                this.setState({ firmwareStatus: 'outdated' });
+            }
+            // 'unknown' = aún no hay datos suficientes, no cambiar estado
+            return;
+        }
+
+        // Fallback: verificar si el serial recibió datos JSON válidos
         const lastRx = peripheral._serial && peripheral._serial._lastRxTime;
         const hasRx = !!(lastRx && (Date.now() - lastRx) < 12000);
 

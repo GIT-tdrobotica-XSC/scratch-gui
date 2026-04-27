@@ -355,5 +355,159 @@ export default function (vm, useCatBlocks) {
         return true;
     };
 
+    // ===== Campo RGB Matrix: widget visual para 3 LEDs =====
+    (function registerFieldRGBMatrix (SB) {
+        const DEFAULT_VALUE = JSON.stringify([{r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}]);
+        const FIELD_WIDTH = 80;
+
+        function FieldRGBMatrix (value) {
+            SB.Field.call(this, value || DEFAULT_VALUE);
+        }
+        FieldRGBMatrix.prototype = Object.create(SB.Field.prototype);
+        FieldRGBMatrix.prototype.constructor = FieldRGBMatrix;
+
+        FieldRGBMatrix.fromJson = function (opt) {
+            return new FieldRGBMatrix(opt.rgb_matrix || opt.value);
+        };
+
+        FieldRGBMatrix.prototype.init = function () {
+            if (this.fieldGroup_) return;
+            SB.Field.prototype.init.call(this);
+            if (this.textElement_) {
+                this.textElement_.style.display = 'none';
+            }
+            this.size_.width = FIELD_WIDTH;
+            this.circles_ = [];
+            const svgNS = 'http://www.w3.org/2000/svg';
+            for (let i = 0; i < 3; i++) {
+                const circle = document.createElementNS(svgNS, 'circle');
+                circle.setAttribute('cx', 14 + i * 24);
+                circle.setAttribute('cy', 13);
+                circle.setAttribute('r', 9);
+                circle.setAttribute('stroke-width', '1.5');
+                this.fieldGroup_.appendChild(circle);
+                this.circles_.push(circle);
+
+                const lbl = document.createElementNS(svgNS, 'text');
+                lbl.setAttribute('x', 14 + i * 24);
+                lbl.setAttribute('y', 17);
+                lbl.setAttribute('text-anchor', 'middle');
+                lbl.setAttribute('font-size', '8');
+                lbl.setAttribute('fill', 'rgba(255,255,255,0.5)');
+                lbl.setAttribute('pointer-events', 'none');
+                lbl.textContent = i;
+                this.fieldGroup_.appendChild(lbl);
+            }
+            this.updateDisplay_();
+        };
+
+        FieldRGBMatrix.prototype.updateDisplay_ = function () {
+            if (!this.circles_) return;
+            try {
+                const colors = JSON.parse(this.value_ || DEFAULT_VALUE);
+                for (let i = 0; i < 3; i++) {
+                    const c = colors[i] || {r: 0, g: 0, b: 0};
+                    const off = c.r === 0 && c.g === 0 && c.b === 0;
+                    this.circles_[i].setAttribute('fill', off ? '#2a2a3a' : `rgb(${c.r},${c.g},${c.b})`);
+                    this.circles_[i].setAttribute('stroke', off ? '#555' : 'rgba(255,255,255,0.5)');
+                }
+            } catch (e) { /* noop */ }
+        };
+
+        FieldRGBMatrix.prototype.getValue = function () {
+            return this.value_ || DEFAULT_VALUE;
+        };
+
+        FieldRGBMatrix.prototype.setValue = function (newValue) {
+            if (!newValue || newValue === this.value_) return;
+            SB.Field.prototype.setValue.call(this, newValue);
+            this.updateDisplay_();
+        };
+
+        FieldRGBMatrix.prototype.getText = function () { return ''; };
+        FieldRGBMatrix.prototype.getText_ = function () { return ''; };
+
+        FieldRGBMatrix.prototype.showEditor_ = function () {
+            const DD = SB.DropDownDiv;
+            DD.hideWithoutAnimation();
+            DD.clearContent();
+            const content = DD.getContentDiv();
+
+            let colors;
+            try { colors = JSON.parse(this.getValue()); } catch (e) { colors = [{r:0,g:0,b:0},{r:0,g:0,b:0},{r:0,g:0,b:0}]; }
+
+            const toHex = (r, g, b) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+            const fromHex = h => ({r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16)});
+
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex;gap:12px;padding:10px 14px 12px;';
+
+            for (let i = 0; i < 3; i++) {
+                const c = colors[i] || {r: 0, g: 0, b: 0};
+                const off = c.r === 0 && c.g === 0 && c.b === 0;
+
+                const col = document.createElement('div');
+                col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:5px;';
+
+                const preview = document.createElement('div');
+                preview.style.cssText = `width:34px;height:34px;border-radius:50%;` +
+                    `background:${off ? '#2a2a3a' : `rgb(${c.r},${c.g},${c.b})`};` +
+                    `border:2px solid ${off ? '#555' : 'rgba(255,255,255,0.5)'};`;
+
+                const colorIn = document.createElement('input');
+                colorIn.type = 'color';
+                colorIn.value = off ? '#ff0000' : toHex(c.r, c.g, c.b);
+                colorIn.style.cssText = 'width:34px;height:22px;border:1px solid #555;background:#111;padding:1px;cursor:pointer;border-radius:3px;';
+
+                const offBtn = document.createElement('button');
+                offBtn.textContent = 'OFF';
+                offBtn.style.cssText = `width:34px;font-size:9px;font-weight:bold;padding:2px;` +
+                    `border:1px solid ${off ? '#999' : '#555'};background:${off ? '#555' : 'transparent'};` +
+                    `color:${off ? '#fff' : '#888'};cursor:pointer;border-radius:3px;font-family:sans-serif;`;
+
+                const lbl = document.createElement('div');
+                lbl.textContent = `LED ${i}`;
+                lbl.style.cssText = 'font-size:10px;color:#999;font-family:sans-serif;';
+
+                const set = (r, g, b) => {
+                    colors[i] = {r, g, b};
+                    const o = r === 0 && g === 0 && b === 0;
+                    preview.style.background = o ? '#2a2a3a' : `rgb(${r},${g},${b})`;
+                    preview.style.borderColor = o ? '#555' : 'rgba(255,255,255,0.5)';
+                    offBtn.style.background = o ? '#555' : 'transparent';
+                    offBtn.style.borderColor = o ? '#999' : '#555';
+                    offBtn.style.color = o ? '#fff' : '#888';
+                    this.setValue(JSON.stringify(colors));
+                };
+
+                colorIn.addEventListener('input', () => { const rgb = fromHex(colorIn.value); set(rgb.r, rgb.g, rgb.b); });
+                offBtn.addEventListener('click', () => set(0, 0, 0));
+
+                col.appendChild(preview);
+                col.appendChild(colorIn);
+                col.appendChild(offBtn);
+                col.appendChild(lbl);
+                wrap.appendChild(col);
+            }
+
+            content.appendChild(wrap);
+
+            const primary = (this.sourceBlock_ && this.sourceBlock_.getColour()) || '#3D5A80';
+            const tertiary = (this.sourceBlock_ && this.sourceBlock_.getColourTertiary()) || '#1E3A5F';
+            DD.setColour(primary, tertiary);
+            DD.showPositionedByField(this, () => {});
+        };
+
+        SB.Field.register('field_rgb_matrix', FieldRGBMatrix);
+
+        SB.Blocks['rgb_matrix'] = {
+            init: function () {
+                this.appendDummyInput()
+                    .appendField(new FieldRGBMatrix(DEFAULT_VALUE), 'RGB_MATRIX');
+                this.setOutputShape(SB.OUTPUT_SHAPE_ROUND);
+            }
+        };
+    }(ScratchBlocks));
+
     return ScratchBlocks;
 }
