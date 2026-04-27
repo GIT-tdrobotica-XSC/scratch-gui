@@ -1,4 +1,3 @@
-import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
@@ -11,40 +10,6 @@ import arrowLeftIcon from './icon--arrow-left.svg';
 import arrowRightIcon from './icon--arrow-right.svg';
 
 import styles from './delete-confirmation-prompt.css';
-
-// TODO: Parametrize from outside if we want more custom messaging
-const messages = defineMessages({
-    shouldDeleteSpriteMessage: {
-        defaultMessage: '¿Seguro que quieres eliminar este objeto?',
-        description: 'Message to indicate whether selected sprite should be deleted.',
-        id: 'gui.gui.shouldDeleteSprite'
-    },
-    shouldDeleteCostumeMessage: {
-        defaultMessage: '¿Seguro que quieres eliminar este disfraz?',
-        description: 'Message to indicate whether selected costume should be deleted.',
-        id: 'gui.gui.shouldDeleteCostume'
-    },
-    shouldDeleteSoundMessage: {
-        defaultMessage: '¿Seguro que quieres eliminar este sonido?',
-        description: 'Message to indicate whether selected sound should be deleted.',
-        id: 'gui.gui.shouldDeleteSound'
-    },
-    confirmOption: {
-        defaultMessage: 'Sí',
-        description: 'Yes - should delete the sprite',
-        id: 'gui.gui.confirm'
-    },
-    cancelOption: {
-        defaultMessage: 'No',
-        description: 'No - cancel deletion',
-        id: 'gui.gui.cancel'
-    },
-    confirmDeletionHeading: {
-        defaultMessage: 'Confirmar eliminación',
-        description: 'Heading of confirmation prompt to delete asset',
-        id: 'gui.gui.deleteAssetHeading'
-    }
-});
 
 const modalWidth = 300;
 const calculateModalPosition = (relativeElemRef, modalPosition) => {
@@ -68,19 +33,12 @@ const calculateModalPosition = (relativeElemRef, modalPosition) => {
 };
 
 const getMessage = entityType => {
-    if (entityType === 'COSTUME') {
-        return messages.shouldDeleteCostumeMessage;
-    }
-
-    if (entityType === 'SOUND') {
-        return messages.shouldDeleteSoundMessage;
-    }
-
-    return messages.shouldDeleteSpriteMessage;
+    if (entityType === 'COSTUME') return '¿Seguro que quieres eliminar este disfraz?';
+    if (entityType === 'SOUND') return '¿Seguro que quieres eliminar este sonido?';
+    return '¿Seguro que quieres eliminar este objeto?';
 };
 
 const DeleteConfirmationPrompt = ({
-    intl,
     onCancel,
     onOk,
     modalPosition,
@@ -91,8 +49,6 @@ const DeleteConfirmationPrompt = ({
 
     return (<ReactModal
         isOpen
-        // We have to inline the styles, since a part
-        // of them are dynamically generated
         style={{
             content: {
                 ...modalPositionValues,
@@ -116,57 +72,33 @@ const DeleteConfirmationPrompt = ({
                 backgroundColor: 'transparent'
             }
         }}
-        contentLabel={intl.formatMessage(messages.confirmDeletionHeading)}
+        contentLabel="Confirmar eliminación"
         onRequestClose={onCancel}
     >
         <Box className={styles.modalContainer}>
-            { modalPosition === 'right' ?
+            {modalPosition === 'right' ?
                 <Box className={classNames(styles.arrowContainer, styles.arrowContainerLeft)}>
-                    <img
-                        className={styles.deleteIcon}
-                        src={arrowLeftIcon}
-                    />
-                </Box> : null }
+                    <img className={styles.deleteIcon} src={arrowLeftIcon} />
+                </Box> : null}
             <Box className={styles.body}>
                 <Box className={styles.label}>
-                    <FormattedMessage {...getMessage(entityType)} />
+                    {getMessage(entityType)}
                 </Box>
                 <Box className={styles.buttonRow}>
-                    <button
-                        className={styles.okButton}
-                        onClick={onOk}
-                        role="button"
-                    >
-                        <img
-                            className={styles.deleteIcon}
-                            src={deleteIcon}
-                        />
-                        <div className={styles.message}>
-                            <FormattedMessage {...messages.confirmOption} />
-                        </div>
+                    <button className={styles.okButton} onClick={onOk} role="button">
+                        <img className={styles.deleteIcon} src={deleteIcon} />
+                        <div className={styles.message}>{'Sí'}</div>
                     </button>
-                    <button
-                        className={styles.cancelButton}
-                        onClick={onCancel}
-                        role="button"
-                    >
-                        <img
-                            className={styles.deleteIcon}
-                            src={undoIcon}
-                        />
-                        <div className={styles.message}>
-                            <FormattedMessage {...messages.cancelOption} />
-                        </div>
+                    <button className={styles.cancelButton} onClick={onCancel} role="button">
+                        <img className={styles.deleteIcon} src={undoIcon} />
+                        <div className={styles.message}>{'No'}</div>
                     </button>
                 </Box>
             </Box>
             {modalPosition === 'left' ?
                 <Box className={classNames(styles.arrowContainer, styles.arrowContainerRight)}>
-                    <img
-                        className={styles.deleteIcon}
-                        src={arrowRightIcon}
-                    />
-                </Box> : null }
+                    <img className={styles.deleteIcon} src={arrowRightIcon} />
+                </Box> : null}
         </Box>
     </ReactModal>);
 };
@@ -176,10 +108,7 @@ DeleteConfirmationPrompt.propTypes = {
     onCancel: PropTypes.func.isRequired,
     relativeElemRef: PropTypes.object,
     entityType: PropTypes.string,
-    modalPosition: PropTypes.string,
-    intl: intlShape.isRequired
+    modalPosition: PropTypes.string
 };
 
-const DeleteConfirmationPromptIntl = injectIntl(DeleteConfirmationPrompt);
-
-export default DeleteConfirmationPromptIntl;
+export default DeleteConfirmationPrompt;
