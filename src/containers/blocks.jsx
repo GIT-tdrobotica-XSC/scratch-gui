@@ -139,23 +139,31 @@ class Blocks extends React.Component {
         addFunctionListener(this.workspace, 'translate', this.onWorkspaceMetricsChange);
         addFunctionListener(this.workspace, 'zoom', this.onWorkspaceMetricsChange);
 
-        // Animación al borrar bloques
-        this.workspace.addChangeListener(e => {
-            if (e.type === this.ScratchBlocks.Events.BLOCK_DELETE) {
-                const trashBtn = document.querySelector('.blocklyTrash');
-                if (trashBtn) {
-                    trashBtn.classList.add('blocklyTrashOpen');
-                    setTimeout(() => trashBtn.classList.remove('blocklyTrashOpen'), 400);
-                }
-                // Flash visual en el área de trabajo
-                const svg = document.querySelector('.blocklySvg');
-                if (svg) {
-                    svg.style.transition = 'opacity 0.1s';
-                    svg.style.opacity = '0.7';
-                    setTimeout(() => { svg.style.opacity = '1'; }, 150);
-                }
+        // Overlay de papelera al arrastrar bloques
+        this._trashOverlay = document.createElement('div');
+        this._trashOverlay.className = 'playcode-trash-overlay';
+        this._trashOverlay.innerHTML = '<div class="playcode-trash-overlay-inner"><span class="playcode-trash-icon">🗑️</span><span class="playcode-trash-label">Soltar para eliminar</span></div>';
+        document.body.appendChild(this._trashOverlay);
+
+        this._dragObserver = new MutationObserver(() => {
+            const isDragging = !!document.querySelector('.blocklyDragging');
+            const flyout = document.querySelector('.blocklyFlyout');
+            if (!flyout) return;
+
+            if (isDragging) {
+                const rect = flyout.getBoundingClientRect();
+                this._trashOverlay.style.cssText = `
+                    display: flex;
+                    left: ${rect.left}px;
+                    top: ${rect.top}px;
+                    width: ${rect.width}px;
+                    height: ${rect.height}px;
+                `;
+            } else {
+                this._trashOverlay.style.display = 'none';
             }
         });
+        this._dragObserver.observe(document.body, { subtree: true, attributeFilter: ['class'] });
 
         // Listen for custom toolbox refresh requests (e.g., from DevicePanel)
         window.addEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
@@ -223,6 +231,10 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount() {
+        if (this._dragObserver) this._dragObserver.disconnect();
+        if (this._trashOverlay && this._trashOverlay.parentNode) {
+            this._trashOverlay.parentNode.removeChild(this._trashOverlay);
+        }
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);

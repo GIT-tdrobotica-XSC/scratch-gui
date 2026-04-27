@@ -13,3 +13,43 @@ body,
 
 /* @todo: move globally? Safe / side FX, for blocks particularly? */
 * { box-sizing: border-box; }
+
+/* Overlay papelera al arrastrar bloques */
+.playcode-trash-overlay {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    animation: playcodeFadeIn 0.15s ease;
+}
+.playcode-trash-overlay-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.playcode-trash-icon {
+    font-size: 48px;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    animation: playcodeTrashBounce 0.5s ease infinite alternate;
+}
+.playcode-trash-label {
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    letter-spacing: 0.3px;
+}
+@keyframes playcodeFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes playcodeTrashBounce {
+    from { transform: translateY(0) scale(1); }
+    to   { transform: translateY(-6px) scale(1.1); }
+}
