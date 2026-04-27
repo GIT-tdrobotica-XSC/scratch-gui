@@ -365,6 +365,7 @@ export default function (vm, useCatBlocks) {
         }
         FieldRGBMatrix.prototype = Object.create(SB.Field.prototype);
         FieldRGBMatrix.prototype.constructor = FieldRGBMatrix;
+        FieldRGBMatrix.prototype.EDITABLE = true;
 
         FieldRGBMatrix.fromJson = function (opt) {
             return new FieldRGBMatrix(opt.rgb_matrix || opt.value);
@@ -428,46 +429,79 @@ export default function (vm, useCatBlocks) {
         FieldRGBMatrix.prototype.getText_ = function () { return ''; };
 
         FieldRGBMatrix.prototype.showEditor_ = function () {
-            const DD = SB.DropDownDiv;
-            DD.hideWithoutAnimation();
-            DD.clearContent();
-            const content = DD.getContentDiv();
+            // Cerrar popup previo si existe
+            const prev = document.getElementById('playcode-rgb-popup');
+            if (prev) prev.remove();
 
             let colors;
             try { colors = JSON.parse(this.getValue()); } catch (e) { colors = [{r:0,g:0,b:0},{r:0,g:0,b:0},{r:0,g:0,b:0}]; }
 
-            const toHex = (r, g, b) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-            const fromHex = h => ({r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16)});
+            const popup = document.createElement('div');
+            popup.id = 'playcode-rgb-popup';
+            popup.style.cssText = [
+                'position:fixed',
+                'z-index:99999',
+                'background:#1e1e2e',
+                'border:1px solid #444',
+                'border-radius:10px',
+                'box-shadow:0 6px 24px rgba(0,0,0,0.6)',
+                'padding:12px 16px 14px',
+                'display:flex',
+                'gap:14px',
+                'align-items:flex-start'
+            ].join(';');
 
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'display:flex;gap:12px;padding:10px 14px 12px;';
+            // Posicionar bajo el campo
+            let x = 200;
+            let y = 200;
+            if (this.fieldGroup_) {
+                try {
+                    const rect = this.fieldGroup_.getBoundingClientRect();
+                    x = rect.left;
+                    y = rect.bottom + 6;
+                    // Evitar salir por la derecha
+                    if (x + 200 > window.innerWidth) x = window.innerWidth - 210;
+                    // Evitar salir por abajo
+                    if (y + 160 > window.innerHeight) y = rect.top - 166;
+                } catch (e) { /* noop */ }
+            }
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+
+            const toHex = (r, g, b) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+            const fromHex = h => ({
+                r: parseInt(h.slice(1, 3), 16),
+                g: parseInt(h.slice(3, 5), 16),
+                b: parseInt(h.slice(5, 7), 16)
+            });
 
             for (let i = 0; i < 3; i++) {
                 const c = colors[i] || {r: 0, g: 0, b: 0};
                 const off = c.r === 0 && c.g === 0 && c.b === 0;
 
                 const col = document.createElement('div');
-                col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:5px;';
+                col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
 
                 const preview = document.createElement('div');
-                preview.style.cssText = `width:34px;height:34px;border-radius:50%;` +
+                preview.style.cssText = `width:36px;height:36px;border-radius:50%;` +
                     `background:${off ? '#2a2a3a' : `rgb(${c.r},${c.g},${c.b})`};` +
                     `border:2px solid ${off ? '#555' : 'rgba(255,255,255,0.5)'};`;
 
                 const colorIn = document.createElement('input');
                 colorIn.type = 'color';
                 colorIn.value = off ? '#ff0000' : toHex(c.r, c.g, c.b);
-                colorIn.style.cssText = 'width:34px;height:22px;border:1px solid #555;background:#111;padding:1px;cursor:pointer;border-radius:3px;';
+                colorIn.style.cssText = 'width:36px;height:24px;border:1px solid #555;' +
+                    'background:#111;padding:1px;cursor:pointer;border-radius:3px;';
 
                 const offBtn = document.createElement('button');
                 offBtn.textContent = 'OFF';
-                offBtn.style.cssText = `width:34px;font-size:9px;font-weight:bold;padding:2px;` +
-                    `border:1px solid ${off ? '#999' : '#555'};background:${off ? '#555' : 'transparent'};` +
+                offBtn.style.cssText = `width:36px;font-size:9px;font-weight:bold;padding:2px;` +
+                    `border:1px solid ${off ? '#aaa' : '#555'};background:${off ? '#555' : 'transparent'};` +
                     `color:${off ? '#fff' : '#888'};cursor:pointer;border-radius:3px;font-family:sans-serif;`;
 
                 const lbl = document.createElement('div');
                 lbl.textContent = `LED ${i}`;
-                lbl.style.cssText = 'font-size:10px;color:#999;font-family:sans-serif;';
+                lbl.style.cssText = 'font-size:10px;color:#aaa;font-family:sans-serif;';
 
                 const set = (r, g, b) => {
                     colors[i] = {r, g, b};
@@ -475,27 +509,37 @@ export default function (vm, useCatBlocks) {
                     preview.style.background = o ? '#2a2a3a' : `rgb(${r},${g},${b})`;
                     preview.style.borderColor = o ? '#555' : 'rgba(255,255,255,0.5)';
                     offBtn.style.background = o ? '#555' : 'transparent';
-                    offBtn.style.borderColor = o ? '#999' : '#555';
+                    offBtn.style.borderColor = o ? '#aaa' : '#555';
                     offBtn.style.color = o ? '#fff' : '#888';
                     this.setValue(JSON.stringify(colors));
                 };
 
-                colorIn.addEventListener('input', () => { const rgb = fromHex(colorIn.value); set(rgb.r, rgb.g, rgb.b); });
-                offBtn.addEventListener('click', () => set(0, 0, 0));
+                colorIn.addEventListener('input', () => {
+                    const rgb = fromHex(colorIn.value);
+                    set(rgb.r, rgb.g, rgb.b);
+                });
+                offBtn.addEventListener('mousedown', e => {
+                    e.stopPropagation();
+                    set(0, 0, 0);
+                });
 
                 col.appendChild(preview);
                 col.appendChild(colorIn);
                 col.appendChild(offBtn);
                 col.appendChild(lbl);
-                wrap.appendChild(col);
+                popup.appendChild(col);
             }
 
-            content.appendChild(wrap);
+            document.body.appendChild(popup);
 
-            const primary = (this.sourceBlock_ && this.sourceBlock_.getColour()) || '#3D5A80';
-            const tertiary = (this.sourceBlock_ && this.sourceBlock_.getColourTertiary()) || '#1E3A5F';
-            DD.setColour(primary, tertiary);
-            DD.showPositionedByField(this, () => {});
+            // Cerrar al hacer click fuera
+            const closeHandler = e => {
+                if (!popup.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('mousedown', closeHandler);
+                }
+            };
+            setTimeout(() => document.addEventListener('mousedown', closeHandler), 100);
         };
 
         SB.Field.register('field_rgb_matrix', FieldRGBMatrix);
