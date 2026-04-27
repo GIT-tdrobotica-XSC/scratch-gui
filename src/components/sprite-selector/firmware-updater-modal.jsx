@@ -202,7 +202,8 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
                         <ol className={styles.bootStepList}>
                             <li>{'Mantén presionado el botón '}<strong>{'BOOT'}</strong>{' de tu PlayIoT'}</li>
                             <li>{'Haz clic en '}<strong>{'Actualizar'}</strong>{' sin soltar el botón'}</li>
-                            <li>{'Suelta el botón BOOT cuando veas el progreso'}</li>
+                            <li>{'Sigue presionando BOOT hasta que la barra de progreso llegue al '}<strong>{'50%'}</strong></li>
+                            <li>{'Suelta el botón y espera a que finalice'}</li>
                         </ol>
                         <button
                             className={styles.actionButton}

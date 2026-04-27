@@ -15,32 +15,32 @@ import styles from './delete-confirmation-prompt.css';
 // TODO: Parametrize from outside if we want more custom messaging
 const messages = defineMessages({
     shouldDeleteSpriteMessage: {
-        defaultMessage: 'Are you sure you want to delete this sprite?',
+        defaultMessage: '¿Seguro que quieres eliminar este objeto?',
         description: 'Message to indicate whether selected sprite should be deleted.',
         id: 'gui.gui.shouldDeleteSprite'
     },
     shouldDeleteCostumeMessage: {
-        defaultMessage: 'Are you sure you want to delete this costume?',
+        defaultMessage: '¿Seguro que quieres eliminar este disfraz?',
         description: 'Message to indicate whether selected costume should be deleted.',
         id: 'gui.gui.shouldDeleteCostume'
     },
     shouldDeleteSoundMessage: {
-        defaultMessage: 'Are you sure you want to delete this sound?',
+        defaultMessage: '¿Seguro que quieres eliminar este sonido?',
         description: 'Message to indicate whether selected sound should be deleted.',
         id: 'gui.gui.shouldDeleteSound'
     },
     confirmOption: {
-        defaultMessage: 'yes',
+        defaultMessage: 'Sí',
         description: 'Yes - should delete the sprite',
         id: 'gui.gui.confirm'
     },
     cancelOption: {
-        defaultMessage: 'no',
+        defaultMessage: 'No',
         description: 'No - cancel deletion',
         id: 'gui.gui.cancel'
     },
     confirmDeletionHeading: {
-        defaultMessage: 'Confirm Asset Deletion',
+        defaultMessage: 'Confirmar eliminación',
         description: 'Heading of confirmation prompt to delete asset',
         id: 'gui.gui.deleteAssetHeading'
     }

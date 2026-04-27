@@ -803,7 +803,14 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
         return false; // excluir en todos los demás casos
     });
 
-    const everything = [
+    const everything = isDeviceTarget ? [
+        xmlOpen,
+        eventsXML, gap,
+        controlXML, gap,
+        operatorsXML, gap,
+        variablesXML, gap,
+        myBlocksXML
+    ] : [
         xmlOpen,
         motionXML, gap,
         looksXML, gap,

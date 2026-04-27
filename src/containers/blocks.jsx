@@ -139,6 +139,24 @@ class Blocks extends React.Component {
         addFunctionListener(this.workspace, 'translate', this.onWorkspaceMetricsChange);
         addFunctionListener(this.workspace, 'zoom', this.onWorkspaceMetricsChange);
 
+        // Animación al borrar bloques
+        this.workspace.addChangeListener(e => {
+            if (e.type === this.ScratchBlocks.Events.BLOCK_DELETE) {
+                const trashBtn = document.querySelector('.blocklyTrash');
+                if (trashBtn) {
+                    trashBtn.classList.add('blocklyTrashOpen');
+                    setTimeout(() => trashBtn.classList.remove('blocklyTrashOpen'), 400);
+                }
+                // Flash visual en el área de trabajo
+                const svg = document.querySelector('.blocklySvg');
+                if (svg) {
+                    svg.style.transition = 'opacity 0.1s';
+                    svg.style.opacity = '0.7';
+                    setTimeout(() => { svg.style.opacity = '1'; }, 150);
+                }
+            }
+        });
+
         // Listen for custom toolbox refresh requests (e.g., from DevicePanel)
         window.addEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
         // Reset workspace scroll when switching tabs
