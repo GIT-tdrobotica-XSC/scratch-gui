@@ -378,6 +378,9 @@ export default function (vm, useCatBlocks) {
                 this.textElement_.style.display = 'none';
             }
             this.size_.width = FIELD_WIDTH;
+            // Asegurar que el grupo SVG recibe eventos de mouse
+            this.fieldGroup_.setAttribute('pointer-events', 'all');
+            this.fieldGroup_.style.cursor = 'pointer';
             this.circles_ = [];
             const svgNS = 'http://www.w3.org/2000/svg';
             for (let i = 0; i < 3; i++) {
@@ -427,6 +430,16 @@ export default function (vm, useCatBlocks) {
 
         FieldRGBMatrix.prototype.getText = function () { return ''; };
         FieldRGBMatrix.prototype.getText_ = function () { return ''; };
+
+        // Sobrescribir onMouseDown_ para evitar que el sistema de gestos
+        // de scratch-blocks intercepte el click antes de llegar a showEditor_
+        FieldRGBMatrix.prototype.onMouseDown_ = function (e) {
+            if (e) {
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+            this.showEditor_();
+        };
 
         FieldRGBMatrix.prototype.showEditor_ = function () {
             // Cerrar popup previo si existe
