@@ -358,10 +358,14 @@ export default function (vm, useCatBlocks) {
     // ===== Campo RGB Matrix: widget visual para 3 LEDs =====
     (function registerFieldRGBMatrix (SB) {
         const DEFAULT_VALUE = JSON.stringify([{r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}]);
-        const FIELD_WIDTH = 80;
+        const FIELD_W = 80;
+        const FIELD_H = 26;
 
         function FieldRGBMatrix (value) {
-            SB.Field.call(this, value || DEFAULT_VALUE);
+            // Llamar padre sin pasar el valor para evitar que setText llame render_
+            // antes de que nuestra init esté lista
+            SB.Field.call(this, null);
+            this.value_ = value || DEFAULT_VALUE;
         }
         FieldRGBMatrix.prototype = Object.create(SB.Field.prototype);
         FieldRGBMatrix.prototype.constructor = FieldRGBMatrix;
@@ -371,18 +375,36 @@ export default function (vm, useCatBlocks) {
             return new FieldRGBMatrix(opt.rgb_matrix || opt.value);
         };
 
+        // render_() siempre devuelve nuestro tamaño fijo para evitar que Blockly
+        // recalcule el ancho del campo en base al texto del JSON
+        FieldRGBMatrix.prototype.render_ = function () {
+            this.size_.width = FIELD_W;
+            this.size_.height = FIELD_H;
+        };
+
         FieldRGBMatrix.prototype.init = function () {
             if (this.fieldGroup_) return;
-            SB.Field.prototype.init.call(this);
-            if (this.textElement_) {
-                this.textElement_.style.display = 'none';
-            }
-            this.size_.width = FIELD_WIDTH;
-            // Asegurar que el grupo SVG recibe eventos de mouse
+
+            // Crear el grupo SVG manualmente en vez de llamar al padre,
+            // para evitar que setText/render_ se llamen con valores incorrectos
+            const svgNS = 'http://www.w3.org/2000/svg';
+            this.fieldGroup_ = document.createElementNS(svgNS, 'g');
+            this.fieldGroup_.setAttribute('class', 'blocklyEditableText');
             this.fieldGroup_.setAttribute('pointer-events', 'all');
             this.fieldGroup_.style.cursor = 'pointer';
+            this.size_ = {width: FIELD_W, height: FIELD_H};
+
+            // Fondo del campo
+            const bg = document.createElementNS(svgNS, 'rect');
+            bg.setAttribute('rx', '4');
+            bg.setAttribute('ry', '4');
+            bg.setAttribute('width', FIELD_W);
+            bg.setAttribute('height', FIELD_H);
+            bg.setAttribute('fill', 'rgba(0,0,0,0.2)');
+            this.fieldGroup_.appendChild(bg);
+
+            // 3 círculos LED
             this.circles_ = [];
-            const svgNS = 'http://www.w3.org/2000/svg';
             for (let i = 0; i < 3; i++) {
                 const circle = document.createElementNS(svgNS, 'circle');
                 circle.setAttribute('cx', 14 + i * 24);
@@ -402,7 +424,25 @@ export default function (vm, useCatBlocks) {
                 lbl.textContent = i;
                 this.fieldGroup_.appendChild(lbl);
             }
+
             this.updateDisplay_();
+
+            // Añadir al bloque
+            if (this.sourceBlock_ && this.sourceBlock_.getSvgRoot) {
+                this.sourceBlock_.getSvgRoot().appendChild(this.fieldGroup_);
+            }
+
+            // Listener en fase de CAPTURA: se ejecuta antes que cualquier handler de Blockly
+            this.fieldGroup_.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                this.showEditor_();
+            }, true);
+
+            // Forzar re-render del bloque para que tome nuestro tamaño correcto
+            if (this.sourceBlock_ && this.sourceBlock_.rendered) {
+                this.sourceBlock_.render();
+            }
         };
 
         FieldRGBMatrix.prototype.updateDisplay_ = function () {
@@ -422,22 +462,17 @@ export default function (vm, useCatBlocks) {
             return this.value_ || DEFAULT_VALUE;
         };
 
+        // setValue simplificado: no llama al padre para evitar render() en cascada
         FieldRGBMatrix.prototype.setValue = function (newValue) {
             if (!newValue || newValue === this.value_) return;
-            SB.Field.prototype.setValue.call(this, newValue);
+            this.value_ = newValue;
             this.updateDisplay_();
         };
 
         FieldRGBMatrix.prototype.getText = function () { return ''; };
         FieldRGBMatrix.prototype.getText_ = function () { return ''; };
-
-        // Sobrescribir onMouseDown_ para evitar que el sistema de gestos
-        // de scratch-blocks intercepte el click antes de llegar a showEditor_
         FieldRGBMatrix.prototype.onMouseDown_ = function (e) {
-            if (e) {
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-            }
+            if (e) { e.stopPropagation(); e.stopImmediatePropagation(); }
             this.showEditor_();
         };
 
