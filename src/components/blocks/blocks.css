@@ -114,28 +114,48 @@
     position: fixed;
     z-index: 9999;
     pointer-events: none;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.4);
     border-radius: 8px;
     align-items: center;
     justify-content: center;
+    transition: background 0.2s ease, border 0.2s ease;
+    border: 2px solid transparent;
     animation: playcodeFadeIn 0.15s ease;
+}
+/* Estado "listo para borrar": bloque está sobre la zona */
+:global(.playcode-trash-overlay.playcode-trash-ready) {
+    background: rgba(220, 50, 50, 0.65);
+    border: 2px solid rgba(255, 100, 100, 0.8);
+    animation: playcodeTrashPulse 0.4s ease infinite alternate;
 }
 :global(.playcode-trash-overlay-inner) {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    transition: transform 0.2s ease;
+}
+:global(.playcode-trash-ready) :global(.playcode-trash-overlay-inner) {
+    transform: scale(1.15);
 }
 :global(.playcode-trash-icon) {
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: playcodeTrashBounce 0.5s ease infinite alternate;
+    animation: playcodeTrashBounce 0.6s ease infinite alternate;
+}
+:global(.playcode-trash-ready) :global(.playcode-trash-icon) {
+    animation: none;
 }
 :global(.playcode-trash-icon) svg {
     width: 44px;
     height: 44px;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    transition: stroke 0.2s ease;
+}
+:global(.playcode-trash-ready) :global(.playcode-trash-icon) svg {
+    stroke: #ffcccc;
+    filter: drop-shadow(0 0 8px rgba(255, 80, 80, 0.8));
 }
 :global(.playcode-trash-label) {
     color: white;
@@ -143,6 +163,10 @@
     font-weight: 600;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    transition: color 0.2s ease;
+}
+:global(.playcode-trash-ready) :global(.playcode-trash-label) {
+    color: #ffcccc;
 }
 @keyframes playcodeFadeIn {
     from { opacity: 0; }
@@ -150,5 +174,9 @@
 }
 @keyframes playcodeTrashBounce {
     from { transform: translateY(0) scale(1); }
-    to   { transform: translateY(-6px) scale(1.1); }
+    to   { transform: translateY(-5px) scale(1.08); }
+}
+@keyframes playcodeTrashPulse {
+    from { box-shadow: 0 0 0px rgba(255, 80, 80, 0); }
+    to   { box-shadow: 0 0 18px rgba(255, 80, 80, 0.6); }
 }
