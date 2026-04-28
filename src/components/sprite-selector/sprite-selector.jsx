@@ -68,10 +68,12 @@ class SpriteSelectorComponent extends React.Component {
             showFirmwareModal: false,
             isUpdatingFirmware: false,
             isReconnecting: false,
-            firmwareStatus: null  // null | 'updated' | 'outdated'
+            firmwareStatus: null,  // null | 'updated' | 'outdated'
+            firmwareChecking: false
         };
         this.connectionCheckInterval = null;
         this._rxCheckTimers = {};
+        this._fwPollIntervals = {};
     }
 
     componentDidMount() {
@@ -133,6 +135,9 @@ class SpriteSelectorComponent extends React.Component {
         // Limpiar timers de check de RX pendientes
         Object.values(this._rxCheckTimers).forEach(timer => clearTimeout(timer));
         this._rxCheckTimers = {};
+        // Limpiar polls de verificación de firmware
+        Object.values(this._fwPollIntervals).forEach(id => clearInterval(id));
+        this._fwPollIntervals = {};
         // Limpiar listener de proyecto
         if (this.props.vm && this._handleProjectLoaded) {
             this.props.vm.runtime.off('PROJECT_LOADED', this._handleProjectLoaded);
@@ -154,12 +159,36 @@ class SpriteSelectorComponent extends React.Component {
                     (peripheral._connectedDeviceId || 'Conectado') :
                     null;
 
-                // Detectar transición desconectado → conectado para check de RX
-                if (!device.isConnected && isConnected && !this._rxCheckTimers[extensionId]) {
-                    this._rxCheckTimers[extensionId] = setTimeout(() => {
-                        this.checkRxStatus(extensionId);
-                        delete this._rxCheckTimers[extensionId];
-                    }, 7000);
+                // Detectar transición desconectado → conectado: iniciar polling de firmware
+                if (!device.isConnected && isConnected && !this._fwPollIntervals[extensionId]) {
+                    this.setState({ firmwareChecking: true, firmwareStatus: null });
+                    const startTime = Date.now();
+                    this._fwPollIntervals[extensionId] = setInterval(() => {
+                        const peripheral2 = this.props.vm.runtime.peripheralExtensions &&
+                            this.props.vm.runtime.peripheralExtensions[extensionId];
+                        if (!peripheral2) return;
+                        const status = typeof peripheral2.getFirmwareStatus === 'function'
+                            ? peripheral2.getFirmwareStatus()
+                            : null;
+                        const elapsed = Date.now() - startTime;
+                        if (status === 'updated') {
+                            clearInterval(this._fwPollIntervals[extensionId]);
+                            delete this._fwPollIntervals[extensionId];
+                            this.setState({ firmwareChecking: false, firmwareStatus: 'updated' });
+                            setTimeout(() => this.setState({ firmwareStatus: null }), 10000);
+                        } else if (status === 'outdated' || elapsed >= 8000) {
+                            clearInterval(this._fwPollIntervals[extensionId]);
+                            delete this._fwPollIntervals[extensionId];
+                            this.setState({ firmwareChecking: false, firmwareStatus: 'outdated' });
+                        }
+                    }, 1500);
+                }
+
+                // Si se desconecta mientras se verificaba, cancelar el polling
+                if (device.isConnected && !isConnected && this._fwPollIntervals[extensionId]) {
+                    clearInterval(this._fwPollIntervals[extensionId]);
+                    delete this._fwPollIntervals[extensionId];
+                    this.setState({ firmwareChecking: false, firmwareStatus: null });
                 }
 
                 if (device.isConnected !== isConnected || device.port !== port) {
@@ -176,40 +205,6 @@ class SpriteSelectorComponent extends React.Component {
 
         if (hasChanges) {
             this.setState({ devices: updatedDevices });
-        }
-    }
-
-    checkRxStatus = (extensionId) => {
-        const { devices } = this.state;
-        const { vm } = this.props;
-        const device = devices.find(d => d.extensionId === extensionId);
-        if (!device || !device.isConnected) return;
-
-        const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[extensionId];
-        if (!peripheral) return;
-
-        // Usar getFirmwareStatus si está disponible (compara versión real vs servidor)
-        if (typeof peripheral.getFirmwareStatus === 'function') {
-            const status = peripheral.getFirmwareStatus();
-            if (status === 'updated') {
-                this.setState({ firmwareStatus: 'updated' });
-                setTimeout(() => this.setState({ firmwareStatus: null }), 10000);
-            } else if (status === 'outdated') {
-                this.setState({ firmwareStatus: 'outdated' });
-            }
-            // 'unknown' = aún no hay datos suficientes, no cambiar estado
-            return;
-        }
-
-        // Fallback: verificar si el serial recibió datos JSON válidos
-        const lastRx = peripheral._serial && peripheral._serial._lastRxTime;
-        const hasRx = !!(lastRx && (Date.now() - lastRx) < 12000);
-
-        if (hasRx) {
-            this.setState({ firmwareStatus: 'updated' });
-            setTimeout(() => this.setState({ firmwareStatus: null }), 10000);
-        } else {
-            this.setState({ firmwareStatus: 'outdated' });
         }
     }
 
@@ -626,6 +621,14 @@ class SpriteSelectorComponent extends React.Component {
                             </div>
                         )}
 
+                        {/* Toast: Verificando firmware */}
+                        {this.state.firmwareChecking && (
+                            <div className={styles.firmwareCheckingToast}>
+                                <div className={styles.firmwareCheckingSpinner} />
+                                <span className={styles.firmwareCheckingText}>{'Verificando firmware...'}</span>
+                            </div>
+                        )}
+
                         {/* Popup: Firmware actualizado */}
                         {this.state.firmwareStatus === 'updated' && (
                             <div className={styles.firmwareStatusOverlay}>
@@ -643,13 +646,13 @@ class SpriteSelectorComponent extends React.Component {
                             </div>
                         )}
 
-                        {/* Popup: Firmware desactualizado */}
+                        {/* Bloqueante: Firmware desactualizado — no se puede ignorar */}
                         {this.state.firmwareStatus === 'outdated' && (
-                            <div className={styles.firmwareStatusOverlay}>
+                            <div className={styles.firmwareBlockingOverlay}>
                                 <div className={styles.firmwareStatusModal}>
                                     <div className={styles.firmwareStatusIcon}>{'⚠️'}</div>
                                     <p className={styles.firmwareStatusTitle}>{'Firmware desactualizado'}</p>
-                                    <p className={styles.firmwareStatusText}>{'Tu dispositivo necesita una actualización de firmware para funcionar correctamente.'}</p>
+                                    <p className={styles.firmwareStatusText}>{'Tu dispositivo necesita una actualización para funcionar. No puedes continuar hasta actualizar.'}</p>
                                     <ol className={styles.firmwareGuideList}>
                                         <li>{'Mantén presionado el botón '}<strong>{'BOOT'}</strong>{' de tu dispositivo'}</li>
                                         <li>{'Haz clic en '}<strong>{'Actualizar firmware'}</strong>{' sin soltar el botón'}</li>
@@ -664,12 +667,6 @@ class SpriteSelectorComponent extends React.Component {
                                         }}
                                     >
                                         {'Actualizar firmware →'}
-                                    </button>
-                                    <button
-                                        className={styles.firmwareStatusButtonSecondary}
-                                        onClick={() => this.setState({ firmwareStatus: null })}
-                                    >
-                                        {'Ignorar'}
                                     </button>
                                 </div>
                             </div>

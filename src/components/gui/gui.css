@@ -204,26 +204,32 @@
 
 .workspace-controls {
     position: absolute;
-    bottom: 50%;
-    transform: translateY(50%);
-    right: 16px;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.92);
-    border-radius: 12px;
-    padding: 10px 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-    backdrop-filter: blur(6px);
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.93);
+    border-radius: 16px;
+    padding: 10px 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+    backdrop-filter: blur(8px);
 }
 
-/* Agrandar los íconos de bandera y stop dentro del workspace */
+/* Botones grandes y notorios */
+.workspace-controls :global(.controls-container) {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
 .workspace-controls :global(.controls-container) img {
-    width: 3.2rem !important;
-    height: 3.2rem !important;
-    padding: 0.5rem !important;
+    width: 6.5rem !important;
+    height: 6.5rem !important;
+    padding: 1rem !important;
+    border-radius: 12px !important;
 }
 
 .stage-and-target-wrapper {

@@ -149,31 +149,30 @@ class Blocks extends React.Component {
         this._trashOverlay.innerHTML = `<div class="playcode-trash-overlay-inner"><span class="playcode-trash-icon">${trashSVG}</span><span class="playcode-trash-label">Soltar para eliminar</span></div>`;
         document.body.appendChild(this._trashOverlay);
 
+        const showTrash = () => {
+            if (!this._trashOverlay) return;
+            this._trashOverlay.classList.add('playcode-trash-visible');
+        };
         const hideTrash = () => {
             if (!this._trashOverlay) return;
-            this._trashOverlay.style.display = 'none';
-            this._trashOverlay.classList.remove('playcode-trash-ready');
+            this._trashOverlay.classList.remove('playcode-trash-visible', 'playcode-trash-ready');
             if (this._trashHideTimer) { clearTimeout(this._trashHideTimer); this._trashHideTimer = null; }
         };
         this._hideTrash = hideTrash;
 
-        // pointerup es más fiable que mouseup con Blockly (usa pointer events)
+        // pointerup + mouseup: ambos para máxima compatibilidad con Blockly
         document.addEventListener('pointerup', this._hideTrash);
         document.addEventListener('mouseup', this._hideTrash);
 
         // pointermove: detectar si el bloque arrastrado está sobre la zona de borrado
         this._trashMoveHandler = (e) => {
-            if (!this._trashOverlay || this._trashOverlay.style.display === 'none') return;
+            if (!this._trashOverlay || !this._trashOverlay.classList.contains('playcode-trash-visible')) return;
             const flyout = document.querySelector('.blocklyFlyout');
             if (!flyout) return;
             const rect = flyout.getBoundingClientRect();
             const inside = e.clientX >= rect.left && e.clientX <= rect.right &&
                            e.clientY >= rect.top  && e.clientY <= rect.bottom;
-            if (inside) {
-                this._trashOverlay.classList.add('playcode-trash-ready');
-            } else {
-                this._trashOverlay.classList.remove('playcode-trash-ready');
-            }
+            this._trashOverlay.classList.toggle('playcode-trash-ready', inside);
         };
         document.addEventListener('pointermove', this._trashMoveHandler);
 
@@ -184,16 +183,15 @@ class Blocks extends React.Component {
 
             if (isDragging) {
                 const rect = flyout.getBoundingClientRect();
-                this._trashOverlay.style.cssText = `
-                    display: flex;
-                    left: ${rect.left}px;
-                    top: ${rect.top}px;
-                    width: ${rect.width}px;
-                    height: ${rect.height}px;
-                `;
+                // Solo actualizar posición — no tocar opacity/clase para evitar parpadeo
+                this._trashOverlay.style.left   = `${rect.left}px`;
+                this._trashOverlay.style.top    = `${rect.top}px`;
+                this._trashOverlay.style.width  = `${rect.width}px`;
+                this._trashOverlay.style.height = `${rect.height}px`;
+                showTrash();
             } else {
-                // Pequeño delay para que el pointerup siempre gane si llega primero
-                this._trashHideTimer = setTimeout(hideTrash, 80);
+                // Delay mínimo para que pointerup/mouseup gane si llegan a la vez
+                this._trashHideTimer = setTimeout(hideTrash, 60);
             }
         });
         this._dragObserver.observe(document.body, { subtree: true, attributeFilter: ['class'] });
