@@ -604,9 +604,24 @@ export default function (vm, useCatBlocks) {
         SB.Blocks['rgb_matrix'] = {
             init: function () {
                 console.log('[RGB-FIELD] Shadow block rgb_matrix init()');
+                const blockRef = this;
+                const field = new FieldRGBMatrix(DEFAULT_VALUE);
                 this.appendDummyInput()
-                    .appendField(new FieldRGBMatrix(DEFAULT_VALUE), 'RGB_MATRIX');
+                    .appendField(field, 'RGB_MATRIX');
+                this.setOutput(true);
                 this.setOutputShape(SB.OUTPUT_SHAPE_ROUND);
+
+                // Hookear initSvg_ para forzar field.init() cuando el SVG del bloque esté listo.
+                // Blockly no lo llama automáticamente para campos custom en shadow blocks.
+                const originalInitSvg_ = this.initSvg_ ? this.initSvg_.bind(this) : null;
+                this.initSvg_ = function () {
+                    if (originalInitSvg_) originalInitSvg_();
+                    if (!field.fieldGroup_) {
+                        field.sourceBlock_ = blockRef;
+                        field.init();
+                        console.log('[RGB-FIELD] field.init() forzado via initSvg_ hook');
+                    }
+                };
             }
         };
         console.log('[RGB-FIELD] SB.Blocks[rgb_matrix] registrado OK');
