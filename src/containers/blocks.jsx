@@ -183,18 +183,19 @@ class Blocks extends React.Component {
 
             if (isDragging) {
                 const rect = flyout.getBoundingClientRect();
-                // Solo actualizar posición — no tocar opacity/clase para evitar parpadeo
                 this._trashOverlay.style.left   = `${rect.left}px`;
                 this._trashOverlay.style.top    = `${rect.top}px`;
                 this._trashOverlay.style.width  = `${rect.width}px`;
                 this._trashOverlay.style.height = `${rect.height}px`;
                 showTrash();
             } else {
-                // Delay mínimo para que pointerup/mouseup gane si llegan a la vez
                 this._trashHideTimer = setTimeout(hideTrash, 60);
             }
         });
-        this._dragObserver.observe(document.body, { subtree: true, attributeFilter: ['class'] });
+        // Observar solo el SVG de Blockly, no todo el body — subtree:true en body dispara
+        // el observer cientos de veces por segundo y congela la UI
+        const blocklyTarget = this.workspace.svgGroup_ || document.querySelector('.blocklyWorkspace') || document.body;
+        this._dragObserver.observe(blocklyTarget, { subtree: true, attributeFilter: ['class'] });
 
         // Listen for custom toolbox refresh requests (e.g., from DevicePanel)
         window.addEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
