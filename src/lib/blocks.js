@@ -466,11 +466,18 @@ export default function (vm, useCatBlocks) {
             return this.value_ || DEFAULT_VALUE;
         };
 
-        // setValue simplificado: no llama al padre para evitar render() en cascada
         FieldRGBMatrix.prototype.setValue = function (newValue) {
             if (!newValue || newValue === this.value_) return;
+            const oldValue = this.value_;
             this.value_ = newValue;
             this.updateDisplay_();
+            // Disparar BlockChange para que scratch-vm actualice su representación interna
+            if (this.sourceBlock_ && SB.Events &&
+                typeof SB.Events.isEnabled === 'function' && SB.Events.isEnabled()) {
+                SB.Events.fire(new SB.Events.BlockChange(
+                    this.sourceBlock_, 'field', this.name, oldValue, newValue
+                ));
+            }
         };
 
         FieldRGBMatrix.prototype.getText = function () { return ''; };
@@ -497,11 +504,29 @@ export default function (vm, useCatBlocks) {
                 'border:1px solid #444',
                 'border-radius:10px',
                 'box-shadow:0 6px 24px rgba(0,0,0,0.6)',
-                'padding:12px 16px 14px',
+                'padding:10px 14px 14px',
                 'display:flex',
-                'gap:14px',
-                'align-items:flex-start'
+                'flex-direction:column',
+                'gap:10px'
             ].join(';');
+
+            // Fila superior: título + botón cerrar
+            const header = document.createElement('div');
+            header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
+            const title = document.createElement('span');
+            title.textContent = 'LEDs RGB';
+            title.style.cssText = 'font-size:11px;color:#aaa;font-family:sans-serif;font-weight:600;letter-spacing:0.5px;';
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            closeBtn.style.cssText = 'background:none;border:none;color:#888;font-size:14px;cursor:pointer;padding:0 2px;line-height:1;';
+            closeBtn.addEventListener('mousedown', e => { e.stopPropagation(); popup.remove(); });
+            header.appendChild(title);
+            header.appendChild(closeBtn);
+            popup.appendChild(header);
+
+            // Fila de LEDs
+            const ledsRow = document.createElement('div');
+            ledsRow.style.cssText = 'display:flex;gap:14px;align-items:flex-start;';
 
             // Posicionar bajo el campo
             let x = 200;
@@ -579,19 +604,32 @@ export default function (vm, useCatBlocks) {
                 col.appendChild(colorIn);
                 col.appendChild(offBtn);
                 col.appendChild(lbl);
-                popup.appendChild(col);
+                ledsRow.appendChild(col);
             }
 
+            popup.appendChild(ledsRow);
             document.body.appendChild(popup);
 
-            // Cerrar al hacer click fuera
-            const closeHandler = e => {
-                if (!popup.contains(e.target)) {
+            // Cerrar con Escape
+            const keyHandler = e => {
+                if (e.key === 'Escape') {
                     popup.remove();
-                    document.removeEventListener('mousedown', closeHandler);
+                    document.removeEventListener('keydown', keyHandler);
+                    document.removeEventListener('mousedown', clickHandler);
                 }
             };
-            setTimeout(() => document.addEventListener('mousedown', closeHandler), 100);
+            // Cerrar al hacer click fuera (con delay para ignorar el click que abrió el popup)
+            const clickHandler = e => {
+                if (!popup.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('mousedown', clickHandler);
+                    document.removeEventListener('keydown', keyHandler);
+                }
+            };
+            setTimeout(() => {
+                document.addEventListener('mousedown', clickHandler);
+                document.addEventListener('keydown', keyHandler);
+            }, 150);
         };
 
         if (SB.Field && SB.Field.register) {
