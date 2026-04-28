@@ -11,6 +11,7 @@ import VM from 'scratch-vm';
 import Renderer from 'scratch-render';
 
 import Blocks from '../../containers/blocks.jsx';
+import Controls from '../../containers/controls.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
@@ -133,6 +134,15 @@ const GUIComponent = props => {
         vm,
         ...componentProps
     } = omit(props, 'dispatch');
+    // Auto-switch to Code tab when switching to a device target,
+    // because Costumes/Sounds tabs are hidden for device targets and
+    // react-tabs would render a blank panel if left on those indices.
+    React.useEffect(() => {
+        if (editingTargetIsDevice && activeTabIndex !== 0) {
+            onActivateTab(0);
+        }
+    }, [editingTargetIsDevice]); // eslint-disable-line react-hooks/exhaustive-deps
+
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
     }
@@ -355,6 +365,9 @@ const GUIComponent = props => {
                                                     theme={theme}
                                                     vm={vm}
                                                 />
+                                                <div className={styles.workspaceControls}>
+                                                    <Controls vm={vm} />
+                                                </div>
                                             </Box>
                                             {/* <Box className={styles.extensionButtonContainer}>
                                                 <button

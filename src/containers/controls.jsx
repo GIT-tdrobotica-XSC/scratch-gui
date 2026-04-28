@@ -5,14 +5,31 @@ import VM from 'scratch-vm';
 import {connect} from 'react-redux';
 
 import ControlsComponent from '../components/controls/controls.jsx';
+import {setRunningState} from '../reducers/vm-status';
 
 class Controls extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
             'handleGreenFlagClick',
-            'handleStopAllClick'
+            'handleStopAllClick',
+            'handleRunStop'
         ]);
+        this.state = { localRunning: false };
+    }
+    componentDidMount () {
+        if (this.props.vm) {
+            this.props.vm.on('PROJECT_RUN_STOP', this.handleRunStop);
+        }
+    }
+    componentWillUnmount () {
+        if (this.props.vm) {
+            this.props.vm.removeListener('PROJECT_RUN_STOP', this.handleRunStop);
+        }
+    }
+    // Safety net: if Redux state gets stuck, force-reset via direct VM event
+    handleRunStop () {
+        this.props.onSetRunning(false);
     }
     handleGreenFlagClick (e) {
         e.preventDefault();
@@ -28,11 +45,14 @@ class Controls extends React.Component {
     handleStopAllClick (e) {
         e.preventDefault();
         this.props.vm.stopAll();
+        // Safety net: force-reset running state after short delay
+        setTimeout(() => this.props.onSetRunning(false), 150);
     }
     render () {
         const {
             vm, // eslint-disable-line no-unused-vars
             isStarted, // eslint-disable-line no-unused-vars
+            onSetRunning, // eslint-disable-line no-unused-vars
             projectRunning,
             turbo,
             ...props
@@ -51,6 +71,7 @@ class Controls extends React.Component {
 
 Controls.propTypes = {
     isStarted: PropTypes.bool.isRequired,
+    onSetRunning: PropTypes.func.isRequired,
     projectRunning: PropTypes.bool.isRequired,
     turbo: PropTypes.bool.isRequired,
     vm: PropTypes.instanceOf(VM)
@@ -61,7 +82,9 @@ const mapStateToProps = state => ({
     projectRunning: state.scratchGui.vmStatus.running,
     turbo: state.scratchGui.vmStatus.turbo
 });
-// no-op function to prevent dispatch prop being passed to component
-const mapDispatchToProps = () => ({});
+
+const mapDispatchToProps = dispatch => ({
+    onSetRunning: running => dispatch(setRunningState(running))
+});
 
 export default connect(mapStateToProps, mapDispatchToProps)(Controls);

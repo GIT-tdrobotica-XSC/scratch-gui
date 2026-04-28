@@ -139,16 +139,25 @@ class Blocks extends React.Component {
         addFunctionListener(this.workspace, 'translate', this.onWorkspaceMetricsChange);
         addFunctionListener(this.workspace, 'zoom', this.onWorkspaceMetricsChange);
 
-        // Overlay de papelera al arrastrar bloques
+        // Overlay de papelera al arrastrar bloques (icono SVG 2D plano)
+        const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>`;
         this._trashOverlay = document.createElement('div');
         this._trashOverlay.className = 'playcode-trash-overlay';
-        this._trashOverlay.innerHTML = '<div class="playcode-trash-overlay-inner"><span class="playcode-trash-icon">🗑️</span><span class="playcode-trash-label">Soltar para eliminar</span></div>';
+        this._trashOverlay.innerHTML = `<div class="playcode-trash-overlay-inner"><span class="playcode-trash-icon">${trashSVG}</span><span class="playcode-trash-label">Soltar para eliminar</span></div>`;
         document.body.appendChild(this._trashOverlay);
+
+        const hideTrash = () => { if (this._trashOverlay) this._trashOverlay.style.display = 'none'; };
+        this._hideTrash = hideTrash;
+        // mouseup como respaldo para cuando el MutationObserver se queda pegado
+        document.addEventListener('mouseup', this._hideTrash);
 
         this._dragObserver = new MutationObserver(() => {
             const isDragging = !!document.querySelector('.blocklyDragging');
             const flyout = document.querySelector('.blocklyFlyout');
-            if (!flyout) return;
+            if (!flyout) { hideTrash(); return; }
 
             if (isDragging) {
                 const rect = flyout.getBoundingClientRect();
@@ -160,7 +169,7 @@ class Blocks extends React.Component {
                     height: ${rect.height}px;
                 `;
             } else {
-                this._trashOverlay.style.display = 'none';
+                hideTrash();
             }
         });
         this._dragObserver.observe(document.body, { subtree: true, attributeFilter: ['class'] });
@@ -232,6 +241,7 @@ class Blocks extends React.Component {
     }
     componentWillUnmount() {
         if (this._dragObserver) this._dragObserver.disconnect();
+        if (this._hideTrash) document.removeEventListener('mouseup', this._hideTrash);
         if (this._trashOverlay && this._trashOverlay.parentNode) {
             this._trashOverlay.parentNode.removeChild(this._trashOverlay);
         }
