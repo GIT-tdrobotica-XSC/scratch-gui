@@ -357,13 +357,13 @@ export default function (vm, useCatBlocks) {
 
     // ===== Campo RGB Matrix: widget visual para 3 LEDs =====
     (function registerFieldRGBMatrix (SB) {
+        console.log('[RGB-FIELD] Registrando FieldRGBMatrix. SB.Field=', typeof SB.Field);
         const DEFAULT_VALUE = JSON.stringify([{r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}]);
         const FIELD_W = 80;
         const FIELD_H = 26;
 
         function FieldRGBMatrix (value) {
-            // Llamar padre sin pasar el valor para evitar que setText llame render_
-            // antes de que nuestra init esté lista
+            console.log('[RGB-FIELD] Constructor llamado, value=', value ? value.slice(0, 30) : value);
             SB.Field.call(this, null);
             this.value_ = value || DEFAULT_VALUE;
         }
@@ -383,10 +383,9 @@ export default function (vm, useCatBlocks) {
         };
 
         FieldRGBMatrix.prototype.init = function () {
+            console.log('[RGB-FIELD] init() llamado. sourceBlock_=', !!this.sourceBlock_, 'fieldGroup_=', !!this.fieldGroup_);
             if (this.fieldGroup_) return;
 
-            // Crear el grupo SVG manualmente en vez de llamar al padre,
-            // para evitar que setText/render_ se llamen con valores incorrectos
             const svgNS = 'http://www.w3.org/2000/svg';
             this.fieldGroup_ = document.createElementNS(svgNS, 'g');
             this.fieldGroup_.setAttribute('class', 'blocklyEditableText');
@@ -430,10 +429,14 @@ export default function (vm, useCatBlocks) {
             // Añadir al bloque
             if (this.sourceBlock_ && this.sourceBlock_.getSvgRoot) {
                 this.sourceBlock_.getSvgRoot().appendChild(this.fieldGroup_);
+                console.log('[RGB-FIELD] fieldGroup_ añadido al SVG root del bloque');
+            } else {
+                console.warn('[RGB-FIELD] No se pudo añadir fieldGroup_ — sourceBlock_ o getSvgRoot no disponible');
             }
 
             // Listener en fase de CAPTURA: se ejecuta antes que cualquier handler de Blockly
             this.fieldGroup_.addEventListener('mousedown', (e) => {
+                console.log('[RGB-FIELD] CLICK capturado en fieldGroup_!');
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 this.showEditor_();
@@ -443,6 +446,7 @@ export default function (vm, useCatBlocks) {
             if (this.sourceBlock_ && this.sourceBlock_.rendered) {
                 this.sourceBlock_.render();
             }
+            console.log('[RGB-FIELD] init() completado OK');
         };
 
         FieldRGBMatrix.prototype.updateDisplay_ = function () {
@@ -477,7 +481,7 @@ export default function (vm, useCatBlocks) {
         };
 
         FieldRGBMatrix.prototype.showEditor_ = function () {
-            // Cerrar popup previo si existe
+            console.log('[RGB-FIELD] showEditor_() llamado');
             const prev = document.getElementById('playcode-rgb-popup');
             if (prev) prev.remove();
 
@@ -590,15 +594,22 @@ export default function (vm, useCatBlocks) {
             setTimeout(() => document.addEventListener('mousedown', closeHandler), 100);
         };
 
-        SB.Field.register('field_rgb_matrix', FieldRGBMatrix);
+        if (SB.Field && SB.Field.register) {
+            SB.Field.register('field_rgb_matrix', FieldRGBMatrix);
+            console.log('[RGB-FIELD] field_rgb_matrix registrado OK');
+        } else {
+            console.error('[RGB-FIELD] SB.Field.register no disponible:', SB.Field);
+        }
 
         SB.Blocks['rgb_matrix'] = {
             init: function () {
+                console.log('[RGB-FIELD] Shadow block rgb_matrix init()');
                 this.appendDummyInput()
                     .appendField(new FieldRGBMatrix(DEFAULT_VALUE), 'RGB_MATRIX');
                 this.setOutputShape(SB.OUTPUT_SHAPE_ROUND);
             }
         };
+        console.log('[RGB-FIELD] SB.Blocks[rgb_matrix] registrado OK');
     }(ScratchBlocks));
 
     return ScratchBlocks;
