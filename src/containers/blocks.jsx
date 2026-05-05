@@ -205,63 +205,89 @@ class Blocks extends React.Component {
         document.addEventListener('pointerup', this._hideTrash);
         document.addEventListener('pointermove', this._trashMoveHandler);
 
-        // ── Conflicto DIO: helpers basados en VM (no en Blockly API) ──────────────
+        // ── Conflicto DIO ─────────────────────────────────────────────────────────
+        // Los 3 pines DIO compartidos entre entradas y salidas digitales
         const DIO_PINS = ['2', '5', '23'];
-        const vm = this.props.vm;
+        let _dioGuard = false;
 
-        // Lee el pin DIO desde la VM (funciona con acceptReporters:true y false)
-        const getVMPin = (blockId) => {
-            for (const target of vm.runtime.targets) {
-                const block = target.blocks._blocks[blockId];
-                if (!block) continue;
-                const op = block.opcode || '';
-
+        // Lee el pin DIO de un bloque directo desde la API del workspace Blockly.
+        // Más confiable que leer desde VM porque no hay problemas de timing.
+        const getWSBlockPin = (blockId) => {
+            const block = this.workspace.getBlockById(blockId);
+            if (!block) return null;
+            const op = block.type || '';
+            if (op === 'playiot_digitalRead') {
                 // acceptReporters:false → campo directo en el bloque
-                if (op.endsWith('_digitalRead')) {
-                    const val = block.fields && block.fields.PIN && String(block.fields.PIN.value);
-                    return DIO_PINS.includes(val) ? val : null;
-                }
-
-                // acceptReporters:true → valor en el shadow block del input
-                if (op.endsWith('_digitalWrite') || op.endsWith('_ledBlink')) {
-                    const argName = op.endsWith('_ledBlink') ? 'LED' : 'PIN';
-                    const input   = block.inputs && block.inputs[argName];
-                    const shadowId = input && (input.shadow || input.block);
-                    const shadow   = shadowId && target.blocks._blocks[shadowId];
-                    if (!shadow || !shadow.fields) continue;
-                    // El campo del shadow se llama igual que el menú ('digitalPins')
-                    const field = shadow.fields.digitalPins ||
-                                  shadow.fields.leds ||
-                                  Object.values(shadow.fields)[0];
-                    const val = field && String(field.value);
-                    return DIO_PINS.includes(val) ? val : null;
-                }
+                const field = block.getField('PIN');
+                if (!field) return null;
+                const val = String(field.getValue());
+                return DIO_PINS.includes(val) ? val : null;
+            }
+            if (op === 'playiot_digitalWrite') {
+                // acceptReporters:true → shadow block con campo 'digitalPins'
+                const shadow = block.getInputTargetBlock('PIN');
+                if (!shadow) return null;
+                const field = shadow.getField('digitalPins');
+                if (!field) return null;
+                const val = String(field.getValue());
+                return DIO_PINS.includes(val) ? val : null;
+            }
+            if (op === 'playiot_ledBlink') {
+                // acceptReporters:true → shadow block con campo 'digitalPins' (argumento 'LED')
+                const shadow = block.getInputTargetBlock('LED');
+                if (!shadow) return null;
+                const field = shadow.getField('digitalPins');
+                if (!field) return null;
+                const val = String(field.getValue());
+                return DIO_PINS.includes(val) ? val : null;
             }
             return null;
         };
 
-        const isVMInput  = id => vm.runtime.targets.some(t => {
-            const b = t.blocks._blocks[id];
-            return b && (b.opcode || '').endsWith('_digitalRead');
-        });
-        const isVMOutput = id => vm.runtime.targets.some(t => {
-            const b = t.blocks._blocks[id];
-            return b && ((b.opcode || '').endsWith('_digitalWrite') || (b.opcode || '').endsWith('_ledBlink'));
-        });
-
-        // Devuelve {inputBlocks, outputBlocks} indexados por pin, excluyendo excludeId
-        const scanVMBlocks = (excludeId = null) => {
-            const inputBlocks = {}, outputBlocks = {};
-            for (const target of vm.runtime.targets) {
-                for (const [id, block] of Object.entries(target.blocks._blocks)) {
-                    if (id === excludeId || !block || !block.opcode) continue;
-                    const pin = getVMPin(id);
-                    if (!pin) continue;
-                    if (isVMInput(id))  (inputBlocks[pin]  = inputBlocks[pin]  || []).push(id);
-                    if (isVMOutput(id)) (outputBlocks[pin] = outputBlocks[pin] || []).push(id);
-                }
+        // Devuelve { pin: [blockId, ...] } para todos los bloques DIO del workspace
+        const getDIOUsage = (excludeId = null) => {
+            const usage = {};
+            const allBlocks = this.workspace.getAllBlocks();
+            for (const block of allBlocks) {
+                if (block.id === excludeId) continue;
+                if (block.isShadow && block.isShadow()) continue;
+                const op = block.type || '';
+                if (op !== 'playiot_digitalRead' && op !== 'playiot_digitalWrite' && op !== 'playiot_ledBlink') continue;
+                const pin = getWSBlockPin(block.id);
+                if (!pin) continue;
+                (usage[pin] = usage[pin] || []).push(block.id);
             }
-            return {inputBlocks, outputBlocks};
+            return usage;
+        };
+
+        // Cambia el pin de un bloque usando la API Blockly exacta por opcode
+        const setBlockPin = (blockId, newPin) => {
+            const block = this.workspace.getBlockById(blockId);
+            if (!block) return false;
+            const op = block.type || '';
+            if (op === 'playiot_digitalRead') {
+                const field = block.getField('PIN');
+                if (!field) return false;
+                field.setValue(newPin);
+                return true;
+            }
+            if (op === 'playiot_digitalWrite') {
+                const shadow = block.getInputTargetBlock('PIN');
+                if (!shadow) return false;
+                const field = shadow.getField('digitalPins');
+                if (!field) return false;
+                field.setValue(newPin);
+                return true;
+            }
+            if (op === 'playiot_ledBlink') {
+                const shadow = block.getInputTargetBlock('LED');
+                if (!shadow) return false;
+                const field = shadow.getField('digitalPins');
+                if (!field) return false;
+                field.setValue(newPin);
+                return true;
+            }
+            return false;
         };
 
         const showDIOToast = (msg, isError = false) => {
@@ -279,80 +305,67 @@ class Blocks extends React.Component {
             }, 2800);
         };
 
-        // Cambia el pin en el shadow block del workspace (para acceptReporters:true)
-        const setWSBlockPin = (wsBlock, newPin) => {
-            if (!wsBlock) return;
-            const type = wsBlock.type || '';
-            const argName = type.endsWith('_ledBlink') ? 'LED' : 'PIN';
-            // Intento 1: shadow block (acceptReporters:true)
-            const shadow = wsBlock.getInputTargetBlock && wsBlock.getInputTargetBlock(argName);
-            if (shadow) {
-                // El campo del shadow puede llamarse igual que el menú
-                ['digitalPins', 'leds', argName].forEach(fn => {
-                    try { shadow.setFieldValue(newPin, fn); } catch (e) { /* noop */ }
-                });
-                return;
+        // Actualiza triángulos de advertencia en todos los bloques DIO.
+        // Solo llamado en eventos 'field' change y 'delete' para evitar loops.
+        const updateDIOWarnings = () => {
+            const usage = getDIOUsage();
+            const allBlocks = this.workspace.getAllBlocks();
+            for (const block of allBlocks) {
+                if (block.isShadow && block.isShadow()) continue;
+                const op = block.type || '';
+                if (op !== 'playiot_digitalRead' && op !== 'playiot_digitalWrite' && op !== 'playiot_ledBlink') continue;
+                const pin = getWSBlockPin(block.id);
+                if (!pin) { block.setWarningText(null); continue; }
+                const ids = usage[pin] || [];
+                block.setWarningText(ids.length > 1 ? `⚠️ DIO${pin} ya está en uso` : null);
             }
-            // Intento 2: campo directo (acceptReporters:false)
-            try { wsBlock.setFieldValue(newPin, argName); } catch (e) { /* noop */ }
         };
 
-        // Listener principal
         this._dioConflictListener = (event) => {
             if (event.type === 'create') {
-                // Esperar un tick para que la VM registre el bloque nuevo
+                if (_dioGuard) return;
                 setTimeout(() => {
+                    if (_dioGuard) return;
                     const newId = event.blockId;
-                    const pin = getVMPin(newId);
+                    const block = this.workspace.getBlockById(newId);
+                    if (!block) return;
+                    if (block.isShadow && block.isShadow()) return;
+                    const op = block.type || '';
+                    if (op !== 'playiot_digitalRead' && op !== 'playiot_digitalWrite' && op !== 'playiot_ledBlink') return;
+                    const pin = getWSBlockPin(newId);
                     if (!pin) return;
-
-                    const isIn  = isVMInput(newId);
-                    const isOut = isVMOutput(newId);
-                    if (!isIn && !isOut) return;
-
-                    const {inputBlocks, outputBlocks} = scanVMBlocks(newId);
-
-                    const hasConflict = isIn
-                        ? (outputBlocks[pin] || []).length > 0
-                        : (inputBlocks[pin]  || []).length > 0;
-
-                    if (!hasConflict) return;
-
-                    // Buscar pin libre
-                    const freePin = DIO_PINS.find(p => {
-                        if (p === pin) return false;
-                        return isIn
-                            ? !(outputBlocks[p] || []).length
-                            : !(inputBlocks[p]  || []).length;
-                    });
-
-                    const wsBlock = this.workspace.getBlockById(newId);
-                    if (freePin) {
-                        setWSBlockPin(wsBlock, freePin);
-                        showDIOToast(`🔄 &nbsp;Pin cambiado a <b>DIO${freePin}</b> para evitar conflicto con DIO${pin}`);
-                    } else if (wsBlock) {
-                        const svg = wsBlock.getSvgRoot && wsBlock.getSvgRoot();
-                        if (svg) svg.classList.add('playcode-block-rejected');
-                        showDIOToast(`⛔ &nbsp;Todos los pines DIO están en conflicto`, true);
-                        setTimeout(() => {
-                            if (this.workspace.getBlockById(newId)) wsBlock.dispose(false);
-                        }, 380);
+                    const usage = getDIOUsage(newId);
+                    if (!(usage[pin] || []).length) return; // sin conflicto
+                    const freePin = DIO_PINS.find(p => !(usage[p] || []).length);
+                    _dioGuard = true;
+                    try {
+                        if (freePin) {
+                            setBlockPin(newId, freePin);
+                            showDIOToast(`🔄 &nbsp;Pin cambiado a <b>DIO${freePin}</b> — DIO${pin} ya está en uso`);
+                        } else {
+                            const svg = block.getSvgRoot && block.getSvgRoot();
+                            if (svg) svg.classList.add('playcode-block-rejected');
+                            showDIOToast(`⛔ &nbsp;Todos los pines DIO (2, 5, 23) están en uso`, true);
+                            setTimeout(() => {
+                                if (this.workspace.getBlockById(newId)) {
+                                    this.workspace.getBlockById(newId).dispose(false);
+                                }
+                            }, 380);
+                        }
+                    } finally {
+                        setTimeout(() => { _dioGuard = false; }, 50);
                     }
-                }, 50);
+                }, 60);
                 return;
             }
-
-            // Para cualquier otro cambio: actualizar triángulos de advertencia
-            const {inputBlocks, outputBlocks} = scanVMBlocks();
-            DIO_PINS.forEach(pin => {
-                const conflict = (inputBlocks[pin] || []).length > 0 && (outputBlocks[pin] || []).length > 0;
-                const msg = conflict ? `⚠️ DIO${pin}: no mezcles entrada y salida` : null;
-                [...(inputBlocks[pin]  || []),
-                 ...(outputBlocks[pin] || [])].forEach(id => {
-                    const wsBlock = this.workspace.getBlockById(id);
-                    if (wsBlock) wsBlock.setWarningText(msg);
-                });
-            });
+            if (_dioGuard) return;
+            // Solo actualizar warnings en cambios de campo (usuario cambia pin manualmente)
+            // y en borrados. Evitar eventos 'warningText' para no crear loops.
+            if (event.type === 'change' && event.element === 'field') {
+                updateDIOWarnings();
+            } else if (event.type === 'delete') {
+                updateDIOWarnings();
+            }
         };
         this.workspace.addChangeListener(this._dioConflictListener);
 
