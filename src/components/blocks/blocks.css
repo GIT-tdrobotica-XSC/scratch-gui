@@ -186,3 +186,48 @@
     from { transform: translateY(0)   scale(1);    }
     to   { transform: translateY(-5px) scale(1.08); }
 }
+
+/* Animación de rechazo de bloque DIO conflictivo */
+:global(.playcode-block-rejected) {
+    animation: dioBlockReject 0.38s ease forwards;
+    pointer-events: none;
+}
+
+@keyframes dioBlockReject {
+    0%   { transform: translateX(0px);  opacity: 1;   }
+    20%  { transform: translateX(-10px); opacity: 1;  }
+    40%  { transform: translateX(10px);  opacity: 0.8;}
+    60%  { transform: translateX(-7px);  opacity: 0.5;}
+    80%  { transform: translateX(5px);   opacity: 0.2;}
+    100% { transform: translateX(0px);  opacity: 0;   }
+}
+
+/* Toast de conflicto DIO */
+:global(.playcode-dio-conflict-toast) {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: #2980b9;
+    color: white;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 99999;
+    white-space: nowrap;
+}
+
+:global(.playcode-dio-conflict-toast.playcode-dio-toast-error) {
+    background: #c0392b;
+}
+
+:global(.playcode-dio-conflict-toast.playcode-dio-toast-show) {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}

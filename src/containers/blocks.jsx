@@ -205,6 +205,95 @@ class Blocks extends React.Component {
         document.addEventListener('pointerup', this._hideTrash);
         document.addEventListener('pointermove', this._trashMoveHandler);
 
+        // Helpers de conflicto DIO
+        const DIO_PINS = ['2', '5', '23'];
+
+        const getDIOPin = (block) => {
+            const type = block.type || '';
+            if (type.endsWith('_digitalRead'))  return String(block.getFieldValue('PIN') || '');
+            if (type.endsWith('_digitalWrite')) return String(block.getFieldValue('PIN') || '');
+            if (type.endsWith('_ledBlink'))     return String(block.getFieldValue('LED') || '');
+            return null;
+        };
+
+        const isInputBlock  = b => (b.type || '').endsWith('_digitalRead');
+        const isOutputBlock = b => (b.type || '').endsWith('_digitalWrite') || (b.type || '').endsWith('_ledBlink');
+
+        const showDIOToast = (msg, isError = false) => {
+            const prev = document.getElementById('playcode-dio-toast');
+            if (prev) prev.remove();
+            const toast = document.createElement('div');
+            toast.id = 'playcode-dio-toast';
+            toast.className = `playcode-dio-conflict-toast${isError ? ' playcode-dio-toast-error' : ''}`;
+            toast.innerHTML = msg;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('playcode-dio-toast-show'));
+            setTimeout(() => {
+                toast.classList.remove('playcode-dio-toast-show');
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        };
+
+        const rejectBlock = (block, pin) => {
+            const svg = block.getSvgRoot && block.getSvgRoot();
+            if (svg) svg.classList.add('playcode-block-rejected');
+            showDIOToast(`⛔ &nbsp;Todos los pines DIO están ocupados en conflicto`, true);
+            setTimeout(() => {
+                if (this.workspace.getBlockById(block.id)) block.dispose(false);
+            }, 380);
+        };
+
+        const conflictsOnPin = (block, pin, others) =>
+            (isInputBlock(block)  && others.some(b => isOutputBlock(b) && getDIOPin(b) === pin)) ||
+            (isOutputBlock(block) && others.some(b => isInputBlock(b)  && getDIOPin(b) === pin));
+
+        // Listener principal
+        this._dioConflictListener = (event) => {
+            // Al crear un bloque: auto-asignar pin libre o rechazar
+            if (event.type === 'create') {
+                const newBlock = this.workspace.getBlockById(event.blockId);
+                if (!newBlock) return;
+                const pin = getDIOPin(newBlock);
+                if (!pin || !DIO_PINS.includes(pin)) return;
+
+                const others = this.workspace.getAllBlocks(false).filter(b => b.id !== newBlock.id);
+                if (!conflictsOnPin(newBlock, pin, others)) return;
+
+                // Buscar el primer pin DIO que no genere conflicto
+                const freePin = DIO_PINS.find(p => p !== pin && !conflictsOnPin(newBlock, p, others));
+
+                setTimeout(() => {
+                    const b = this.workspace.getBlockById(event.blockId);
+                    if (!b) return;
+                    if (freePin) {
+                        const fieldName = b.type.endsWith('_ledBlink') ? 'LED' : 'PIN';
+                        b.setFieldValue(freePin, fieldName);
+                        showDIOToast(`🔄 &nbsp;Pin cambiado a <b>DIO${freePin}</b> para evitar conflicto con DIO${pin}`);
+                    } else {
+                        rejectBlock(b, pin);
+                    }
+                }, 0);
+                return;
+            }
+
+            // Siempre: actualizar triángulos de advertencia (cambios de dropdown, etc.)
+            const inputBlocks  = {};
+            const outputBlocks = {};
+            this.workspace.getAllBlocks(false).forEach(block => {
+                const pin = getDIOPin(block);
+                if (!pin || !DIO_PINS.includes(pin)) return;
+                if (isInputBlock(block))  (inputBlocks[pin]  = inputBlocks[pin]  || []).push(block);
+                if (isOutputBlock(block)) (outputBlocks[pin] = outputBlocks[pin] || []).push(block);
+            });
+            DIO_PINS.forEach(pin => {
+                const conflict = inputBlocks[pin] && outputBlocks[pin];
+                const msg = conflict ? `⚠️ DIO${pin}: no mezcles entrada y salida` : null;
+                (inputBlocks[pin]  || []).forEach(b => b.setWarningText(msg));
+                (outputBlocks[pin] || []).forEach(b => b.setWarningText(msg));
+            });
+        };
+        this.workspace.addChangeListener(this._dioConflictListener);
+
         // Listen for custom toolbox refresh requests (e.g., from DevicePanel)
         window.addEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
         // Reset workspace scroll when switching tabs
@@ -271,6 +360,7 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount() {
+        if (this._dioConflictListener) this.workspace.removeChangeListener(this._dioConflictListener);
         if (this._trashPointerDown) document.removeEventListener('pointerdown', this._trashPointerDown);
         if (this._hideTrash) document.removeEventListener('pointerup', this._hideTrash);
         if (this._trashMoveHandler) document.removeEventListener('pointermove', this._trashMoveHandler);
