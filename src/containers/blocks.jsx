@@ -160,11 +160,37 @@ class Blocks extends React.Component {
         };
         this._hideTrash = hideTrash;
 
-        // pointerup + mouseup: ambos para máxima compatibilidad con Blockly
-        document.addEventListener('pointerup', this._hideTrash);
-        document.addEventListener('mouseup', this._hideTrash);
+        // Detectar drag usando pointerdown → polling liviano → pointerup
+        // Sin MutationObserver (dispara demasiado en Blockly y congela la UI)
+        this._trashDragPoll = null;
 
-        // pointermove: detectar si el bloque arrastrado está sobre la zona de borrado
+        this._trashPointerDown = () => {
+            // Esperar a que Blockly registre el drag (añade .blocklyDragging al SVG)
+            let attempts = 0;
+            const check = () => {
+                if (!document.querySelector('.blocklyDragging')) {
+                    if (++attempts < 10) this._trashDragPoll = setTimeout(check, 80);
+                    return;
+                }
+                // Hay un drag activo — posicionar y mostrar overlay
+                const flyout = document.querySelector('.blocklyFlyout');
+                if (!flyout) return;
+                const rect = flyout.getBoundingClientRect();
+                this._trashOverlay.style.left   = `${rect.left}px`;
+                this._trashOverlay.style.top    = `${rect.top}px`;
+                this._trashOverlay.style.width  = `${rect.width}px`;
+                this._trashOverlay.style.height = `${rect.height}px`;
+                showTrash();
+            };
+            this._trashDragPoll = setTimeout(check, 80);
+        };
+
+        this._hideTrash = () => {
+            if (this._trashDragPoll) { clearTimeout(this._trashDragPoll); this._trashDragPoll = null; }
+            hideTrash();
+        };
+
+        // pointermove: zona de papelera (flyout) — solo activo durante drag visible
         this._trashMoveHandler = (e) => {
             if (!this._trashOverlay || !this._trashOverlay.classList.contains('playcode-trash-visible')) return;
             const flyout = document.querySelector('.blocklyFlyout');
@@ -174,28 +200,10 @@ class Blocks extends React.Component {
                            e.clientY >= rect.top  && e.clientY <= rect.bottom;
             this._trashOverlay.classList.toggle('playcode-trash-ready', inside);
         };
+
+        document.addEventListener('pointerdown', this._trashPointerDown);
+        document.addEventListener('pointerup', this._hideTrash);
         document.addEventListener('pointermove', this._trashMoveHandler);
-
-        this._dragObserver = new MutationObserver(() => {
-            const isDragging = !!document.querySelector('.blocklyDragging');
-            const flyout = document.querySelector('.blocklyFlyout');
-            if (!flyout) { hideTrash(); return; }
-
-            if (isDragging) {
-                const rect = flyout.getBoundingClientRect();
-                this._trashOverlay.style.left   = `${rect.left}px`;
-                this._trashOverlay.style.top    = `${rect.top}px`;
-                this._trashOverlay.style.width  = `${rect.width}px`;
-                this._trashOverlay.style.height = `${rect.height}px`;
-                showTrash();
-            } else {
-                this._trashHideTimer = setTimeout(hideTrash, 60);
-            }
-        });
-        // Observar solo el SVG de Blockly, no todo el body — subtree:true en body dispara
-        // el observer cientos de veces por segundo y congela la UI
-        const blocklyTarget = this.workspace.svgGroup_ || document.querySelector('.blocklyWorkspace') || document.body;
-        this._dragObserver.observe(blocklyTarget, { subtree: true, attributeFilter: ['class'] });
 
         // Listen for custom toolbox refresh requests (e.g., from DevicePanel)
         window.addEventListener('scratch_toolbox_refresh_requested', this.handleRefreshToolboxRequest);
@@ -263,12 +271,10 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount() {
-        if (this._dragObserver) this._dragObserver.disconnect();
-        if (this._hideTrash) {
-            document.removeEventListener('mouseup', this._hideTrash);
-            document.removeEventListener('pointerup', this._hideTrash);
-        }
+        if (this._trashPointerDown) document.removeEventListener('pointerdown', this._trashPointerDown);
+        if (this._hideTrash) document.removeEventListener('pointerup', this._hideTrash);
         if (this._trashMoveHandler) document.removeEventListener('pointermove', this._trashMoveHandler);
+        if (this._trashDragPoll) clearTimeout(this._trashDragPoll);
         if (this._trashHideTimer) clearTimeout(this._trashHideTimer);
         if (this._trashOverlay && this._trashOverlay.parentNode) {
             this._trashOverlay.parentNode.removeChild(this._trashOverlay);
