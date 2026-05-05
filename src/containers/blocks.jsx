@@ -207,52 +207,46 @@ class Blocks extends React.Component {
 
         // ── Conflicto DIO ─────────────────────────────────────────────────────────
         const DIO_PINS = ['2', '5', '23'];
+        const DIO_OPS = ['playiot_digitalRead', 'playiot_digitalWrite', 'playiot_ledBlink'];
         let _dioGuard = false;
 
-        // Encuentra el campo dropdown dentro de un shadow block.
-        // El nombre del campo puede ser el nombre del menú ('digitalPins') O el
-        // nombre del argumento ('PIN','LED') según la versión de Scratch-Blocks.
-        // Intenta ambos y cae al primer dropdown encontrado como fallback.
-        const getShadowPinField = (shadow) => {
-            if (!shadow) return null;
-            for (const name of ['digitalPins', 'PIN', 'LED', 'digitalInputPins']) {
-                const f = shadow.getField(name);
-                if (f) return f;
-            }
-            // Fallback: primer campo con opciones en cualquier input del shadow
-            for (const inp of (shadow.inputList || [])) {
-                for (const f of (inp.fieldRow || [])) {
-                    if (f && typeof f.getValue === 'function' && typeof f.getOptions === 'function') return f;
-                }
-            }
-            return null;
+        // Devuelve true si el bloque es "real" (no shadow, no menu interno)
+        const isRealDIOBlock = (block) => {
+            if (!block) return false;
+            if (block.isShadow && block.isShadow()) return false;
+            if ((block.type || '').includes('_menu_')) return false;
+            return DIO_OPS.includes(block.type || '');
         };
 
-        // Lee el pin DIO de un bloque leyendo desde el workspace Blockly.
+        // Lee el pin DIO de un bloque desde el workspace.
+        // Para acceptReporters:false (digitalRead): campo directo.
+        // Para acceptReporters:true (digitalWrite, ledBlink): lee del VM _blocks
+        // ya que el shadow puede no estar accesible vía getInputTargetBlock en todos los casos.
         const getWSBlockPin = (blockId) => {
             const block = this.workspace.getBlockById(blockId);
             if (!block) return null;
             const op = block.type || '';
             if (op === 'playiot_digitalRead') {
-                // acceptReporters:false → campo directo en el bloque
                 const field = block.getField('PIN');
                 if (!field) return null;
                 const val = String(field.getValue());
                 return DIO_PINS.includes(val) ? val : null;
             }
-            if (op === 'playiot_digitalWrite') {
-                const shadow = block.getInputTargetBlock('PIN');
-                const field = getShadowPinField(shadow);
-                if (!field) return null;
-                const val = String(field.getValue());
-                return DIO_PINS.includes(val) ? val : null;
-            }
-            if (op === 'playiot_ledBlink') {
-                const shadow = block.getInputTargetBlock('LED');
-                const field = getShadowPinField(shadow);
-                if (!field) return null;
-                const val = String(field.getValue());
-                return DIO_PINS.includes(val) ? val : null;
+            if (op === 'playiot_digitalWrite' || op === 'playiot_ledBlink') {
+                // Leer desde VM _blocks (más confiable para shadow con acceptReporters:true)
+                const vm = this.props.vm;
+                const argName = op === 'playiot_ledBlink' ? 'LED' : 'PIN';
+                for (const target of vm.runtime.targets) {
+                    const vmBlock = target.blocks._blocks[blockId];
+                    if (!vmBlock) continue;
+                    const inp = vmBlock.inputs && vmBlock.inputs[argName];
+                    const shId = inp && (inp.shadow || inp.block);
+                    const sh = shId && target.blocks._blocks[shId];
+                    if (!sh || !sh.fields) continue;
+                    const fObj = Object.values(sh.fields)[0];
+                    const val = fObj && String(fObj.value);
+                    return DIO_PINS.includes(val) ? val : null;
+                }
             }
             return null;
         };
@@ -260,13 +254,9 @@ class Blocks extends React.Component {
         // Devuelve { pin: [blockId, ...] } para todos los bloques DIO del workspace
         const getDIOUsage = (excludeId = null) => {
             const usage = {};
-            const allBlocks = this.workspace.getAllBlocks();
-            for (const block of allBlocks) {
+            for (const block of this.workspace.getAllBlocks()) {
                 if (block.id === excludeId) continue;
-                if (block.isShadow && block.isShadow()) continue;
-                if ((block.type || '').includes('_menu_')) continue; // nunca contar menús shadow
-                const op = block.type || '';
-                if (op !== 'playiot_digitalRead' && op !== 'playiot_digitalWrite' && op !== 'playiot_ledBlink') continue;
+                if (!isRealDIOBlock(block)) continue;
                 const pin = getWSBlockPin(block.id);
                 if (!pin) continue;
                 (usage[pin] = usage[pin] || []).push(block.id);
@@ -274,30 +264,73 @@ class Blocks extends React.Component {
             return usage;
         };
 
-        // Cambia el pin de un bloque usando la API Blockly exacta
+        // Cambia el pin de un bloque.
+        // Para acceptReporters:false (digitalRead): setValue directo (seguro).
+        // Para acceptReporters:true (digitalWrite, ledBlink): setValue en el shadow
+        // causa que éste se desconecte visualmente en Scratch-Blocks. Solución:
+        // serializar a XML, modificar el pin, descartar el bloque y recrearlo.
         const setBlockPin = (blockId, newPin) => {
             const block = this.workspace.getBlockById(blockId);
             if (!block) return false;
             const op = block.type || '';
+
             if (op === 'playiot_digitalRead') {
                 const field = block.getField('PIN');
                 if (!field) return false;
                 field.setValue(newPin);
                 return true;
             }
-            if (op === 'playiot_digitalWrite') {
-                const shadow = block.getInputTargetBlock('PIN');
-                const field = getShadowPinField(shadow);
-                if (!field) return false;
-                field.setValue(newPin);
-                return true;
-            }
-            if (op === 'playiot_ledBlink') {
-                const shadow = block.getInputTargetBlock('LED');
-                const field = getShadowPinField(shadow);
-                if (!field) return false;
-                field.setValue(newPin);
-                return true;
+
+            if (op === 'playiot_digitalWrite' || op === 'playiot_ledBlink') {
+                // Guardar posición antes de dispose
+                const blockX = typeof block.x === 'number' ? block.x : 50;
+                const blockY = typeof block.y === 'number' ? block.y : 50;
+                // Serializar bloque completo a XML
+                const xmlDom = this.ScratchBlocks.Xml.blockToDom(block, true);
+                // Encontrar el <value> del argumento pin y actualizar su <field> en el shadow
+                const argName = op === 'playiot_ledBlink' ? 'LED' : 'PIN';
+                const valueEls = xmlDom.getElementsByTagName('value');
+                let updated = false;
+                for (let i = 0; i < valueEls.length; i++) {
+                    if (valueEls[i].getAttribute('name') !== argName) continue;
+                    // Buscar cualquier <field> dentro de <shadow> en este <value>
+                    const shadows = valueEls[i].getElementsByTagName('shadow');
+                    for (let j = 0; j < shadows.length; j++) {
+                        const fields = shadows[j].getElementsByTagName('field');
+                        for (let k = 0; k < fields.length; k++) {
+                            fields[k].textContent = newPin;
+                            updated = true;
+                        }
+                        if (!updated) {
+                            // No existe <field>: crearlo
+                            const newField = xmlDom.ownerDocument
+                                ? xmlDom.ownerDocument.createElement('field')
+                                : document.createElement('field');
+                            newField.setAttribute('name', 'digitalPins');
+                            newField.textContent = newPin;
+                            shadows[j].appendChild(newField);
+                            updated = true;
+                        }
+                    }
+                    break;
+                }
+                if (!updated) return false;
+                // Dispose bloque original (elimina shadow hijos correctamente)
+                block.dispose(false);
+                // Recrear desde XML modificado en la misma posición
+                try {
+                    const newBlock = this.ScratchBlocks.Xml.domToBlock(xmlDom, this.workspace);
+                    if (newBlock) {
+                        if (typeof newBlock.moveTo === 'function') {
+                            newBlock.moveTo({ x: blockX, y: blockY });
+                        } else if (typeof newBlock.moveBy === 'function') {
+                            newBlock.moveBy(blockX - (newBlock.x || 0), blockY - (newBlock.y || 0));
+                        }
+                    }
+                    return !!newBlock;
+                } catch (e) {
+                    return false;
+                }
             }
             return false;
         };
@@ -317,22 +350,16 @@ class Blocks extends React.Component {
             }, 2800);
         };
 
-        // Sincroniza window._playiotUsedDIOPins con el estado actual del workspace.
-        // Los menús dinámicos en blocks.js leen este Set para marcar pines ocupados.
         const syncUsedPins = () => {
             const usage = getDIOUsage();
             window._playiotUsedDIOPins = new Set(Object.keys(usage));
         };
 
-        // Actualiza triángulos de advertencia. Solo se llama en 'field' change y 'delete'
-        // para no crear loops (setWarningText dispara eventos 'warningText', no 'field').
         const updateDIOWarnings = () => {
             const usage = getDIOUsage();
             syncUsedPins();
             for (const block of this.workspace.getAllBlocks()) {
-                if (block.isShadow && block.isShadow()) continue;
-                const op = block.type || '';
-                if (op !== 'playiot_digitalRead' && op !== 'playiot_digitalWrite' && op !== 'playiot_ledBlink') continue;
+                if (!isRealDIOBlock(block)) continue;
                 const pin = getWSBlockPin(block.id);
                 if (!pin) { block.setWarningText(null); continue; }
                 const ids = usage[pin] || [];
@@ -342,26 +369,32 @@ class Blocks extends React.Component {
 
         this._dioConflictListener = (event) => {
             if (event.type === 'create' && !_dioGuard) {
-                // IMPORTANTE: tomar el snapshot SINCRÓNICAMENTE aquí, antes del setTimeout.
-                // Así capturamos el estado real del workspace en el momento del evento,
-                // evitando falsos positivos por timing (ej. primer bloque digitalRead).
-                // getDIOUsage(event.blockId) excluye el bloque recién creado correctamente.
+                // Snapshot SÍNCRONO del estado previo al bloque nuevo.
+                // priorDIOIds = IDs de bloques DIO que existían ANTES de este evento.
+                // Con esto detectamos qué bloque es "nuevo" sin depender de event.blockId
+                // (que puede apuntar a un shadow o bloque interno).
                 const priorUsage = getDIOUsage(event.blockId);
+                const priorDIOIds = new Set(Object.values(priorUsage).flat());
 
                 setTimeout(() => {
                     if (_dioGuard) return;
-                    const newId = event.blockId;
+
+                    // Identificar el bloque DIO genuinamente nuevo (no estaba antes)
+                    const currentUsage = getDIOUsage();
+                    let newId = null;
+                    let pin = null;
+                    outer: for (const [p, ids] of Object.entries(currentUsage)) {
+                        for (const id of ids) {
+                            if (!priorDIOIds.has(id)) { newId = id; pin = p; break outer; }
+                        }
+                    }
+                    if (!newId || !pin) return; // no hay nuevo bloque DIO
+                    if (!(priorUsage[pin] || []).length) return; // pin estaba libre antes → sin conflicto
+
                     const block = this.workspace.getBlockById(newId);
                     if (!block) return;
-                    if (block.isShadow && block.isShadow()) return;
-                    if ((block.type || '').includes('_menu_')) return;
-                    const op = block.type || '';
-                    if (op !== 'playiot_digitalRead' && op !== 'playiot_digitalWrite' && op !== 'playiot_ledBlink') return;
-                    const pin = getWSBlockPin(newId);
-                    if (!pin) return;
-                    // Comparar contra snapshot del momento del evento, no estado actual
-                    if (!(priorUsage[pin] || []).length) return; // sin conflicto previo
-                    const freePin = DIO_PINS.find(p => !(priorUsage[p] || []).length);
+
+                    const freePin = DIO_PINS.find(p2 => !(priorUsage[p2] || []).length);
                     _dioGuard = true;
                     try {
                         if (freePin) {
@@ -383,7 +416,7 @@ class Blocks extends React.Component {
                     } finally {
                         setTimeout(() => { _dioGuard = false; }, 50);
                     }
-                }, 60);
+                }, 80);
                 return;
             }
             if (_dioGuard) return;
