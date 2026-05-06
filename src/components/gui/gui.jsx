@@ -352,7 +352,10 @@ const GUIComponent = props => {
                                             </Tab>}
                                         </TabList>
                                         <TabPanel className={tabClassNames.tabPanel}>
-                                            <Box className={styles.blocksWrapper}>
+                                            <Box
+                                                className={styles.blocksWrapper}
+                                                data-tutorial="blocks-panel"
+                                            >
                                                 <Blocks
                                                     key={`${blocksId}/${theme}`}
                                                     canUseCloud={canUseCloud}
