@@ -209,6 +209,8 @@ class Blocks extends React.Component {
         const DIO_PINS = ['2', '5', '23'];
         const DIO_OPS = ['playiot_digitalRead', 'playiot_digitalWrite', 'playiot_ledBlink'];
         let _dioGuard = false;
+        // Limpiar estado stale de sesiones anteriores para que el IN block arranque en DIO2
+        window._playiotUsedDIOPins = new Set();
 
         // Devuelve true si el bloque es "real" (no shadow, no menu interno)
         const isRealDIOBlock = (block) => {
@@ -367,62 +369,112 @@ class Blocks extends React.Component {
             }
         };
 
-        this._dioConflictListener = (event) => {
-            if (event.type === 'create' && !_dioGuard) {
-                // Snapshot SÍNCRONO del estado previo al bloque nuevo.
-                // priorDIOIds = IDs de bloques DIO que existían ANTES de este evento.
-                // Con esto detectamos qué bloque es "nuevo" sin depender de event.blockId
-                // (que puede apuntar a un shadow o bloque interno).
-                const priorUsage = getDIOUsage(event.blockId);
-                const priorDIOIds = new Set(Object.values(priorUsage).flat());
-
-                setTimeout(() => {
-                    if (_dioGuard) return;
-
-                    // Identificar el bloque DIO genuinamente nuevo (no estaba antes)
-                    const currentUsage = getDIOUsage();
-                    let newId = null;
-                    let pin = null;
-                    outer: for (const [p, ids] of Object.entries(currentUsage)) {
-                        for (const id of ids) {
-                            if (!priorDIOIds.has(id)) { newId = id; pin = p; break outer; }
-                        }
-                    }
-                    if (!newId || !pin) return; // no hay nuevo bloque DIO
-                    if (!(priorUsage[pin] || []).length) return; // pin estaba libre antes → sin conflicto
-
-                    const block = this.workspace.getBlockById(newId);
-                    if (!block) return;
-
-                    const freePin = DIO_PINS.find(p2 => !(priorUsage[p2] || []).length);
-                    _dioGuard = true;
-                    try {
-                        if (freePin) {
-                            const ok = setBlockPin(newId, freePin);
-                            if (ok) {
-                                showDIOToast(`🔄 &nbsp;Pin cambiado a <b>DIO${freePin}</b> — DIO${pin} ya está en uso`);
-                                syncUsedPins();
-                            }
-                        } else {
-                            const svg = block.getSvgRoot && block.getSvgRoot();
-                            if (svg) svg.classList.add('playcode-block-rejected');
-                            showDIOToast(`⛔ &nbsp;Todos los pines DIO (2, 5, 23) están en uso`, true);
-                            setTimeout(() => {
-                                const b = this.workspace.getBlockById(newId);
-                                if (b) b.dispose(false);
-                                syncUsedPins();
-                            }, 380);
-                        }
-                    } finally {
-                        setTimeout(() => { _dioGuard = false; }, 50);
-                    }
-                }, 80);
+        // Ejecuta la lógica de conflicto DIO una vez que el bloque está soltado
+        // (ya no se está arrastrando). Reintenta si el workspace sigue con gesto activo
+        // para evitar dispose+domToBlock mientras el bloque sigue mid-drag (efecto teleport).
+        const runConflictWhenSettled = (priorUsage, priorDIOIds, retries = 0) => {
+            if (_dioGuard) return;
+            const gesture = this.workspace.currentGesture_;
+            if (gesture && gesture.draggingBlock_ && retries < 20) {
+                setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds, retries + 1), 50);
                 return;
             }
-            if (_dioGuard) return;
-            if (event.type === 'change' && event.element === 'field') {
+
+            const currentUsage = getDIOUsage();
+            let newId = null;
+            let pin = null;
+            outer: for (const [p, ids] of Object.entries(currentUsage)) {
+                for (const id of ids) {
+                    if (!priorDIOIds.has(id)) { newId = id; pin = p; break outer; }
+                }
+            }
+            if (!newId || !pin) return;
+            if (!(priorUsage[pin] || []).length) return;
+
+            const block = this.workspace.getBlockById(newId);
+            if (!block) return;
+
+            const freePin = DIO_PINS.find(p2 => !(priorUsage[p2] || []).length);
+            _dioGuard = true;
+            try {
+                if (freePin) {
+                    const ok = setBlockPin(newId, freePin);
+                    if (ok) {
+                        showDIOToast(`🔄 &nbsp;Pin cambiado a <b>DIO${freePin}</b> — DIO${pin} ya está en uso`);
+                        syncUsedPins();
+                    }
+                } else {
+                    const svg = block.getSvgRoot && block.getSvgRoot();
+                    if (svg) svg.classList.add('playcode-block-rejected');
+                    showDIOToast(`⛔ &nbsp;Todos los pines DIO (2, 5, 23) están en uso`, true);
+                    setTimeout(() => {
+                        const b = this.workspace.getBlockById(newId);
+                        if (b) b.dispose(false);
+                        syncUsedPins();
+                    }, 380);
+                }
+            } finally {
+                setTimeout(() => { _dioGuard = false; }, 50);
+            }
+        };
+
+        this._dioConflictListener = (event) => {
+            // ── Bloquear selección manual de pin en uso (Issue: pin lockout) ──────────
+            if (!_dioGuard && event.type === 'change' && event.element === 'field') {
+                const changedBlock = this.workspace.getBlockById(event.blockId);
+                const newPin = String(event.newValue || '');
+                if (changedBlock && DIO_PINS.includes(newPin)) {
+                    // El cambio puede venir del bloque real (digitalRead) o de su shadow (digitalWrite)
+                    let realBlock = null;
+                    if (isRealDIOBlock(changedBlock)) {
+                        realBlock = changedBlock;
+                    } else if (changedBlock.isShadow && changedBlock.isShadow()) {
+                        const parent = changedBlock.getParent && changedBlock.getParent();
+                        if (parent && isRealDIOBlock(parent)) realBlock = parent;
+                    }
+                    if (realBlock) {
+                        const usage = getDIOUsage(realBlock.id);
+                        if ((usage[newPin] || []).length > 0) {
+                            const oldPin = String(event.oldValue || '');
+                            const freePin = DIO_PINS.find(p => !(usage[p] || []).length);
+                            const revertTo = freePin || (DIO_PINS.includes(oldPin) ? oldPin : null);
+                            _dioGuard = true;
+                            try {
+                                if (revertTo) {
+                                    setBlockPin(realBlock.id, revertTo);
+                                    showDIOToast(
+                                        freePin && freePin !== oldPin
+                                            ? `⛔ &nbsp;DIO${newPin} ya está en uso — cambiado a <b>DIO${freePin}</b>`
+                                            : `⛔ &nbsp;DIO${newPin} ya está en uso`,
+                                        true
+                                    );
+                                } else {
+                                    showDIOToast(`⛔ &nbsp;DIO${newPin} ya está en uso`, true);
+                                }
+                                syncUsedPins();
+                            } finally {
+                                setTimeout(() => { _dioGuard = false; }, 50);
+                            }
+                            return;
+                        }
+                    }
+                }
                 updateDIOWarnings();
-            } else if (event.type === 'delete') {
+                return;
+            }
+
+            // ── Detección de conflicto al arrastrar bloque nuevo ──────────────────────
+            if (event.type === 'create' && !_dioGuard) {
+                // Snapshot SÍNCRONO: IDs de bloques DIO que existían ANTES de este evento.
+                const priorUsage = getDIOUsage(event.blockId);
+                const priorDIOIds = new Set(Object.values(priorUsage).flat());
+                // Esperar a que el usuario suelte el bloque antes de hacer dispose+domToBlock
+                setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds), 80);
+                return;
+            }
+
+            if (_dioGuard) return;
+            if (event.type === 'delete') {
                 updateDIOWarnings();
             }
         };
