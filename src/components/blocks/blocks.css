@@ -202,6 +202,49 @@
     100% { transform: translateX(0px);  opacity: 0;   }
 }
 
+/* Indicador persistente de estado de conexión (esquina superior-derecha del workspace) */
+:global(.playcode-conn-status) {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 999px;
+    padding: 6px 12px 6px 10px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    pointer-events: none;
+    user-select: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+:global(.playcode-conn-dot) {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FF6B6B;
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.5);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+:global(.playcode-conn-status.playcode-conn-on) {
+    color: #2D8A3E;
+    border-color: rgba(81, 193, 65, 0.4);
+}
+:global(.playcode-conn-status.playcode-conn-on) :global(.playcode-conn-dot) {
+    background: #51C141;
+    animation: playcodeConnPulse 1.8s ease-in-out infinite;
+}
+@keyframes playcodeConnPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(81, 193, 65, 0.45); }
+    50%      { box-shadow: 0 0 0 6px rgba(81, 193, 65, 0);    }
+}
+
 /* Toast de conflicto DIO */
 :global(.playcode-dio-conflict-toast) {
     position: fixed;

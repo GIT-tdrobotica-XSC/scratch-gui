@@ -8,6 +8,17 @@ import spriteLibraryContent from '../lib/libraries/sprites.json';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
 import spriteTags from '../lib/libraries/sprite-tags';
 
+// Sprites locales (no en CDN de Scratch) — inyectar URL para preview en biblioteca
+import daneelIcon from '../lib/default-project/14a3e0d41d648b4415b4a78cb65ba725.svg';
+
+const LOCAL_ICONS = {
+    Daneel: daneelIcon
+};
+
+const enrichedSpriteLibrary = spriteLibraryContent.map(sprite =>
+    LOCAL_ICONS[sprite.name] ? { ...sprite, rawURL: LOCAL_ICONS[sprite.name] } : sprite
+);
+
 import LibraryComponent from '../components/library/library.jsx';
 
 const messages = defineMessages({
@@ -35,7 +46,7 @@ class SpriteLibrary extends React.PureComponent {
     render () {
         return (
             <LibraryComponent
-                data={spriteLibraryContent}
+                data={enrichedSpriteLibrary}
                 id="spriteLibrary"
                 tags={spriteTags}
                 title={this.props.intl.formatMessage(messages.libraryTitle)}

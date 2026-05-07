@@ -38,6 +38,25 @@
     margin: calc($space / 2);
 }
 
+/* Pantallas pequeñas: reducir tamaño mínimo de sprites para evitar corte
+   horizontal en el panel cuando el viewport es estrecho */
+@media only screen and (max-width: 1024px) {
+    .sprite-wrapper {
+        min-width: 3rem;
+        min-height: 3rem;
+        max-width: 5rem;
+    }
+}
+
+@media only screen and (max-width: 768px) {
+    .sprite-wrapper {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        max-width: 4rem;
+        margin: calc($space / 4);
+    }
+}
+
 .sprite {
     height: 100%;
 }

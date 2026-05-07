@@ -139,6 +139,36 @@ class Blocks extends React.Component {
         addFunctionListener(this.workspace, 'translate', this.onWorkspaceMetricsChange);
         addFunctionListener(this.workspace, 'zoom', this.onWorkspaceMetricsChange);
 
+        // ── Indicador persistente de estado de conexión ─────────────────────────
+        // Badge en la esquina superior-derecha del workspace que refleja el
+        // estado del periférico (window.playIotPeripheral). Se actualiza vía
+        // eventos PERIPHERAL_CONNECTED/DISCONNECTED + polling de respaldo.
+        this._connStatusEl = document.createElement('div');
+        this._connStatusEl.className = 'playcode-conn-status';
+        this._connStatusEl.innerHTML = `
+            <span class="playcode-conn-dot"></span>
+            <span class="playcode-conn-label">Desconectado</span>
+        `;
+        // Insertar dentro del contenedor de bloques cuando esté disponible.
+        const insertConnStatus = () => {
+            if (this.blocks && !this._connStatusEl.parentNode) {
+                this.blocks.appendChild(this._connStatusEl);
+            }
+        };
+        setTimeout(insertConnStatus, 0);
+
+        const updateConnStatus = () => {
+            const peripheral = window.playIotPeripheral;
+            const connected = !!(peripheral && typeof peripheral.isConnected === 'function' && peripheral.isConnected());
+            const label = this._connStatusEl.querySelector('.playcode-conn-label');
+            this._connStatusEl.classList.toggle('playcode-conn-on', connected);
+            if (label) label.textContent = connected ? 'Conectado' : 'Desconectado';
+        };
+        this._updateConnStatus = updateConnStatus;
+        // Refresco inicial + polling cada 2s (respaldo)
+        setTimeout(updateConnStatus, 100);
+        this._connStatusPoll = setInterval(updateConnStatus, 2000);
+
         // Overlay de papelera al arrastrar bloques (icono SVG 2D plano)
         const trashSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -212,11 +242,15 @@ class Blocks extends React.Component {
         // Limpiar estado stale de sesiones anteriores para que el IN block arranque en DIO2
         window._playiotUsedDIOPins = new Set();
 
-        // Devuelve true si el bloque es "real" (no shadow, no menu interno)
+        // Devuelve true si el bloque es "real" (no shadow, no menu interno,
+        // no en flyout, no marker de inserción, no preview de drag)
         const isRealDIOBlock = (block) => {
             if (!block) return false;
             if (block.isShadow && block.isShadow()) return false;
             if ((block.type || '').includes('_menu_')) return false;
+            if (block.isInFlyout) return false;
+            if (block.isInsertionMarker && block.isInsertionMarker()) return false;
+            if (block.workspace && block.workspace !== this.workspace) return false;
             return DIO_OPS.includes(block.type || '');
         };
 
@@ -494,8 +528,15 @@ class Blocks extends React.Component {
                 console.log('[DIO][create] blockId:', event.blockId,
                             '| priorUsage:', JSON.parse(JSON.stringify(priorUsage)),
                             '| priorDIOIds:', [...priorDIOIds],
-                            '| total blocks in WS:', allBlocks.length,
-                            '| block types:', allBlocks.map(b => `${b.id}:${b.type}${b.isShadow && b.isShadow() ? '(shadow)' : ''}`));
+                            '| total blocks in WS:', allBlocks.length);
+                allBlocks.forEach(b => {
+                    const xy = (b.getRelativeToSurfaceXY && b.getRelativeToSurfaceXY()) || {x: '?', y: '?'};
+                    console.log('  └ block:', b.id, '| type:', b.type,
+                                '| shadow?:', !!(b.isShadow && b.isShadow()),
+                                '| inFlyout?:', !!b.isInFlyout,
+                                '| insertionMarker?:', !!(b.isInsertionMarker && b.isInsertionMarker()),
+                                '| pos:', xy);
+                });
                 // Esperar a que el usuario suelte el bloque antes de hacer dispose+domToBlock
                 setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds), 80);
                 return;
@@ -582,6 +623,10 @@ class Blocks extends React.Component {
         if (this._trashHideTimer) clearTimeout(this._trashHideTimer);
         if (this._trashOverlay && this._trashOverlay.parentNode) {
             this._trashOverlay.parentNode.removeChild(this._trashOverlay);
+        }
+        if (this._connStatusPoll) clearInterval(this._connStatusPoll);
+        if (this._connStatusEl && this._connStatusEl.parentNode) {
+            this._connStatusEl.parentNode.removeChild(this._connStatusEl);
         }
         this.detachVM();
         this.workspace.dispose();

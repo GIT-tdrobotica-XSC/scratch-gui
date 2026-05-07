@@ -33,7 +33,8 @@
                 "rotationCenterY": 500
             }
         ],
-        "sounds": []
+        "sounds": [],
+        "blocks": {}
     },
     {
         "name": "Abby",
