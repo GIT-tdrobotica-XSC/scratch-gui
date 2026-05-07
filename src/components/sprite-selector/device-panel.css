@@ -8,26 +8,130 @@
     background-color: #ffffff;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
     overflow: hidden; /* aísla el scroll a los hijos con overflow:auto */
+    container-type: inline-size; /* habilita container queries por ancho */
+    container-name: devicepanel;
 }
 
+/* Cuando el panel es más estrecho que ~480px (independiente del stage size),
+   apilar verticalmente para que la sección "Conectar" quede legible. */
+@container devicepanel (max-width: 480px) {
+    .device-panel-wrapper {
+        flex-direction: column;
+    }
+    .device-list-panel {
+        flex: 0 0 auto !important;
+        max-height: 36%;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .device-list-panel,
+    .device-list-panel-small {
+        flex: 0 0 auto !important;
+    }
+    .device-details-panel {
+        padding: 0.7rem 0.8rem;
+    }
+    .info-section {
+        padding: 0.6rem 0.7rem;
+        margin-bottom: 0.6rem;
+        border-radius: 8px;
+    }
+    .info-section-title {
+        margin-bottom: 0.4rem;
+        font-size: 0.65rem;
+    }
+    .info-row {
+        padding: 0.35rem 0;
+        font-size: 0.78rem;
+    }
+    .details-title {
+        font-size: 1rem;
+    }
+    .details-header {
+        margin-bottom: 0.6rem;
+        padding-bottom: 0.4rem;
+    }
+    .button {
+        min-width: 100px !important;
+        padding: 0.55rem 0.7rem !important;
+        font-size: 0.78rem !important;
+    }
+    /* Botón "Conectar" pegado al fondo del panel para visibilidad permanente */
+    .button-group {
+        margin-top: 0.5rem !important;
+        position: sticky;
+        bottom: 0;
+        background: #ffffff;
+        padding: 0.5rem 0;
+        z-index: 1;
+    }
+}
+
+/* MODO STAGE PEQUEÑO: apilar verticalmente.
+   Side-by-side no funciona en pantallas chicas: el panel queda muy estrecho,
+   el botón "Conectar" se va abajo y no se ve sin scroll. Apilando vertical
+   cada sección recibe el ancho completo del panel. */
 .device-panel-wrapper-small {
     font-size: 0.8rem;
+    flex-direction: column;
+}
+
+.device-panel-wrapper-small .device-list-panel {
+    flex: 0 0 auto;
+    max-height: 38%;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.device-panel-wrapper-small .device-list {
+    /* Lista de dispositivos compacta horizontal cuando hay poco espacio vertical */
+    padding: 0.4rem;
 }
 
 .device-panel-wrapper-small .details-title {
-    font-size: 1.1rem;
+    font-size: 1rem;
+}
+
+.device-panel-wrapper-small .details-header {
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
 }
 
 .device-panel-wrapper-small .info-section {
-    padding: 0.7rem;
+    padding: 0.6rem 0.7rem;
     border-radius: 8px;
-    margin-bottom: 1rem;
+    margin-bottom: 0.6rem;
+}
+
+.device-panel-wrapper-small .info-section-title {
+    margin-bottom: 0.4rem;
+    font-size: 0.65rem;
+}
+
+.device-panel-wrapper-small .info-row {
+    padding: 0.35rem 0;
+    font-size: 0.78rem;
 }
 
 .device-panel-wrapper-small .button {
-    min-width: 110px;
-    padding: 0.6rem 0.8rem;
-    font-size: 0.8rem;
+    min-width: 100px;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.78rem;
+}
+
+/* Botón "Conectar" pegado al borde inferior del panel detalles para que
+   siempre sea visible sin necesidad de scroll. */
+.device-panel-wrapper-small .button-group {
+    margin-top: 0.5rem;
+    position: sticky;
+    bottom: 0;
+    background: #ffffff;
+    padding: 0.5rem 0;
+    z-index: 1;
+}
+
+.device-panel-wrapper-small .device-details-panel {
+    padding: 0.7rem 0.8rem;
 }
 
 /* PANEL IZQUIERDO - Lista de dispositivos (Flexible) */
