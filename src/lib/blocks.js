@@ -357,13 +357,11 @@ export default function (vm, useCatBlocks) {
 
     // ===== Campo RGB Matrix: widget visual para 3 LEDs =====
     (function registerFieldRGBMatrix (SB) {
-        console.log('[RGB-FIELD] Registrando FieldRGBMatrix. SB.Field=', typeof SB.Field);
         const DEFAULT_VALUE = JSON.stringify([{r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}, {r: 0, g: 0, b: 0}]);
         const FIELD_W = 80;
         const FIELD_H = 26;
 
         function FieldRGBMatrix (value) {
-            console.log('[RGB-FIELD] Constructor llamado, value=', value ? value.slice(0, 30) : value);
             SB.Field.call(this, null);
             this.value_ = value || DEFAULT_VALUE;
         }
@@ -383,7 +381,6 @@ export default function (vm, useCatBlocks) {
         };
 
         FieldRGBMatrix.prototype.init = function () {
-            console.log('[RGB-FIELD] init() llamado. sourceBlock_=', !!this.sourceBlock_, 'fieldGroup_=', !!this.fieldGroup_);
             if (this.fieldGroup_) return;
 
             const svgNS = 'http://www.w3.org/2000/svg';
@@ -429,14 +426,10 @@ export default function (vm, useCatBlocks) {
             // Añadir al bloque
             if (this.sourceBlock_ && this.sourceBlock_.getSvgRoot) {
                 this.sourceBlock_.getSvgRoot().appendChild(this.fieldGroup_);
-                console.log('[RGB-FIELD] fieldGroup_ añadido al SVG root del bloque');
-            } else {
-                console.warn('[RGB-FIELD] No se pudo añadir fieldGroup_ — sourceBlock_ o getSvgRoot no disponible');
             }
 
             // Listener en fase de CAPTURA: se ejecuta antes que cualquier handler de Blockly
             this.fieldGroup_.addEventListener('mousedown', (e) => {
-                console.log('[RGB-FIELD] CLICK capturado en fieldGroup_!');
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 this.showEditor_();
@@ -446,7 +439,6 @@ export default function (vm, useCatBlocks) {
             if (this.sourceBlock_ && this.sourceBlock_.rendered) {
                 this.sourceBlock_.render();
             }
-            console.log('[RGB-FIELD] init() completado OK');
         };
 
         FieldRGBMatrix.prototype.updateDisplay_ = function () {
@@ -488,7 +480,6 @@ export default function (vm, useCatBlocks) {
         };
 
         FieldRGBMatrix.prototype.showEditor_ = function () {
-            console.log('[RGB-FIELD] showEditor_() llamado');
             const prev = document.getElementById('playcode-rgb-popup');
             if (prev) prev.remove();
 
@@ -500,25 +491,28 @@ export default function (vm, useCatBlocks) {
             popup.style.cssText = [
                 'position:fixed',
                 'z-index:99999',
-                'background:#1e1e2e',
-                'border:1px solid #444',
-                'border-radius:10px',
-                'box-shadow:0 6px 24px rgba(0,0,0,0.6)',
-                'padding:10px 14px 14px',
+                'background:linear-gradient(160deg, #232331 0%, #1a1a25 100%)',
+                'border:1px solid rgba(255,255,255,0.08)',
+                'border-radius:14px',
+                'box-shadow:0 10px 40px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)',
+                'padding:14px 16px 16px',
                 'display:flex',
                 'flex-direction:column',
-                'gap:10px'
+                'gap:12px',
+                'font-family:"Helvetica Neue",Helvetica,Arial,sans-serif'
             ].join(';');
 
-            // Fila superior: título + botón cerrar
+            // Header: título + botón cerrar
             const header = document.createElement('div');
             header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
             const title = document.createElement('span');
             title.textContent = 'LEDs RGB';
-            title.style.cssText = 'font-size:11px;color:#aaa;font-family:sans-serif;font-weight:600;letter-spacing:0.5px;';
+            title.style.cssText = 'font-size:11px;color:#9ca3b8;font-weight:700;letter-spacing:1px;text-transform:uppercase;';
             const closeBtn = document.createElement('button');
             closeBtn.textContent = '✕';
-            closeBtn.style.cssText = 'background:none;border:none;color:#888;font-size:14px;cursor:pointer;padding:0 2px;line-height:1;';
+            closeBtn.style.cssText = 'background:none;border:none;color:#7a7a8c;font-size:16px;cursor:pointer;padding:2px 6px;line-height:1;border-radius:4px;transition:all 0.15s ease;';
+            closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = '#fff'; closeBtn.style.background = 'rgba(255,255,255,0.08)'; });
+            closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = '#7a7a8c'; closeBtn.style.background = 'none'; });
             closeBtn.addEventListener('mousedown', e => { e.stopPropagation(); popup.remove(); });
             header.appendChild(title);
             header.appendChild(closeBtn);
@@ -526,7 +520,7 @@ export default function (vm, useCatBlocks) {
 
             // Fila de LEDs
             const ledsRow = document.createElement('div');
-            ledsRow.style.cssText = 'display:flex;gap:14px;align-items:flex-start;';
+            ledsRow.style.cssText = 'display:flex;gap:16px;align-items:flex-start;';
 
             // Posicionar bajo el campo
             let x = 200;
@@ -535,11 +529,9 @@ export default function (vm, useCatBlocks) {
                 try {
                     const rect = this.fieldGroup_.getBoundingClientRect();
                     x = rect.left;
-                    y = rect.bottom + 6;
-                    // Evitar salir por la derecha
-                    if (x + 200 > window.innerWidth) x = window.innerWidth - 210;
-                    // Evitar salir por abajo
-                    if (y + 160 > window.innerHeight) y = rect.top - 166;
+                    y = rect.bottom + 8;
+                    if (x + 240 > window.innerWidth) x = window.innerWidth - 250;
+                    if (y + 180 > window.innerHeight) y = rect.top - 186;
                 } catch (e) { /* noop */ }
             }
             popup.style.left = x + 'px';
@@ -552,65 +544,125 @@ export default function (vm, useCatBlocks) {
                 b: parseInt(h.slice(5, 7), 16)
             });
 
+            // Icono SVG de power
+            const powerSvg = (stroke) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:block;">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                <line x1="12" y1="2" x2="12" y2="12"/>
+            </svg>`;
+
             for (let i = 0; i < 3; i++) {
                 const c = colors[i] || {r: 0, g: 0, b: 0};
                 const off = c.r === 0 && c.g === 0 && c.b === 0;
 
                 const col = document.createElement('div');
-                col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
+                col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;';
 
-                const preview = document.createElement('div');
-                preview.style.cssText = `width:36px;height:36px;border-radius:50%;` +
-                    `background:${off ? '#2a2a3a' : `rgb(${c.r},${c.g},${c.b})`};` +
-                    `border:2px solid ${off ? '#555' : 'rgba(255,255,255,0.5)'};`;
+                // Círculo grande clickeable — al click abre el color picker nativo
+                const circle = document.createElement('div');
+                circle.title = 'Cambiar color';
+                circle.style.cssText = 'width:54px;height:54px;border-radius:50%;cursor:pointer;' +
+                    'transition:all 0.18s ease;position:relative;display:flex;align-items:center;justify-content:center;';
 
+                // Input color nativo, oculto pero clickeable programáticamente
                 const colorIn = document.createElement('input');
                 colorIn.type = 'color';
-                colorIn.value = off ? '#ff0000' : toHex(c.r, c.g, c.b);
-                colorIn.style.cssText = 'width:36px;height:24px;border:1px solid #555;' +
-                    'background:#111;padding:1px;cursor:pointer;border-radius:3px;';
+                colorIn.value = off ? '#ff5757' : toHex(c.r, c.g, c.b);
+                // No usar display:none — algunos browsers no disparan el picker. Tapado y sin tamaño.
+                colorIn.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:none;padding:0;';
 
-                const offBtn = document.createElement('button');
-                offBtn.textContent = 'OFF';
-                offBtn.style.cssText = `width:36px;font-size:9px;font-weight:bold;padding:2px;` +
-                    `border:1px solid ${off ? '#aaa' : '#555'};background:${off ? '#555' : 'transparent'};` +
-                    `color:${off ? '#fff' : '#888'};cursor:pointer;border-radius:3px;font-family:sans-serif;`;
-
+                // Label "LED N"
                 const lbl = document.createElement('div');
                 lbl.textContent = `LED ${i}`;
-                lbl.style.cssText = 'font-size:10px;color:#aaa;font-family:sans-serif;';
+                lbl.style.cssText = 'font-size:10px;color:#9ca3b8;font-weight:600;letter-spacing:0.4px;';
+
+                // Botón OFF/ON con ícono de power
+                const offBtn = document.createElement('button');
+                offBtn.title = 'Apagar';
+                offBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:5px;' +
+                    'width:54px;height:26px;padding:0;border-radius:13px;cursor:pointer;' +
+                    'border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);' +
+                    'transition:all 0.18s ease;font-family:inherit;';
+
+                const renderState = (r, g, b) => {
+                    const o = r === 0 && g === 0 && b === 0;
+                    if (o) {
+                        // Apagado: círculo oscuro con sombra interna, botón rojo "OFF"
+                        circle.style.background = 'radial-gradient(circle at 30% 30%, #3a3a4a, #1f1f2c)';
+                        circle.style.border = '2px solid #4a4a5a';
+                        circle.style.boxShadow = 'inset 0 2px 6px rgba(0,0,0,0.4)';
+                        offBtn.style.background = 'linear-gradient(135deg, #ff5757 0%, #e03e3e 100%)';
+                        offBtn.style.borderColor = '#ff5757';
+                        offBtn.innerHTML = `${powerSvg('#fff')}<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:#fff;">OFF</span>`;
+                    } else {
+                        // Encendido: círculo brillante con glow del color, botón sutil "ON"
+                        const rgbStr = `rgb(${r},${g},${b})`;
+                        circle.style.background = `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), ${rgbStr} 60%, rgba(0,0,0,0.2))`;
+                        circle.style.border = `2px solid ${rgbStr}`;
+                        circle.style.boxShadow = `0 0 14px ${rgbStr}, inset 0 1px 3px rgba(255,255,255,0.3)`;
+                        offBtn.style.background = 'rgba(255,255,255,0.04)';
+                        offBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+                        offBtn.innerHTML = `${powerSvg('#9ca3b8')}<span style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:#9ca3b8;">ON</span>`;
+                    }
+                };
 
                 const set = (r, g, b) => {
                     colors[i] = {r, g, b};
-                    const o = r === 0 && g === 0 && b === 0;
-                    preview.style.background = o ? '#2a2a3a' : `rgb(${r},${g},${b})`;
-                    preview.style.borderColor = o ? '#555' : 'rgba(255,255,255,0.5)';
-                    offBtn.style.background = o ? '#555' : 'transparent';
-                    offBtn.style.borderColor = o ? '#aaa' : '#555';
-                    offBtn.style.color = o ? '#fff' : '#888';
+                    renderState(r, g, b);
                     this.setValue(JSON.stringify(colors));
                 };
+
+                // Hover en círculo: pequeña elevación
+                circle.addEventListener('mouseenter', () => { circle.style.transform = 'scale(1.06)'; });
+                circle.addEventListener('mouseleave', () => { circle.style.transform = 'scale(1)'; });
+
+                // Click en círculo: dispara el color picker nativo
+                circle.addEventListener('mousedown', e => {
+                    e.stopPropagation();
+                    // Si está apagado, default a último color o rojo
+                    if (off) colorIn.value = '#ff5757';
+                    colorIn.click();
+                });
 
                 colorIn.addEventListener('input', () => {
                     const rgb = fromHex(colorIn.value);
                     set(rgb.r, rgb.g, rgb.b);
                 });
+
+                // Botón OFF/ON: si ya está OFF, click no hace nada (es un indicador);
+                // si está ON, lo apaga. Si OFF y user quiere ON, debe usar el círculo.
                 offBtn.addEventListener('mousedown', e => {
                     e.stopPropagation();
-                    set(0, 0, 0);
+                    const currentColor = colors[i] || {r: 0, g: 0, b: 0};
+                    const isOff = currentColor.r === 0 && currentColor.g === 0 && currentColor.b === 0;
+                    if (!isOff) {
+                        set(0, 0, 0);
+                    } else {
+                        // Si está OFF y el user clickea OFF, abrir color picker como atajo
+                        colorIn.value = '#ff5757';
+                        colorIn.click();
+                    }
                 });
 
-                col.appendChild(preview);
+                col.appendChild(circle);
                 col.appendChild(colorIn);
                 col.appendChild(offBtn);
                 col.appendChild(lbl);
+
+                renderState(c.r, c.g, c.b);
                 ledsRow.appendChild(col);
             }
 
             popup.appendChild(ledsRow);
+
+            // Footer: hint
+            const hint = document.createElement('div');
+            hint.textContent = 'Click en el círculo para cambiar color · Click en el botón para apagar';
+            hint.style.cssText = 'font-size:9.5px;color:#6a6a7a;text-align:center;font-style:italic;margin-top:2px;';
+            popup.appendChild(hint);
+
             document.body.appendChild(popup);
 
-            // Cerrar con Escape
+            // Cerrar con Escape o click fuera
             const keyHandler = e => {
                 if (e.key === 'Escape') {
                     popup.remove();
@@ -618,7 +670,6 @@ export default function (vm, useCatBlocks) {
                     document.removeEventListener('mousedown', clickHandler);
                 }
             };
-            // Cerrar al hacer click fuera (con delay para ignorar el click que abrió el popup)
             const clickHandler = e => {
                 if (!popup.contains(e.target)) {
                     popup.remove();
@@ -634,14 +685,10 @@ export default function (vm, useCatBlocks) {
 
         if (SB.Field && SB.Field.register) {
             SB.Field.register('field_rgb_matrix', FieldRGBMatrix);
-            console.log('[RGB-FIELD] field_rgb_matrix registrado OK');
-        } else {
-            console.error('[RGB-FIELD] SB.Field.register no disponible:', SB.Field);
         }
 
         SB.Blocks['rgb_matrix'] = {
             init: function () {
-                console.log('[RGB-FIELD] Shadow block rgb_matrix init()');
                 const blockRef = this;
                 const field = new FieldRGBMatrix(DEFAULT_VALUE);
                 this.appendDummyInput()
@@ -657,12 +704,10 @@ export default function (vm, useCatBlocks) {
                     if (!field.fieldGroup_) {
                         field.sourceBlock_ = blockRef;
                         field.init();
-                        console.log('[RGB-FIELD] field.init() forzado via initSvg_ hook');
                     }
                 };
             }
         };
-        console.log('[RGB-FIELD] SB.Blocks[rgb_matrix] registrado OK');
     }(ScratchBlocks));
 
     return ScratchBlocks;
