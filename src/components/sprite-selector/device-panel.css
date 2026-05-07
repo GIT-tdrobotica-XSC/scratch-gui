@@ -174,8 +174,10 @@
 }
 
 .add-device-button-list {
+    /* Ahora vive DENTRO de .device-list, justo tras las cards */
+    width: 100%;
     padding: 0.55rem;
-    margin: 0.4rem 0.5rem;
+    margin: 0;
     border: 2px dashed #4c97ff;
     border-radius: 8px;
     background-color: transparent;
@@ -392,6 +394,52 @@
    ESCALADO UNIFORME — los tamaños suben en pantallas grandes (panel ancho)
    y bajan en pantallas pequeñas, manteniendo el mismo diseño.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Panel ULTRA chico (< 360px): ocultar labels que se cortan, máxima compactación.
+   El dot de la card del dispositivo y el dot del status row ya muestran conexión. */
+@container devicepanel (max-width: 360px) {
+    /* Header "DISPOSITIVOS" — quita ruido textual */
+    .device-list-header {
+        display: none;
+    }
+    /* Label "ESTADO" — el dot + texto inline ya basta */
+    .info-label {
+        display: none;
+    }
+    /* Lista más estrecha para dejar más ancho al panel derecho */
+    .device-list-panel {
+        flex: 0 0 30%;
+        min-width: 80px;
+    }
+    /* Cards más compactas: solo icono visible (texto hidden) */
+    .device-list-item {
+        min-height: 56px;
+        padding: 0.4rem 0.3rem;
+    }
+    .device-list-item-icon {
+        width: 32px;
+        height: 32px;
+    }
+    .device-list-item-name {
+        font-size: 0.65rem;
+    }
+    .add-device-button-list {
+        padding: 0.45rem 0.3rem;
+        font-size: 0.65rem;
+    }
+    /* Status row más compacto */
+    .info-row {
+        font-size: 0.72rem;
+        padding: 0.2rem 0;
+    }
+    .device-details-panel {
+        padding: 0.6rem;
+    }
+    .button {
+        padding: 0.6rem 0.7rem;
+        font-size: 0.78rem;
+    }
+}
 
 /* Panel mediano (≥ 480px): tamaños base + un poco más de padding */
 @container devicepanel (min-width: 480px) {

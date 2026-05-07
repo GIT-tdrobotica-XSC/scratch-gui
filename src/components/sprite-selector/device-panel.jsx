@@ -96,14 +96,15 @@ class DevicePanel extends React.Component {
                                 </div>
                             ))
                         ) : null}
+                        {/* Botón "+ Añadir" inmediatamente después de las cards, dentro
+                            del scroll, para que sea siempre visible junto a los devices. */}
+                        <button
+                            className={styles.addDeviceButtonList}
+                            onClick={onAddDevice}
+                        >
+                            + Añadir Dispositivo
+                        </button>
                     </div>
-
-                    <button
-                        className={styles.addDeviceButtonList}
-                        onClick={onAddDevice}
-                    >
-                        + Añadir Dispositivo
-                    </button>
                 </div>
 
                 {/* Panel derecho - Detalles del dispositivo (70%) */}
