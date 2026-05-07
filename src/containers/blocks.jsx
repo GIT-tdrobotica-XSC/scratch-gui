@@ -255,36 +255,17 @@ class Blocks extends React.Component {
         };
 
         // Lee el pin DIO de un bloque desde el workspace.
-        // Para acceptReporters:false (digitalRead): campo directo.
-        // Para acceptReporters:true (digitalWrite, ledBlink): lee del VM _blocks
-        // ya que el shadow puede no estar accesible vía getInputTargetBlock en todos los casos.
+        // Todos los menús DIO son acceptReporters:false → campo directo.
         const getWSBlockPin = (blockId) => {
             const block = this.workspace.getBlockById(blockId);
             if (!block) return null;
             const op = block.type || '';
-            if (op === 'playiot_digitalRead') {
-                const field = block.getField('PIN');
-                if (!field) return null;
-                const val = String(field.getValue());
-                return DIO_PINS.includes(val) ? val : null;
-            }
-            if (op === 'playiot_digitalWrite' || op === 'playiot_ledBlink') {
-                // Leer desde VM _blocks (más confiable para shadow con acceptReporters:true)
-                const vm = this.props.vm;
-                const argName = op === 'playiot_ledBlink' ? 'LED' : 'PIN';
-                for (const target of vm.runtime.targets) {
-                    const vmBlock = target.blocks._blocks[blockId];
-                    if (!vmBlock) continue;
-                    const inp = vmBlock.inputs && vmBlock.inputs[argName];
-                    const shId = inp && (inp.shadow || inp.block);
-                    const sh = shId && target.blocks._blocks[shId];
-                    if (!sh || !sh.fields) continue;
-                    const fObj = Object.values(sh.fields)[0];
-                    const val = fObj && String(fObj.value);
-                    return DIO_PINS.includes(val) ? val : null;
-                }
-            }
-            return null;
+            if (!DIO_OPS.includes(op)) return null;
+            const argName = op === 'playiot_ledBlink' ? 'LED' : 'PIN';
+            const field = block.getField(argName);
+            if (!field) return null;
+            const val = String(field.getValue());
+            return DIO_PINS.includes(val) ? val : null;
         };
 
         // Devuelve { pin: [blockId, ...] } para todos los bloques DIO del workspace
@@ -300,85 +281,19 @@ class Blocks extends React.Component {
             return usage;
         };
 
-        // Cambia el pin de un bloque.
-        // Para acceptReporters:false (digitalRead): setValue directo (seguro).
-        // Para acceptReporters:true (digitalWrite, ledBlink): setValue en el shadow
-        // causa que éste se desconecte visualmente en Scratch-Blocks. Solución:
-        // serializar a XML, modificar el pin, descartar el bloque y recrearlo.
+        // Cambia el pin DIO de un bloque.
+        // Todos los menús DIO ahora son acceptReporters:false → campo directo,
+        // setValue() funciona sin el bug visual de desconexión de shadow.
         const setBlockPin = (blockId, newPin) => {
             const block = this.workspace.getBlockById(blockId);
             if (!block) return false;
             const op = block.type || '';
-
-            if (op === 'playiot_digitalRead') {
-                const field = block.getField('PIN');
-                if (!field) return false;
-                field.setValue(newPin);
-                return true;
-            }
-
-            if (op === 'playiot_digitalWrite' || op === 'playiot_ledBlink') {
-                // Guardar posición antes de dispose.
-                // En Scratch-Blocks la API correcta es getRelativeToSurfaceXY(),
-                // NO block.x/block.y (que son undefined y caen al fallback (50,50),
-                // causando el "teleport" del bloque).
-                let blockX = 50;
-                let blockY = 50;
-                if (typeof block.getRelativeToSurfaceXY === 'function') {
-                    const xy = block.getRelativeToSurfaceXY();
-                    if (xy) { blockX = xy.x; blockY = xy.y; }
-                }
-                // Serializar bloque completo a XML
-                const xmlDom = this.ScratchBlocks.Xml.blockToDom(block, true);
-                // Encontrar el <value> del argumento pin y actualizar su <field> en el shadow
-                const argName = op === 'playiot_ledBlink' ? 'LED' : 'PIN';
-                const valueEls = xmlDom.getElementsByTagName('value');
-                let updated = false;
-                for (let i = 0; i < valueEls.length; i++) {
-                    if (valueEls[i].getAttribute('name') !== argName) continue;
-                    // Buscar cualquier <field> dentro de <shadow> en este <value>
-                    const shadows = valueEls[i].getElementsByTagName('shadow');
-                    for (let j = 0; j < shadows.length; j++) {
-                        const fields = shadows[j].getElementsByTagName('field');
-                        for (let k = 0; k < fields.length; k++) {
-                            fields[k].textContent = newPin;
-                            updated = true;
-                        }
-                        if (!updated) {
-                            // No existe <field>: crearlo
-                            const newField = xmlDom.ownerDocument
-                                ? xmlDom.ownerDocument.createElement('field')
-                                : document.createElement('field');
-                            newField.setAttribute('name', 'digitalPins');
-                            newField.textContent = newPin;
-                            shadows[j].appendChild(newField);
-                            updated = true;
-                        }
-                    }
-                    break;
-                }
-                if (!updated) return false;
-                // Dispose bloque original (elimina shadow hijos correctamente)
-                block.dispose(false);
-                // Recrear desde XML modificado en la misma posición
-                try {
-                    const newBlock = this.ScratchBlocks.Xml.domToBlock(xmlDom, this.workspace);
-                    if (newBlock) {
-                        if (typeof newBlock.moveTo === 'function') {
-                            newBlock.moveTo({ x: blockX, y: blockY });
-                        } else if (typeof newBlock.moveBy === 'function') {
-                            const cur = (typeof newBlock.getRelativeToSurfaceXY === 'function')
-                                ? newBlock.getRelativeToSurfaceXY()
-                                : { x: 0, y: 0 };
-                            newBlock.moveBy(blockX - (cur.x || 0), blockY - (cur.y || 0));
-                        }
-                    }
-                    return !!newBlock;
-                } catch (e) {
-                    return false;
-                }
-            }
-            return false;
+            if (!DIO_OPS.includes(op)) return false;
+            const argName = op === 'playiot_ledBlink' ? 'LED' : 'PIN';
+            const field = block.getField(argName);
+            if (!field) return false;
+            field.setValue(newPin);
+            return true;
         };
 
         const showDIOToast = (msg, isError = false) => {
@@ -432,14 +347,8 @@ class Blocks extends React.Component {
                     if (!priorDIOIds.has(id)) { newId = id; pin = p; break outer; }
                 }
             }
-            console.log('[DIO][settled] currentUsage:', JSON.parse(JSON.stringify(currentUsage)),
-                        '| newId:', newId, '| pin:', pin,
-                        '| priorUsage[pin]:', priorUsage[pin] || []);
             if (!newId || !pin) return;
-            if (!(priorUsage[pin] || []).length) {
-                console.log('[DIO][settled] pin', pin, 'estaba libre — no hay conflicto');
-                return;
-            }
+            if (!(priorUsage[pin] || []).length) return;
 
             const block = this.workspace.getBlockById(newId);
             if (!block) return;
@@ -485,11 +394,6 @@ class Blocks extends React.Component {
                     }
                     if (realBlock) {
                         const usage = getDIOUsage(realBlock.id);
-                        console.log('[DIO][change/field] blockId:', event.blockId,
-                                    '| oldValue:', oldPinRaw, '| newValue:', newPin,
-                                    '| realBlock.id:', realBlock.id, '| realBlock.type:', realBlock.type,
-                                    '| usage(excl real):', JSON.parse(JSON.stringify(usage)),
-                                    '| conflict?', (usage[newPin] || []).length > 0);
                         if ((usage[newPin] || []).length > 0) {
                             const oldPin = String(event.oldValue || '');
                             const freePin = DIO_PINS.find(p => !(usage[p] || []).length);
@@ -524,20 +428,7 @@ class Blocks extends React.Component {
                 // Snapshot SÍNCRONO: IDs de bloques DIO que existían ANTES de este evento.
                 const priorUsage = getDIOUsage(event.blockId);
                 const priorDIOIds = new Set(Object.values(priorUsage).flat());
-                const allBlocks = this.workspace.getAllBlocks();
-                console.log('[DIO][create] blockId:', event.blockId,
-                            '| priorUsage:', JSON.parse(JSON.stringify(priorUsage)),
-                            '| priorDIOIds:', [...priorDIOIds],
-                            '| total blocks in WS:', allBlocks.length);
-                allBlocks.forEach(b => {
-                    const xy = (b.getRelativeToSurfaceXY && b.getRelativeToSurfaceXY()) || {x: '?', y: '?'};
-                    console.log('  └ block:', b.id, '| type:', b.type,
-                                '| shadow?:', !!(b.isShadow && b.isShadow()),
-                                '| inFlyout?:', !!b.isInFlyout,
-                                '| insertionMarker?:', !!(b.isInsertionMarker && b.isInsertionMarker()),
-                                '| pos:', xy);
-                });
-                // Esperar a que el usuario suelte el bloque antes de hacer dispose+domToBlock
+                // Esperar a que el usuario suelte el bloque antes de mover el field
                 setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds), 80);
                 return;
             }

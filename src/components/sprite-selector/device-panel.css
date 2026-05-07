@@ -4,8 +4,10 @@
     display: flex;
     flex: 1;
     min-height: 0;
+    height: 100%;
     background-color: #ffffff;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
+    overflow: hidden; /* aísla el scroll a los hijos con overflow:auto */
 }
 
 .device-panel-wrapper-small {

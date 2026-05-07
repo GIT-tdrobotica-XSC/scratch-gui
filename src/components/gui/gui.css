@@ -202,34 +202,35 @@
     position: relative;
 }
 
+/* Bandera/Stop posicionados al lado de los botones de zoom (+/-/=) de Blockly,
+   que viven en la esquina inferior-derecha del workspace SVG. */
 .workspace-controls {
     position: absolute;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 80px; /* deja espacio para los botones de zoom de Blockly a la derecha */
     z-index: 10;
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: rgba(255, 255, 255, 0.93);
-    border-radius: 16px;
-    padding: 10px 16px;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 6px 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
     backdrop-filter: blur(8px);
 }
 
-/* Botones grandes y notorios */
+/* Botones discretos a juego con los íconos de zoom */
 .workspace-controls :global(.controls-container) {
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 6px;
 }
 .workspace-controls :global(.controls-container) img {
-    width: 6.5rem !important;
-    height: 6.5rem !important;
-    padding: 1rem !important;
-    border-radius: 12px !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    padding: 0.3rem !important;
+    border-radius: 8px !important;
 }
 
 .stage-and-target-wrapper {
