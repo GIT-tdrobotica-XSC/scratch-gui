@@ -282,8 +282,11 @@ class Blocks extends React.Component {
         };
 
         // Cambia el pin DIO de un bloque.
-        // Todos los menús DIO ahora son acceptReporters:false → campo directo,
-        // setValue() funciona sin el bug visual de desconexión de shadow.
+        // Todos los menús DIO son acceptReporters:false → campo directo.
+        // Tras setValue() el bloque queda OK lógicamente, pero los shadow
+        // children de OTROS inputs (STATE en digitalWrite, TIMES en ledBlink)
+        // pueden quedar visualmente flotando si el conflict-resolve corre
+        // demasiado pronto tras el drop. Forzamos re-layout completo.
         const setBlockPin = (blockId, newPin) => {
             const block = this.workspace.getBlockById(blockId);
             if (!block) return false;
@@ -293,6 +296,31 @@ class Blocks extends React.Component {
             const field = block.getField(argName);
             if (!field) return false;
             field.setValue(newPin);
+            // Forzar re-layout del bloque, sus hijos shadow Y sus inputs.
+            const reflow = () => {
+                const b = this.workspace.getBlockById(blockId);
+                if (!b) return;
+                try {
+                    // Re-render de cada shadow conectado en sus value inputs
+                    // (para que su SVG se re-posicione dentro del padre).
+                    if (b.inputList) {
+                        b.inputList.forEach(input => {
+                            if (input.connection && input.connection.targetBlock) {
+                                const target = input.connection.targetBlock();
+                                if (target && typeof target.render === 'function') {
+                                    target.render();
+                                }
+                            }
+                        });
+                    }
+                    if (typeof b.render === 'function') b.render();
+                    if (typeof b.moveBy === 'function') b.moveBy(0, 0);
+                    if (typeof b.bumpNeighbours_ === 'function') b.bumpNeighbours_();
+                } catch (e) { /* ignorar */ }
+            };
+            reflow();
+            setTimeout(reflow, 0);
+            setTimeout(reflow, 60);
             return true;
         };
 
@@ -331,11 +359,21 @@ class Blocks extends React.Component {
         // Ejecuta la lógica de conflicto DIO una vez que el bloque está soltado
         // (ya no se está arrastrando). Reintenta si el workspace sigue con gesto activo
         // para evitar dispose+domToBlock mientras el bloque sigue mid-drag (efecto teleport).
-        const runConflictWhenSettled = (priorUsage, priorDIOIds, retries = 0) => {
+        const runConflictWhenSettled = (priorUsage, priorDIOIds, retries = 0, postSettleDelayDone = false) => {
             if (_dioGuard) return;
             const gesture = this.workspace.currentGesture_;
-            if (gesture && gesture.draggingBlock_ && retries < 20) {
-                setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds, retries + 1), 50);
+            // Esperar a que el drag termine totalmente (gesture === null, no
+            // solo draggingBlock_ nulo). Sin esto, setBlockPin corre antes de
+            // que scratch-blocks finalice el layout post-drop y los shadow
+            // children quedan flotando.
+            if (gesture && retries < 25) {
+                setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds, retries + 1, false), 50);
+                return;
+            }
+            // Margen extra de 120ms tras el fin del gesture para que el bloque
+            // ya esté completamente renderizado en su posición final.
+            if (!postSettleDelayDone) {
+                setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds, retries, true), 120);
                 return;
             }
 
