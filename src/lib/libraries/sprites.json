@@ -11,8 +11,8 @@
                 "bitmapResolution": 1,
                 "md5ext": "14a3e0d41d648b4415b4a78cb65ba725.svg",
                 "dataFormat": "svg",
-                "rotationCenterX": 500,
-                "rotationCenterY": 500
+                "rotationCenterX": 50,
+                "rotationCenterY": 50
             },
             {
                 "assetId": "54ae922e118ccf76a22e935737e2a579",
@@ -20,8 +20,8 @@
                 "bitmapResolution": 1,
                 "md5ext": "54ae922e118ccf76a22e935737e2a579.svg",
                 "dataFormat": "svg",
-                "rotationCenterX": 500,
-                "rotationCenterY": 500
+                "rotationCenterX": 50,
+                "rotationCenterY": 50
             },
             {
                 "assetId": "82d8ed9bb53b3f026a5d9d59086a4d6e",
@@ -29,8 +29,8 @@
                 "bitmapResolution": 1,
                 "md5ext": "82d8ed9bb53b3f026a5d9d59086a4d6e.svg",
                 "dataFormat": "svg",
-                "rotationCenterX": 500,
-                "rotationCenterY": 500
+                "rotationCenterX": 50,
+                "rotationCenterY": 50
             }
         ],
         "sounds": [],

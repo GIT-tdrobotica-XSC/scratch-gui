@@ -380,9 +380,14 @@ class Blocks extends React.Component {
         this._dioConflictListener = (event) => {
             // ── Bloquear selección manual de pin en uso (Issue: pin lockout) ──────────
             if (!_dioGuard && event.type === 'change' && event.element === 'field') {
+                // Saltarse durante drag activo: si setBlockPin re-renderiza el bloque
+                // mid-drag, los shadow children (ej. "3" en "Parpadear N veces") se
+                // desconectan visualmente hasta que se suelta el bloque.
+                const gesture = this.workspace.currentGesture_;
+                if (gesture && gesture.draggingBlock_) return;
+
                 const changedBlock = this.workspace.getBlockById(event.blockId);
                 const newPin = String(event.newValue || '');
-                const oldPinRaw = String(event.oldValue || '');
                 if (changedBlock && DIO_PINS.includes(newPin)) {
                     // El cambio puede venir del bloque real (digitalRead) o de su shadow (digitalWrite)
                     let realBlock = null;
