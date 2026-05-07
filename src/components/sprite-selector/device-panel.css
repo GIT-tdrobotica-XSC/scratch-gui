@@ -12,122 +12,108 @@
     container-name: devicepanel;
 }
 
-/* Cuando el panel es más estrecho que ~480px (independiente del stage size),
-   apilar verticalmente para que la sección "Conectar" quede legible. */
-@container devicepanel (max-width: 480px) {
-    .device-panel-wrapper {
-        flex-direction: column;
-    }
+/* MODO COMPACTO (estilo mBlock): se activa por container query basado en
+   el ancho real del panel. Mantenemos layout horizontal (no stacking) pero
+   removemos info-section boxes, hacemos el header plano y el botón aparece
+   inmediatamente debajo del status — sin sticky, sin auto-margin, sin scroll. */
+@container devicepanel (max-width: 560px) {
+    /* Lista compacta: cards más pequeñas, header reducido */
     .device-list-panel {
-        flex: 0 0 auto !important;
-        max-height: 36%;
-        border-right: none !important;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        flex: 0 0 110px !important;
     }
-    .device-list-panel,
-    .device-list-panel-small {
-        flex: 0 0 auto !important;
+    .device-list-header {
+        padding: 0.4rem 0.5rem;
     }
-    .device-details-panel {
-        padding: 0.7rem 0.8rem;
+    .device-list-title {
+        font-size: 0.7rem;
+        letter-spacing: 0.3px;
     }
-    .info-section {
-        padding: 0.6rem 0.7rem;
-        margin-bottom: 0.6rem;
-        border-radius: 8px;
+    .device-list {
+        padding: 0.4rem;
     }
-    .info-section-title {
+    .device-list-item-wrapper {
         margin-bottom: 0.4rem;
-        font-size: 0.65rem;
     }
-    .info-row {
-        padding: 0.35rem 0;
-        font-size: 0.78rem;
+    .device-list-item {
+        min-height: 64px;
+        padding: 0.4rem 0.3rem;
     }
-    .details-title {
-        font-size: 1rem;
+    .device-list-item-icon {
+        width: 30px;
+        height: 30px;
+    }
+    .device-list-item-name {
+        font-size: 0.7rem;
+    }
+    .add-device-button-list {
+        padding: 0.4rem;
+        margin: 0.3rem;
+        font-size: 0.7rem;
+    }
+
+    /* Detalles: SIN box info-section, SIN sticky, layout flujo natural */
+    .device-details-panel {
+        padding: 0.6rem 0.8rem;
     }
     .details-header {
-        margin-bottom: 0.6rem;
-        padding-bottom: 0.4rem;
+        margin-bottom: 0.4rem;
+        padding-bottom: 0.3rem;
+        border-bottom-width: 1px;
+    }
+    .details-title {
+        font-size: 0.95rem;
+    }
+    .details-info {
+        gap: 0.4rem;
+    }
+    .info-section {
+        padding: 0;
+        margin-bottom: 0.5rem;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+    }
+    .info-section-title {
+        margin-bottom: 0.3rem;
+        font-size: 0.6rem;
+        letter-spacing: 0.4px;
+    }
+    .info-row {
+        padding: 0.2rem 0;
+        font-size: 0.75rem;
+        border-bottom: none;
+    }
+    .info-label {
+        font-size: 0.7rem;
+    }
+    /* Botón inmediatamente después de la info, no auto-pushed al fondo */
+    .button-group {
+        margin-top: 0.4rem !important;
+        flex-shrink: 0;
     }
     .button {
-        min-width: 100px !important;
-        padding: 0.55rem 0.7rem !important;
+        min-width: 0 !important;
+        padding: 0.5rem 0.7rem !important;
         font-size: 0.78rem !important;
     }
-    /* Botón "Conectar" pegado al fondo del panel para visibilidad permanente */
-    .button-group {
-        margin-top: 0.5rem !important;
-        position: sticky;
-        bottom: 0;
-        background: #ffffff;
-        padding: 0.5rem 0;
-        z-index: 1;
+}
+
+/* En pantalla extremadamente angosta (< 360px) ocultamos el header
+   "DISPOSITIVOS" y el título "PlayIoT" para ganar espacio vertical. */
+@container devicepanel (max-width: 360px) {
+    .device-list-header,
+    .details-header {
+        display: none;
+    }
+    .device-list-panel {
+        flex: 0 0 90px !important;
     }
 }
 
-/* MODO STAGE PEQUEÑO: apilar verticalmente.
-   Side-by-side no funciona en pantallas chicas: el panel queda muy estrecho,
-   el botón "Conectar" se va abajo y no se ve sin scroll. Apilando vertical
-   cada sección recibe el ancho completo del panel. */
+/* MODO STAGE PEQUEÑO (legacy, lo deja Scratch al cambiar tamaño del stage):
+   solo afina tamaños de fuente. */
 .device-panel-wrapper-small {
     font-size: 0.8rem;
-    flex-direction: column;
-}
-
-.device-panel-wrapper-small .device-list-panel {
-    flex: 0 0 auto;
-    max-height: 38%;
-    border-right: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.device-panel-wrapper-small .device-list {
-    /* Lista de dispositivos compacta horizontal cuando hay poco espacio vertical */
-    padding: 0.4rem;
-}
-
-.device-panel-wrapper-small .details-title {
-    font-size: 1rem;
-}
-
-.device-panel-wrapper-small .details-header {
-    margin-bottom: 0.6rem;
-    padding-bottom: 0.4rem;
-}
-
-.device-panel-wrapper-small .info-section {
-    padding: 0.6rem 0.7rem;
-    border-radius: 8px;
-    margin-bottom: 0.6rem;
-}
-
-.device-panel-wrapper-small .info-section-title {
-    margin-bottom: 0.4rem;
-    font-size: 0.65rem;
-}
-
-.device-panel-wrapper-small .info-row {
-    padding: 0.35rem 0;
-    font-size: 0.78rem;
-}
-
-.device-panel-wrapper-small .button {
-    min-width: 100px;
-    padding: 0.55rem 0.7rem;
-    font-size: 0.78rem;
-}
-
-/* Botón "Conectar" pegado al borde inferior del panel detalles para que
-   siempre sea visible sin necesidad de scroll. */
-.device-panel-wrapper-small .button-group {
-    margin-top: 0.5rem;
-    position: sticky;
-    bottom: 0;
-    background: #ffffff;
-    padding: 0.5rem 0;
-    z-index: 1;
 }
 
 .device-panel-wrapper-small .device-details-panel {
