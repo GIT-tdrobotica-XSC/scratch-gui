@@ -284,9 +284,16 @@ class Blocks extends React.Component {
             }
 
             if (op === 'playiot_digitalWrite' || op === 'playiot_ledBlink') {
-                // Guardar posición antes de dispose
-                const blockX = typeof block.x === 'number' ? block.x : 50;
-                const blockY = typeof block.y === 'number' ? block.y : 50;
+                // Guardar posición antes de dispose.
+                // En Scratch-Blocks la API correcta es getRelativeToSurfaceXY(),
+                // NO block.x/block.y (que son undefined y caen al fallback (50,50),
+                // causando el "teleport" del bloque).
+                let blockX = 50;
+                let blockY = 50;
+                if (typeof block.getRelativeToSurfaceXY === 'function') {
+                    const xy = block.getRelativeToSurfaceXY();
+                    if (xy) { blockX = xy.x; blockY = xy.y; }
+                }
                 // Serializar bloque completo a XML
                 const xmlDom = this.ScratchBlocks.Xml.blockToDom(block, true);
                 // Encontrar el <value> del argumento pin y actualizar su <field> en el shadow
@@ -326,7 +333,10 @@ class Blocks extends React.Component {
                         if (typeof newBlock.moveTo === 'function') {
                             newBlock.moveTo({ x: blockX, y: blockY });
                         } else if (typeof newBlock.moveBy === 'function') {
-                            newBlock.moveBy(blockX - (newBlock.x || 0), blockY - (newBlock.y || 0));
+                            const cur = (typeof newBlock.getRelativeToSurfaceXY === 'function')
+                                ? newBlock.getRelativeToSurfaceXY()
+                                : { x: 0, y: 0 };
+                            newBlock.moveBy(blockX - (cur.x || 0), blockY - (cur.y || 0));
                         }
                     }
                     return !!newBlock;
@@ -388,8 +398,14 @@ class Blocks extends React.Component {
                     if (!priorDIOIds.has(id)) { newId = id; pin = p; break outer; }
                 }
             }
+            console.log('[DIO][settled] currentUsage:', JSON.parse(JSON.stringify(currentUsage)),
+                        '| newId:', newId, '| pin:', pin,
+                        '| priorUsage[pin]:', priorUsage[pin] || []);
             if (!newId || !pin) return;
-            if (!(priorUsage[pin] || []).length) return;
+            if (!(priorUsage[pin] || []).length) {
+                console.log('[DIO][settled] pin', pin, 'estaba libre — no hay conflicto');
+                return;
+            }
 
             const block = this.workspace.getBlockById(newId);
             if (!block) return;
@@ -423,6 +439,7 @@ class Blocks extends React.Component {
             if (!_dioGuard && event.type === 'change' && event.element === 'field') {
                 const changedBlock = this.workspace.getBlockById(event.blockId);
                 const newPin = String(event.newValue || '');
+                const oldPinRaw = String(event.oldValue || '');
                 if (changedBlock && DIO_PINS.includes(newPin)) {
                     // El cambio puede venir del bloque real (digitalRead) o de su shadow (digitalWrite)
                     let realBlock = null;
@@ -434,6 +451,11 @@ class Blocks extends React.Component {
                     }
                     if (realBlock) {
                         const usage = getDIOUsage(realBlock.id);
+                        console.log('[DIO][change/field] blockId:', event.blockId,
+                                    '| oldValue:', oldPinRaw, '| newValue:', newPin,
+                                    '| realBlock.id:', realBlock.id, '| realBlock.type:', realBlock.type,
+                                    '| usage(excl real):', JSON.parse(JSON.stringify(usage)),
+                                    '| conflict?', (usage[newPin] || []).length > 0);
                         if ((usage[newPin] || []).length > 0) {
                             const oldPin = String(event.oldValue || '');
                             const freePin = DIO_PINS.find(p => !(usage[p] || []).length);
@@ -468,6 +490,12 @@ class Blocks extends React.Component {
                 // Snapshot SÍNCRONO: IDs de bloques DIO que existían ANTES de este evento.
                 const priorUsage = getDIOUsage(event.blockId);
                 const priorDIOIds = new Set(Object.values(priorUsage).flat());
+                const allBlocks = this.workspace.getAllBlocks();
+                console.log('[DIO][create] blockId:', event.blockId,
+                            '| priorUsage:', JSON.parse(JSON.stringify(priorUsage)),
+                            '| priorDIOIds:', [...priorDIOIds],
+                            '| total blocks in WS:', allBlocks.length,
+                            '| block types:', allBlocks.map(b => `${b.id}:${b.type}${b.isShadow && b.isShadow() ? '(shadow)' : ''}`));
                 // Esperar a que el usuario suelte el bloque antes de hacer dispose+domToBlock
                 setTimeout(() => runConflictWhenSettled(priorUsage, priorDIOIds), 80);
                 return;
