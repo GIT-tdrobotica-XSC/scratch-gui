@@ -14,7 +14,6 @@ import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 import { isRtl } from 'scratch-l10n';
 import extensionLibrary from '../../lib/libraries/extensions';
 import playiot from '../../lib/libraries/extensions/playiot';
-import playme from '../../lib/libraries/extensions/playme';
 import extensionModalStyles from './extension-modal.css';
 
 import styles from './sprite-selector.css';
@@ -63,15 +62,6 @@ class SpriteSelectorComponent extends React.Component {
                     port: null,
                     baudRate: 115200,
                     extensionId: 'playiot'
-                },
-                {
-                    id: 'playme_1',
-                    name: 'PlayMe',
-                    icon: playme.insetIconURL,
-                    isConnected: false,
-                    port: null,
-                    baudRate: 115200,
-                    extensionId: 'playme'
                 }
             ],
             showExtensionModal: false,

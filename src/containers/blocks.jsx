@@ -158,8 +158,8 @@ class Blocks extends React.Component {
         setTimeout(insertConnStatus, 0);
 
         const updateConnStatus = () => {
-            const peripheral = window.playIotPeripheral;
-            const connected = !!(peripheral && typeof peripheral.isConnected === 'function' && peripheral.isConnected());
+            const isUp = p => !!(p && typeof p.isConnected === 'function' && p.isConnected());
+            const connected = isUp(window.playIotPeripheral) || isUp(window.playMePeripheral);
             const label = this._connStatusEl.querySelector('.playcode-conn-label');
             this._connStatusEl.classList.toggle('playcode-conn-on', connected);
             if (label) label.textContent = connected ? 'Conectado' : 'Desconectado';
