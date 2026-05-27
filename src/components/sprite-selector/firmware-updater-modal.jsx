@@ -119,18 +119,15 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
             setStatus('Reiniciando dispositivo...');
 
             if (extensionId === PLAYME_ID) {
-                // PlayMe: reset manual controlando señales DTR/RTS
-                // El hard_reset de esptool deja las señales en un estado
-                // que impide la reconexión posterior en esta placa.
+                // PlayMe (ESP32-S3 con USB nativo CDC): el chip se conecta vía
+                // USB-Serial-JTAG, donde DTR no controla nada y solo RTS mapea
+                // al reset (EN). El hard_reset clásico (que pulsa DTR) deja las
+                // señales en mal estado. Pasamos usingUsbOtg=true para que
+                // esptool-js use el timing correcto (solo RTS, sin DTR).
                 try {
-                    await transport.setDTR(false);
-                    await transport.setRTS(true);   // Liberar GPIO0 (no modo boot)
-                    await new Promise(r => setTimeout(r, 100));
-                    await transport.setDTR(true);   // Pulso EN → reset
-                    await new Promise(r => setTimeout(r, 100));
-                    await transport.setDTR(false);  // Liberar EN → ESP32 arranca
+                    await esploader.after('hard_reset', true);
                 } catch (e) {
-                    console.warn('Error en reset manual PlayMe:', e);
+                    console.warn('Error en reset USB-OTG PlayMe:', e);
                 }
             } else {
                 // PlayIoT: comportamiento original (funciona bien)
