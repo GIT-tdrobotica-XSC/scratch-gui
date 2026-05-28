@@ -6,7 +6,7 @@ import styles from './firmware-updater-modal.css';
 const PLAYIOT_ID = 'playiot';
 const PLAYME_ID = 'playme';
 
-const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) => {
+const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, onReconnect }) => {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState('Iniciando...');
     const [error, setError] = useState(null);
@@ -149,8 +149,15 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
                 transport = null;
             }
 
-            // Esperar que el firmware arranque antes de marcar éxito
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // PlayMe: reconectar inmediatamente (como PIO: reset → monitor de una)
+            // No esperar — el dispositivo arranca mientras el modal muestra éxito.
+            if (extensionId === PLAYME_ID && onReconnect) {
+                onReconnect(port);
+            }
+
+            // PlayIoT sigue reconectando desde handleCloseFirmwareModal (necesita más tiempo)
+            const bootWait = extensionId === PLAYME_ID ? 800 : 1500;
+            await new Promise(resolve => setTimeout(resolve, bootWait));
 
             setProgress(100);
             setStatus('¡Firmware instalado!');
@@ -263,6 +270,7 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
 FirmwareUpdaterModal.propTypes = {
     onClose: PropTypes.func.isRequired,
     onUpdatingChange: PropTypes.func.isRequired,
+    onReconnect: PropTypes.func,
     port: PropTypes.object,
     extensionId: PropTypes.string
 };

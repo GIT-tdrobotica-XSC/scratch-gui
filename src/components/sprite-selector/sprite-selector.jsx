@@ -497,8 +497,8 @@ class SpriteSelectorComponent extends React.Component {
             activeUpdatingPort: null
         });
 
-        // 🔐 Intentar reclamar el puerto si existía uno previo
-        if (device && activeUpdatingPort) {
+        // PlayIoT: reconectar desde aquí (PlayMe ya reconectó desde onReconnect del modal)
+        if (device && activeUpdatingPort && device.extensionId !== 'playme') {
             const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[device.extensionId];
 
             if (peripheral && typeof peripheral.reconnect === 'function') {
@@ -512,6 +512,17 @@ class SpriteSelectorComponent extends React.Component {
                 await peripheral._serial.claimPort(activeUpdatingPort);
                 this.setState({ isReconnecting: false });
             }
+        }
+    }
+
+    handleReconnect = (port) => {
+        const { selectedDeviceIndex, devices } = this.state;
+        const { vm } = this.props;
+        const device = devices[selectedDeviceIndex];
+        if (!device || !port) return;
+        const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[device.extensionId];
+        if (peripheral && typeof peripheral.reconnect === 'function') {
+            peripheral.reconnect(port);
         }
     }
 
@@ -679,6 +690,7 @@ class SpriteSelectorComponent extends React.Component {
                                 extensionId={devices[selectedDeviceIndex] ? devices[selectedDeviceIndex].extensionId : null}
                                 onUpdatingChange={this.handleUpdatingChange}
                                 onClose={this.handleCloseFirmwareModal}
+                                onReconnect={this.handleReconnect}
                             />
                         )}
 
