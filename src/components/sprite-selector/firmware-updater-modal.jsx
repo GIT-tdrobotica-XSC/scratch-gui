@@ -72,7 +72,29 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
             });
 
             // ====== PASO 3: MAIN (RESET, HANDSHAKE) ======
-            await esploader.main();
+            // Retry main() up to 3 times — the OS port handle can be slow to release
+            // on Windows with CH340 after the previous serial connection closed.
+            let mainError = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    await esploader.main();
+                    mainError = null;
+                    break;
+                } catch (err) {
+                    mainError = err;
+                    const isPortBusy = err && (
+                        (err.name === 'NetworkError') ||
+                        (err.message && err.message.includes('Failed to open serial port'))
+                    );
+                    if (!isPortBusy || attempt === 3) {
+                        throw err;
+                    }
+                    console.warn(`Intento ${attempt}/3 falló (puerto ocupado), reintentando en 500ms...`);
+                    setStatus(`Reintentando conexión (${attempt}/3)...`);
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+            if (mainError) throw mainError;
             setProgress(15);
 
             // ====== PASO 4: FLASHEAR ======
