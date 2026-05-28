@@ -468,8 +468,9 @@ class SpriteSelectorComponent extends React.Component {
 
         if (peripheral && peripheral.getSerialPort && peripheral.getSerialPort()) {
             const port = peripheral.getSerialPort();
-            // 🔓 Liberar streams pero mantener puerto abierto para esptool-js
             if (peripheral._serial) await peripheral._serial.releasePort();
+            // Extra wait for CH340 driver to release the OS port handle
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             this.setState({
                 showFirmwareModal: true,
