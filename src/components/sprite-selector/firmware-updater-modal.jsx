@@ -79,8 +79,10 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
             setStatus(`Escribiendo firmware ${extension.toUpperCase()}...`);
             setProgress(20);
 
+            // ESP32-S3 (PlayMe): bootloader at 0x0000. Original ESP32 (PlayIoT): 0x1000.
+            const bootloaderAddress = extensionId === PLAYME_ID ? 0x0000 : 0x1000;
             const filesData = [
-                { data: bootloader, address: 0x1000 },
+                { data: bootloader, address: bootloaderAddress },
                 { data: partitions, address: 0x8000 },
                 { data: firmware, address: 0x10000 }
             ];
