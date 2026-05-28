@@ -72,10 +72,10 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
             });
 
             // ====== PASO 3: MAIN (RESET, HANDSHAKE) ======
-            // Retry main() up to 3 times — the OS port handle can be slow to release
-            // on Windows with CH340 after the previous serial connection closed.
+            // Retry main() up to 5 times — CH340 on Windows after abrupt disconnect
+            // can take 1-3s for the driver to fully release the COM port handle.
             let mainError = null;
-            for (let attempt = 1; attempt <= 3; attempt++) {
+            for (let attempt = 1; attempt <= 5; attempt++) {
                 try {
                     await esploader.main();
                     mainError = null;
@@ -86,12 +86,12 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
                         (err.name === 'NetworkError') ||
                         (err.message && err.message.includes('Failed to open serial port'))
                     );
-                    if (!isPortBusy || attempt === 3) {
+                    if (!isPortBusy || attempt === 5) {
                         throw err;
                     }
-                    console.warn(`Intento ${attempt}/3 falló (puerto ocupado), reintentando en 500ms...`);
-                    setStatus(`Reintentando conexión (${attempt}/3)...`);
-                    await new Promise(r => setTimeout(r, 500));
+                    console.warn(`[PlayMe] Intento ${attempt}/5 — puerto ocupado, reintentando en 1s...`);
+                    setStatus(`Esperando puerto... (${attempt}/5)`);
+                    await new Promise(r => setTimeout(r, 1000));
                 }
             }
             if (mainError) throw mainError;
