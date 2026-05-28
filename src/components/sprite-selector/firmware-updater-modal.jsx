@@ -150,15 +150,10 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
             }
 
             // Esperar que el firmware arranque antes de marcar éxito
-            const bootWait = extensionId === PLAYME_ID ? 2000 : 1500;
-            await new Promise(resolve => setTimeout(resolve, bootWait));
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
             setProgress(100);
-            if (extensionId === PLAYME_ID) {
-                setStatus('¡Firmware instalado! Vuelve a conectar el dispositivo.');
-            } else {
-                setStatus('¡Firmware instalado!');
-            }
+            setStatus('¡Firmware instalado!');
             setIsSuccess(true);
 
         } catch (err) {
@@ -247,11 +242,6 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange }) 
                 {isSuccess && (
                     <div className={styles.success}>
                         ✅ <strong>{selectedExtension.toUpperCase()}</strong> instalado con éxito.
-                        {extensionId === PLAYME_ID && (
-                            <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.85 }}>
-                                Vuelve a conectar el dispositivo desde el workspace.
-                            </p>
-                        )}
                     </div>
                 )}
 

@@ -501,16 +501,6 @@ class SpriteSelectorComponent extends React.Component {
         if (device && activeUpdatingPort) {
             const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[device.extensionId];
 
-            // PlayMe usa USB native CDC: el dispositivo re-enumera después del reset
-            // y el objeto SerialPort queda inválido. El usuario debe reconectar manualmente.
-            if (device.extensionId === 'playme') {
-                if (peripheral && peripheral._serial) {
-                    peripheral._serial.port = null;
-                    peripheral._serial.connected = false;
-                }
-                return;
-            }
-
             if (peripheral && typeof peripheral.reconnect === 'function') {
                 this.setState({ isReconnecting: true });
                 await new Promise(resolve => setTimeout(resolve, 4000));
