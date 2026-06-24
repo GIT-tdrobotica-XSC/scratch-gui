@@ -1,8 +1,8 @@
 import React from 'react';
 
-// ✅ EXTENSIÓN ACTIVA
-import playiot from './playiot';
-import playme from './playme';
+// ✅ EXTENSIONES ACTIVAS (software puro — no dispositivos hardware)
+// PlayMe y PlayIoT NO van aquí: son dispositivos gestionados por el panel lateral
+import teachablemachine from './teachablemachine';
 
 /*
 // ❌ EXTENSIONES DESACTIVADAS
@@ -45,7 +45,5 @@ import gdxforInsetIconURL from './gdxfor/gdxfor-small.svg';
 */
 
 export default [
-    //  ÚNICA EXTENSIÓN DISPONIBLE
-    playiot,
-    playme
+    teachablemachine
 ];

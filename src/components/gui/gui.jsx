@@ -45,6 +45,7 @@ import codeIcon from './icon--code.svg';
 import costumesIcon from './icon--costumes.svg';
 import soundsIcon from './icon--sounds.svg';
 import DebugModal from '../debug-modal/debug-modal.jsx';
+import MLStudio from '../ml-studio/ml-studio.jsx';
 
 const messages = defineMessages({
     addExtension: {
@@ -58,7 +59,85 @@ const messages = defineMessages({
 // Assume that it doesn't change for a session.
 let isRendererSupported = null;
 
+const tmWidgetStyle = {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    width: '160px',
+    height: '120px',
+    borderRadius: '10px',
+    overflow: 'hidden',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+    border: '2px solid #009688',
+    zIndex: 900,
+    background: '#000'
+};
+
+const tmVideoStyle = {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block'
+};
+
+const tmBadgeStyle = {
+    position: 'absolute',
+    top: '6px',
+    left: '6px',
+    background: '#009688',
+    color: '#fff',
+    fontSize: '0.6rem',
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: '8px',
+    letterSpacing: '0.05em'
+};
+
+const TmCameraWidget = ({stream, flipped}) => {
+    const ref = React.useRef(null);
+    React.useEffect(() => {
+        if (ref.current && stream) {
+            ref.current.srcObject = stream;
+            ref.current.play().catch(() => {});
+        }
+    }, [stream]);
+    const videoStyle = {
+        ...tmVideoStyle,
+        transform: flipped ? 'scaleX(-1)' : 'none'
+    };
+    return (
+        <div style={tmWidgetStyle}>
+            <video ref={ref} style={videoStyle} autoPlay muted playsInline />
+            <div style={tmBadgeStyle}>IA en vivo</div>
+        </div>
+    );
+};
+
 const GUIComponent = props => {
+    const [mlStudioOpen, setMlStudioOpen] = React.useState(false);
+    const [tmCameraStream, setTmCameraStream] = React.useState(null);
+    const [tmVideoFlipped, setTmVideoFlipped] = React.useState(true);
+
+    // Escuchar eventos del runtime para abrir ML Studio y mostrar cámara
+    React.useEffect(() => {
+        if (!props.vm) return;
+        const rt = props.vm.runtime;
+        const onOpen = () => setMlStudioOpen(true);
+        const onCamOn = stream => setTmCameraStream(stream);
+        const onCamOff = () => setTmCameraStream(null);
+        const onFlip = flipped => setTmVideoFlipped(flipped);
+        rt.on('OPEN_ML_STUDIO', onOpen);
+        rt.on('TM_CAMERA_STARTED', onCamOn);
+        rt.on('TM_CAMERA_STOPPED', onCamOff);
+        rt.on('TM_VIDEO_FLIP', onFlip);
+        return () => {
+            rt.off('OPEN_ML_STUDIO', onOpen);
+            rt.off('TM_CAMERA_STARTED', onCamOn);
+            rt.off('TM_CAMERA_STOPPED', onCamOff);
+            rt.off('TM_VIDEO_FLIP', onFlip);
+        };
+    }, [props.vm]);
+
     const {
         accountNavOpen,
         activeTabIndex,
@@ -372,7 +451,7 @@ const GUIComponent = props => {
                                                     <Controls vm={vm} />
                                                 </div>
                                             </Box>
-                                            {/* <Box className={styles.extensionButtonContainer}>
+                                            <Box className={styles.extensionButtonContainer}>
                                                 <button
                                                     className={styles.extensionButton}
                                                     title={intl.formatMessage(messages.addExtension)}
@@ -384,7 +463,7 @@ const GUIComponent = props => {
                                                         src={addExtensionIcon}
                                                     />
                                                 </button>
-                                            </Box> */}
+                                            </Box>
                                             <Box className={styles.watermark}>
                                                 <Watermark />
                                             </Box>
@@ -402,6 +481,12 @@ const GUIComponent = props => {
                                 </Box>
                             </Box>
                         </Box>
+                        {tmCameraStream && (
+                            <TmCameraWidget stream={tmCameraStream} flipped={tmVideoFlipped} />
+                        )}
+                        {mlStudioOpen && (
+                            <MLStudio onClose={() => setMlStudioOpen(false)} />
+                        )}
                         <DragLayer />
                         <DeviceToast vm={vm} />
                     </Box>
