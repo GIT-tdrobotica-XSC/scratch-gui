@@ -3,15 +3,16 @@ import classNames from 'classnames';
 import styles from './ml-studio.css';
 
 // Imagen/pose usan tfjs 3.x (rápido, MoveNet). Audio usa tfjs 1.5.2 + speech-commands
-// 0.4.4 — el stack 1.x de Google Teachable Machine. speech-commands con tfjs 3.x falla
-// al compilar shaders en WebGL; con tfjs 1.x funciona. Ambas versiones coexisten: cada
-// librería captura su propio `tf` al cargarse, y nuestro código usa this._tf.
+// 0.4.2 (que requiere exactamente tfjs ^1.5.2) — el stack 1.x de Google Teachable
+// Machine. speech-commands con tfjs 3.x falla al compilar shaders en WebGL; con tfjs 1.x
+// funciona. Ambas versiones coexisten: cada librería captura su propio `tf` al cargarse,
+// y nuestro código usa this._tf.
 const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js';
 const TFJS_AUDIO_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2/dist/tf.min.js';
 const MOBILENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js';
 const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js';
 const POSE_DETECTION_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0/dist/pose-detection.min.js';
-const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.4/dist/speech-commands.min.js';
+const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.min.js';
 
 const STORAGE_KEY = 'playcode_ml_models';
 const CAPTURE_INTERVAL_MS = 120;
