@@ -5,10 +5,12 @@ import styles from './ml-studio.css';
 const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js';
 const MOBILENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js';
 const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js';
+const POSENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js';
 
 const STORAGE_KEY = 'playcode_ml_models';
 const CAPTURE_INTERVAL_MS = 120;
 const PREDICT_INTERVAL_MS = 150;
+const POSE_MIN_SCORE = 0.2;
 
 // Paleta de colores por clase (estilo Teachable Machine)
 const CLASS_COLORS = [
@@ -16,10 +18,36 @@ const CLASS_COLORS = [
     '#9966FF', '#00B4D8', '#FFAB19', '#FF5722'
 ];
 
+// Tipos de proyecto disponibles en la pantalla de selección
+const PROJECT_TYPES = [
+    {
+        id: 'image',
+        icon: '📷',
+        title: 'Proyecto de Imagen',
+        desc: 'Enseña al modelo a reconocer objetos, gestos o lo que vea la cámara.',
+        available: true
+    },
+    {
+        id: 'pose',
+        icon: '🧍',
+        title: 'Proyecto de Pose',
+        desc: 'Reconoce posturas del cuerpo: brazos arriba, sentado, saltando…',
+        available: true
+    },
+    {
+        id: 'audio',
+        icon: '🎤',
+        title: 'Proyecto de Audio',
+        desc: 'Reconoce sonidos y palabras con el micrófono.',
+        available: false
+    }
+];
+
 class MLStudio extends React.Component {
     constructor (props) {
         super(props);
         this.state = {
+            projectType: null, // null = pantalla de selección
             modelName: 'Mi Modelo',
             classes: [
                 {name: 'Clase 1', sampleCount: 0, thumbnails: []},
@@ -38,10 +66,14 @@ class MLStudio extends React.Component {
         };
 
         this.videoRef = React.createRef();
+        this.overlayRef = React.createRef(); // canvas para el esqueleto (modo pose)
         this._mobilenet = null;
+        this._posenet = null;
         this._classifier = null;
         this._captureTimer = null;
         this._predictTimer = null;
+        this._poseRAF = null;
+        this._lastPoseVec = null; // último vector de keypoints (modo pose)
         this._stream = null;
     }
 
@@ -65,15 +97,21 @@ class MLStudio extends React.Component {
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
-    componentDidMount () {
-        this._startCamera();
-        this._loadLibraries();
-    }
-
     componentWillUnmount () {
         this._stopCamera();
         clearInterval(this._captureTimer);
         clearInterval(this._predictTimer);
+        if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
+    }
+
+    // ─── Project type selection ────────────────────────────────────────────────
+
+    _selectType (type) {
+        const def = PROJECT_TYPES.find(t => t.id === type);
+        if (!def || !def.available) return;
+        this.setState({projectType: type});
+        this._startCamera();
+        this._loadLibraries(type);
     }
 
     // ─── Camera ───────────────────────────────────────────────────────────────
@@ -86,7 +124,10 @@ class MLStudio extends React.Component {
             this._stream = stream;
             if (this.videoRef.current) {
                 this.videoRef.current.srcObject = stream;
-                this.videoRef.current.onloadeddata = () => this.setState({cameraReady: true});
+                this.videoRef.current.onloadeddata = () => {
+                    this.setState({cameraReady: true});
+                    if (this.state.projectType === 'pose') this._startPoseOverlay();
+                };
             }
         } catch (err) {
             console.error('[MLStudio] Cámara no disponible:', err);
@@ -123,31 +164,135 @@ class MLStudio extends React.Component {
         });
     }
 
-    async _loadLibraries () {
+    async _loadLibraries (type) {
         if (this.state.libLoaded || this.state.libLoading) return;
         this.setState({libLoading: true});
         try {
             await this._injectScript(TFJS_URL);
-            await this._injectScript(MOBILENET_URL);
             await this._injectScript(KNN_URL);
-            this._mobilenet = await window.mobilenet.load();
             this._classifier = window.knnClassifier.create();
+
+            if (type === 'pose') {
+                await this._injectScript(POSENET_URL);
+                this._posenet = await window.posenet.load({
+                    architecture: 'MobileNetV1',
+                    outputStride: 16,
+                    inputResolution: {width: 257, height: 257},
+                    multiplier: 0.75
+                });
+            } else {
+                await this._injectScript(MOBILENET_URL);
+                this._mobilenet = await window.mobilenet.load();
+            }
+
             this.setState({libLoaded: true, libLoading: false});
+            // Si la cámara ya está lista y es pose, arrancar el overlay del esqueleto
+            if (type === 'pose' && this.state.cameraReady) this._startPoseOverlay();
         } catch (err) {
             console.error('[MLStudio] Error cargando librerías TF:', err);
             this.setState({libLoading: false});
         }
     }
 
+    // ─── Pose helpers ───────────────────────────────────────────────────────────
+
+    // Convierte una pose de PoseNet en un vector normalizado (invariante a
+    // traslación y escala) que sirve como features para el KNN.
+    _poseToVector (pose) {
+        if (!pose || !pose.keypoints) return null;
+        const kp = pose.keypoints;
+        const xs = kp.map(k => k.position.x);
+        const ys = kp.map(k => k.position.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const w = (maxX - minX) || 1;
+        const h = (maxY - minY) || 1;
+        const vec = [];
+        for (const k of kp) {
+            vec.push((k.position.x - minX) / w);
+            vec.push((k.position.y - minY) / h);
+        }
+        return vec; // 34 dims (17 keypoints × 2)
+    }
+
+    // Loop continuo que estima la pose, guarda el último vector y dibuja
+    // el esqueleto sobre la cámara mientras el modo pose esté activo.
+    _startPoseOverlay () {
+        if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
+        const tick = async () => {
+            if (this.state.projectType !== 'pose') return;
+            const video = this.videoRef.current;
+            if (video && this._posenet && video.readyState >= 2) {
+                try {
+                    const pose = await this._posenet.estimateSinglePose(video, {flipHorizontal: false});
+                    this._lastPoseVec = this._poseToVector(pose);
+                    this._drawSkeleton(pose);
+                } catch (e) { /* ignore */ }
+            }
+            this._poseRAF = requestAnimationFrame(tick);
+        };
+        this._poseRAF = requestAnimationFrame(tick);
+    }
+
+    _drawSkeleton (pose) {
+        const canvas = this.overlayRef.current;
+        const video = this.videoRef.current;
+        if (!canvas || !video || !video.videoWidth) return;
+        if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
+        if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!pose) return;
+
+        // Puntos
+        for (const k of pose.keypoints) {
+            if (k.score < POSE_MIN_SCORE) continue;
+            ctx.beginPath();
+            ctx.arc(k.position.x, k.position.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#00e676';
+            ctx.fill();
+        }
+        // Líneas (huesos)
+        const adj = window.posenet.getAdjacentKeyPoints(pose.keypoints, POSE_MIN_SCORE);
+        ctx.strokeStyle = '#4c97ff';
+        ctx.lineWidth = 3;
+        for (const pair of adj) {
+            ctx.beginPath();
+            ctx.moveTo(pair[0].position.x, pair[0].position.y);
+            ctx.lineTo(pair[1].position.x, pair[1].position.y);
+            ctx.stroke();
+        }
+    }
+
+    // ─── Features (unificado image/pose) ────────────────────────────────────────
+
+    // Devuelve un tensor de features para la imagen actual. El llamador es
+    // responsable de hacer dispose(). Retorna null si no hay datos válidos.
+    _extractFeatures () {
+        const video = this.videoRef.current;
+        if (!video || video.readyState < 2 || !window.tf) return null;
+
+        if (this.state.projectType === 'pose') {
+            if (!this._lastPoseVec) return null;
+            return window.tf.tensor1d(this._lastPoseVec);
+        }
+        // image
+        if (!this._mobilenet) return null;
+        return this._mobilenet.infer(video, true);
+    }
+
     // ─── Capture ──────────────────────────────────────────────────────────────
 
     _captureFrame (classIndex) {
         const video = this.videoRef.current;
-        if (!video || !this._mobilenet || !this._classifier) return;
-        if (video.readyState < 2) return;
+        if (!video || !this._classifier) return;
 
-        const features = this._mobilenet.infer(video, true);
+        const features = this._extractFeatures();
+        if (!features) return;
         this._classifier.addExample(features, String(classIndex));
+        features.dispose();
 
         const canvas = document.createElement('canvas');
         canvas.width = 100;
@@ -199,17 +344,17 @@ class MLStudio extends React.Component {
         clearInterval(this._predictTimer);
         this._confBuffer = [];
         this._predictTimer = setInterval(async () => {
-            const video = this.videoRef.current;
-            if (!video || !this._mobilenet || !this._classifier) return;
+            if (!this._classifier) return;
             if (this._classifier.getNumClasses() < 2) return;
-            if (video.readyState < 2) return;
             try {
                 // k del KNN según la clase con menos muestras (entre 3 y 10)
                 const minSamples = Math.min(...this.state.classes.map(c => c.sampleCount || 0));
                 const k = Math.max(3, Math.min(10, Math.floor(minSamples / 2) || 3));
 
-                const features = this._mobilenet.infer(video, true);
+                const features = this._extractFeatures();
+                if (!features) return;
                 const result = await this._classifier.predictClass(features, k);
+                features.dispose();
 
                 // Suavizado temporal sobre las últimas 8 predicciones
                 this._confBuffer.push(result.confidences);
@@ -239,7 +384,7 @@ class MLStudio extends React.Component {
     // ─── Save / Delete models ─────────────────────────────────────────────────
 
     _saveModel () {
-        const {modelName, classes} = this.state;
+        const {modelName, classes, projectType} = this.state;
         if (!this._classifier || !this.state.isTrained) return;
         const name = modelName.trim();
         if (!name) return;
@@ -255,6 +400,7 @@ class MLStudio extends React.Component {
 
         const model = {
             name,
+            type: projectType || 'image',
             classes: classes.map((c, i) => ({index: String(i), name: c.name})),
             dataset: serialized,
             createdAt: new Date().toISOString()
@@ -349,12 +495,57 @@ class MLStudio extends React.Component {
         clearInterval(this._predictTimer);
     }
 
+    // ─── Render: pantalla de selección ──────────────────────────────────────────
+
+    _renderChooser () {
+        return (
+            <div className={styles.overlay}>
+                <div className={styles.modal}>
+                    <div className={styles.header}>
+                        <div className={styles.headerLeft}>
+                            <span className={styles.headerIcon}>🤖</span>
+                            <span className={styles.headerTitle}>ML Studio</span>
+                        </div>
+                        <button className={styles.closeBtn} onClick={this.props.onClose}>×</button>
+                    </div>
+                    <div className={styles.chooser}>
+                        <div className={styles.chooserTitle}>¿Qué quieres crear?</div>
+                        <div className={styles.chooserSub}>
+                            Elige el tipo de proyecto para tu nuevo modelo
+                        </div>
+                        <div className={styles.chooserCards}>
+                            {PROJECT_TYPES.map(t => (
+                                <button
+                                    key={t.id}
+                                    className={classNames(styles.chooserCard, {
+                                        [styles.chooserCardDisabled]: !t.available
+                                    })}
+                                    onClick={() => this._selectType(t.id)}
+                                    disabled={!t.available}
+                                >
+                                    <span className={styles.chooserIcon}>{t.icon}</span>
+                                    <span className={styles.chooserCardTitle}>{t.title}</span>
+                                    <span className={styles.chooserCardDesc}>{t.desc}</span>
+                                    {!t.available && (
+                                        <span className={styles.chooserSoon}>Próximamente</span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // ─── Render helpers ───────────────────────────────────────────────────────
 
     _renderClassCard (cls, idx) {
-        const {capturingClass, libLoaded} = this.state;
+        const {capturingClass, libLoaded, projectType} = this.state;
         const color = CLASS_COLORS[idx % CLASS_COLORS.length];
         const isCapturing = capturingClass === idx;
+        const isPose = projectType === 'pose';
+        const unit = isPose ? 'pose' : 'imagen';
 
         return (
             <div
@@ -394,14 +585,14 @@ class MLStudio extends React.Component {
                         {cls.sampleCount}
                     </span>
                     <span className={styles.sampleLabel}>
-                        muestra{cls.sampleCount !== 1 ? 's' : ''} de imagen
+                        muestra{cls.sampleCount !== 1 ? 's' : ''} de {unit}
                     </span>
                 </div>
 
                 <div className={styles.thumbsGrid}>
                     {cls.thumbnails.length === 0 ? (
                         <div className={styles.thumbsEmpty}>
-                            Mantén presionado el botón para capturar imágenes
+                            Mantén presionado el botón para capturar {unit === 'pose' ? 'poses' : 'imágenes'}
                         </div>
                     ) : cls.thumbnails.map((t, ti) => (
                         <img key={ti} src={t} className={styles.thumb} alt="" />
@@ -421,7 +612,7 @@ class MLStudio extends React.Component {
                     onPointerCancel={() => this._stopCapture()}
                     disabled={!libLoaded}
                 >
-                    {isCapturing ? '⏺ Capturando...' : '📷 Mantén para capturar'}
+                    {isCapturing ? '⏺ Capturando...' : `${isPose ? '🧍' : '📷'} Mantén para capturar`}
                 </button>
             </div>
         );
@@ -431,12 +622,20 @@ class MLStudio extends React.Component {
 
     render () {
         const {
-            modelName, classes, isTrained, isTraining, capturingClass,
+            projectType, modelName, classes, isTrained, isTraining, capturingClass,
             liveConfidences, topClassIndex, cameraReady, libLoaded, libLoading,
             savedModels, saveNotice
         } = this.state;
 
-        const savedList = Object.values(savedModels);
+        // Pantalla de selección de tipo de proyecto
+        if (!projectType) return this._renderChooser();
+
+        const isPose = projectType === 'pose';
+        const typeDef = PROJECT_TYPES.find(t => t.id === projectType);
+        // Mostrar solo los modelos guardados del mismo tipo
+        const savedList = Object.values(savedModels).filter(
+            m => (m.type || 'image') === projectType
+        );
         const canTrain = libLoaded && classes.every(c => c.sampleCount >= 2) && classes.length >= 2;
 
         return (
@@ -448,6 +647,9 @@ class MLStudio extends React.Component {
                         <div className={styles.headerLeft}>
                             <span className={styles.headerIcon}>🤖</span>
                             <span className={styles.headerTitle}>ML Studio</span>
+                            <span className={styles.headerBadge}>
+                                {typeDef.icon} {isPose ? 'Pose' : 'Imagen'}
+                            </span>
                             <span className={styles.headerSep}>/</span>
                             <input
                                 className={styles.modelNameInput}
@@ -505,7 +707,7 @@ class MLStudio extends React.Component {
                                 )}
                                 {libLoading && (
                                     <div className={styles.trainHint}>
-                                        Cargando TensorFlow.js...
+                                        Cargando {isPose ? 'PoseNet' : 'TensorFlow.js'}...
                                     </div>
                                 )}
                                 {isTrained && (
@@ -529,7 +731,7 @@ class MLStudio extends React.Component {
                                 <div className={styles.savedTitle}>Modelos guardados</div>
                                 {savedList.length === 0 ? (
                                     <div className={styles.savedEmpty}>
-                                        Aún no has guardado ningún modelo
+                                        Aún no has guardado ningún modelo de este tipo
                                     </div>
                                 ) : savedList.map(m => (
                                     <div key={m.name} className={styles.savedRow}>
@@ -570,6 +772,12 @@ class MLStudio extends React.Component {
                                         muted
                                         playsInline
                                     />
+                                    {isPose && (
+                                        <canvas
+                                            ref={this.overlayRef}
+                                            className={styles.poseOverlay}
+                                        />
+                                    )}
                                     {!cameraReady && (
                                         <div className={styles.cameraOverlay}>
                                             <span className={styles.cameraOverlayDot} />

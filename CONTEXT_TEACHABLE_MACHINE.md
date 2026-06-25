@@ -8,9 +8,21 @@
 
 ## Qué es
 
-Sistema completo de machine learning in-browser integrado dentro de PlayCode. Permite a los usuarios crear modelos de reconocimiento de imágenes por cámara sin salir de la app: crean clases, capturan muestras, entrenan y usan el modelo con bloques Scratch. No depende de ningún servicio externo (todo corre en el browser).
+Sistema completo de machine learning in-browser integrado dentro de PlayCode. Permite a los usuarios crear modelos sin salir de la app: crean clases, capturan muestras, entrenan y usan el modelo con bloques Scratch. No depende de ningún servicio externo (todo corre en el browser).
 
-Tecnología: **MobileNet** (extracción de features) + **KNN Classifier** (clasificación), ambos de TensorFlow.js, cargados desde CDN.
+Al abrir ML Studio aparece una **pantalla de selección de tipo de proyecto** (estilo Google TM):
+- **Imagen** ✅ — reconoce objetos/gestos con MobileNet + KNN
+- **Pose** ✅ — reconoce posturas del cuerpo con PoseNet (17 keypoints) + KNN
+- **Audio** 🔜 — pendiente (speech-commands)
+
+Tecnología: **MobileNet** o **PoseNet** (extracción de features) + **KNN Classifier** (clasificación), todo de TensorFlow.js, cargado desde CDN según el tipo de proyecto.
+
+### Soporte de Pose
+- Extractor: PoseNet (`@tensorflow-models/posenet@2.2.2`), config MobileNetV1 / outputStride 16 / multiplier 0.75
+- Features: 17 keypoints → vector de 34 dims normalizado por bounding box de la pose (invariante a traslación y escala). Mismo `_poseToVector()` en GUI y VM para que los modelos sean compatibles.
+- El KNN, el suavizado temporal, el guardado y los bloques **se reutilizan igual** que en imagen; solo cambia el extractor de features.
+- En ML Studio se dibuja el **esqueleto** sobre la cámara (canvas overlay espejado). Un rAF loop estima la pose continuamente, guarda `_lastPoseVec` y dibuja; captura y predicción reusan ese vector.
+- Cada modelo guardado lleva `type: 'image' | 'pose'`. La extensión VM ramifica en `loadModel` según `model.type` y carga PoseNet o MobileNet. Modelos sin `type` se asumen `image` (retrocompat).
 
 ---
 
