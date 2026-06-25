@@ -300,6 +300,12 @@ class MLStudio extends React.Component {
             await this._injectScript(TFJS_URL);
 
             if (type === 'audio') {
+                // speech-commands es inestable en WebGL (falla al compilar shaders).
+                // El transfer learning de audio es ligero: el backend CPU lo corre bien.
+                try {
+                    await window.tf.setBackend('cpu');
+                    await window.tf.ready();
+                } catch (e) { /* seguir con el backend por defecto */ }
                 await this._injectScript(SPEECH_URL);
                 this._baseRecognizer = window.speechCommands.create('BROWSER_FFT');
                 await this._baseRecognizer.ensureModelLoaded();
@@ -309,6 +315,12 @@ class MLStudio extends React.Component {
                 this.setState({libLoaded: true, libLoading: false});
                 return;
             }
+
+            // Imagen/pose usan WebGL (rápido para MobileNet/MoveNet)
+            try {
+                await window.tf.setBackend('webgl');
+                await window.tf.ready();
+            } catch (e) { /* seguir con el backend por defecto */ }
 
             await this._injectScript(KNN_URL);
             this._classifier = window.knnClassifier.create();
