@@ -1101,7 +1101,7 @@ class MLStudio extends React.Component {
                                 )}
                                 {libLoading && (
                                     <div className={styles.trainHint}>
-                                        Cargando {isAudio ? 'Speech Commands' : (isPose ? 'PoseNet' : 'TensorFlow.js')}...
+                                        Cargando {isAudio ? 'Speech Commands' : (isPose ? 'MoveNet' : 'TensorFlow.js')}...
                                     </div>
                                 )}
                                 {isTrained && (
