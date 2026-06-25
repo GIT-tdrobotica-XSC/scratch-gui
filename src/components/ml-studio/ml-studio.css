@@ -119,7 +119,7 @@
 
 /* ── Columna 1: Clases ────────────────────────────────────────────────────── */
 .colClasses {
-    flex: 1.15;
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -513,7 +513,7 @@
 
 /* ── Columna 3: Vista previa ──────────────────────────────────────────────── */
 .colPreview {
-    flex: 1.1;
+    flex: 1.5;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -535,10 +535,15 @@
     position: relative;
     width: 100%;
     aspect-ratio: 4 / 3;
-    background: #1a2030;
-    border-radius: 12px;
+    background: #0e1520;
+    border-radius: 14px;
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.cameraWrapLive {
+    box-shadow: 0 4px 24px rgba(0, 191, 165, 0.35), 0 0 0 2px rgba(0, 191, 165, 0.5);
 }
 
 .cameraFeed {
@@ -555,9 +560,64 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(26, 32, 48, 0.85);
-    color: #fff;
+    background: rgba(14, 21, 32, 0.88);
+    color: rgba(255,255,255,0.8);
     font-size: 0.95rem;
+    gap: 10px;
+}
+
+.cameraOverlayDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.4);
+    animation: spin 1.2s linear infinite;
+}
+
+.cameraLiveBadge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 10px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cameraLiveDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #00e676;
+    box-shadow: 0 0 6px #00e676;
+    animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.cameraCapturingRing {
+    position: absolute;
+    inset: 0;
+    border: 4px solid #e53935;
+    border-radius: 14px;
+    pointer-events: none;
+    animation: capturePulse 0.8s ease-in-out infinite;
+}
+
+@keyframes capturePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 
 /* ── Output (confidence bars) ─────────────────────────────────────────────── */

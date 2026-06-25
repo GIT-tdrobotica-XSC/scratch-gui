@@ -430,7 +430,7 @@ class MLStudio extends React.Component {
 
     render () {
         const {
-            modelName, classes, isTrained, isTraining,
+            modelName, classes, isTrained, isTraining, capturingClass,
             liveConfidences, topClassIndex, cameraReady, libLoaded, libLoading,
             savedModels, saveNotice
         } = this.state;
@@ -550,7 +550,9 @@ class MLStudio extends React.Component {
                         <div className={styles.colPreview}>
                             <div className={styles.colHeader}>Vista previa</div>
                             <div className={styles.previewBox}>
-                                <div className={styles.cameraWrap}>
+                                <div className={classNames(styles.cameraWrap, {
+                                    [styles.cameraWrapLive]: cameraReady
+                                })}>
                                     <video
                                         ref={this.videoRef}
                                         className={styles.cameraFeed}
@@ -559,7 +561,19 @@ class MLStudio extends React.Component {
                                         playsInline
                                     />
                                     {!cameraReady && (
-                                        <div className={styles.cameraOverlay}>Iniciando cámara...</div>
+                                        <div className={styles.cameraOverlay}>
+                                            <span className={styles.cameraOverlayDot} />
+                                            Iniciando cámara...
+                                        </div>
+                                    )}
+                                    {cameraReady && (
+                                        <div className={styles.cameraLiveBadge}>
+                                            <span className={styles.cameraLiveDot} />
+                                            En vivo
+                                        </div>
+                                    )}
+                                    {capturingClass !== null && (
+                                        <div className={styles.cameraCapturingRing} />
                                     )}
                                 </div>
 

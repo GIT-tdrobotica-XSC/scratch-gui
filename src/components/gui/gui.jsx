@@ -61,14 +61,14 @@ let isRendererSupported = null;
 
 const tmWidgetStyle = {
     position: 'fixed',
-    bottom: '16px',
-    right: '16px',
-    width: '160px',
-    height: '120px',
-    borderRadius: '10px',
+    bottom: '20px',
+    right: '20px',
+    width: '260px',
+    height: '195px',
+    borderRadius: '16px',
     overflow: 'hidden',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-    border: '2px solid #009688',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,191,165,0.3)',
+    border: '3px solid #00bfa5',
     zIndex: 900,
     background: '#000'
 };
@@ -82,15 +82,29 @@ const tmVideoStyle = {
 
 const tmBadgeStyle = {
     position: 'absolute',
-    top: '6px',
-    left: '6px',
-    background: '#009688',
+    top: '10px',
+    left: '10px',
+    background: 'rgba(0,0,0,0.55)',
+    backdropFilter: 'blur(4px)',
     color: '#fff',
-    fontSize: '0.6rem',
-    fontWeight: 700,
-    padding: '2px 7px',
-    borderRadius: '8px',
-    letterSpacing: '0.05em'
+    fontSize: '0.68rem',
+    fontWeight: 800,
+    padding: '4px 10px',
+    borderRadius: '10px',
+    letterSpacing: '0.07em',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    textTransform: 'uppercase'
+};
+
+const tmDotStyle = {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: '#00e676',
+    flexShrink: 0,
+    boxShadow: '0 0 6px #00e676'
 };
 
 const TmCameraWidget = ({stream, flipped}) => {
@@ -108,7 +122,10 @@ const TmCameraWidget = ({stream, flipped}) => {
     return (
         <div style={tmWidgetStyle}>
             <video ref={ref} style={videoStyle} autoPlay muted playsInline />
-            <div style={tmBadgeStyle}>IA en vivo</div>
+            <div style={tmBadgeStyle}>
+                <span style={tmDotStyle} />
+                IA en vivo
+            </div>
         </div>
     );
 };
