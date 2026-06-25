@@ -130,12 +130,54 @@ const TmCameraWidget = ({stream, flipped}) => {
     );
 };
 
+const tmAudioBarsStyle = {
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: '7px',
+    width: '100%',
+    height: '100%',
+    padding: '28px 24px'
+};
+
+const tmAudioBarStyle = {
+    width: '14px',
+    background: 'linear-gradient(180deg, #00e676, #00bfa5)',
+    borderRadius: '6px',
+    transition: 'height 0.12s ease-out',
+    minHeight: '8px'
+};
+
+const TmAudioWidget = () => {
+    const [bars, setBars] = React.useState([0.3, 0.6, 0.4, 0.8, 0.5]);
+    React.useEffect(() => {
+        const id = setInterval(() => {
+            setBars(b => b.map(() => 0.18 + (Math.random() * 0.82)));
+        }, 140);
+        return () => clearInterval(id);
+    }, []);
+    return (
+        <div style={tmWidgetStyle}>
+            <div style={tmAudioBarsStyle}>
+                {bars.map((h, i) => (
+                    <span key={i} style={{...tmAudioBarStyle, height: `${Math.round(h * 100)}%`}} />
+                ))}
+            </div>
+            <div style={tmBadgeStyle}>
+                <span style={tmDotStyle} />
+                Escuchando
+            </div>
+        </div>
+    );
+};
+
 const GUIComponent = props => {
     const [mlStudioOpen, setMlStudioOpen] = React.useState(false);
     const [tmCameraStream, setTmCameraStream] = React.useState(null);
     const [tmVideoFlipped, setTmVideoFlipped] = React.useState(true);
+    const [tmAudioActive, setTmAudioActive] = React.useState(false);
 
-    // Escuchar eventos del runtime para abrir ML Studio y mostrar cámara
+    // Escuchar eventos del runtime para abrir ML Studio y mostrar cámara/micrófono
     React.useEffect(() => {
         if (!props.vm) return;
         const rt = props.vm.runtime;
@@ -143,15 +185,21 @@ const GUIComponent = props => {
         const onCamOn = stream => setTmCameraStream(stream);
         const onCamOff = () => setTmCameraStream(null);
         const onFlip = flipped => setTmVideoFlipped(flipped);
+        const onAudioOn = () => setTmAudioActive(true);
+        const onAudioOff = () => setTmAudioActive(false);
         rt.on('OPEN_ML_STUDIO', onOpen);
         rt.on('TM_CAMERA_STARTED', onCamOn);
         rt.on('TM_CAMERA_STOPPED', onCamOff);
         rt.on('TM_VIDEO_FLIP', onFlip);
+        rt.on('TM_AUDIO_STARTED', onAudioOn);
+        rt.on('TM_AUDIO_STOPPED', onAudioOff);
         return () => {
             rt.off('OPEN_ML_STUDIO', onOpen);
             rt.off('TM_CAMERA_STARTED', onCamOn);
             rt.off('TM_CAMERA_STOPPED', onCamOff);
             rt.off('TM_VIDEO_FLIP', onFlip);
+            rt.off('TM_AUDIO_STARTED', onAudioOn);
+            rt.off('TM_AUDIO_STOPPED', onAudioOff);
         };
     }, [props.vm]);
 
@@ -500,6 +548,9 @@ const GUIComponent = props => {
                         </Box>
                         {tmCameraStream && (
                             <TmCameraWidget stream={tmCameraStream} flipped={tmVideoFlipped} />
+                        )}
+                        {tmAudioActive && !tmCameraStream && (
+                            <TmAudioWidget />
                         )}
                         {mlStudioOpen && (
                             <MLStudio onClose={() => setMlStudioOpen(false)} />

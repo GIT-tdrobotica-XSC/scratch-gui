@@ -13,7 +13,9 @@ const CAPTURE_INTERVAL_MS = 120;
 const PREDICT_INTERVAL_MS = 150;
 const POSE_MIN_SCORE = 0.2;
 const NOISE_LABEL = '_background_noise_';
-const AUDIO_EPOCHS = 30;
+const AUDIO_EPOCHS = 50;
+const SMOOTH_WINDOW = 10; // frames de suavizado temporal (imagen/pose)
+const AUDIO_THRESHOLD = 0.7; // umbral de confianza para la escucha de audio
 
 // Paleta de colores por clase (estilo Teachable Machine)
 const CLASS_COLORS = [
@@ -25,21 +27,24 @@ const CLASS_COLORS = [
 const PROJECT_TYPES = [
     {
         id: 'image',
-        icon: '📷',
+        short: 'I',
+        color: '#4C97FF',
         title: 'Proyecto de Imagen',
         desc: 'Enseña al modelo a reconocer objetos, gestos o lo que vea la cámara.',
         available: true
     },
     {
         id: 'pose',
-        icon: '🧍',
+        short: 'P',
+        color: '#9966FF',
         title: 'Proyecto de Pose',
         desc: 'Reconoce posturas del cuerpo: brazos arriba, sentado, saltando…',
         available: true
     },
     {
         id: 'audio',
-        icon: '🎤',
+        short: 'A',
+        color: '#FF6680',
         title: 'Proyecto de Audio',
         desc: 'Reconoce sonidos y palabras con el micrófono.',
         available: true
@@ -482,6 +487,8 @@ class MLStudio extends React.Component {
     async _trainAudio () {
         if (!this._transferRecognizer) return;
         this.setState({isTraining: true, trainProgress: 0});
+        // Dar tiempo a React de pintar el loading antes de que train() bloquee el hilo
+        await new Promise(r => setTimeout(r, 60));
         try {
             await this._transferRecognizer.train({
                 epochs: AUDIO_EPOCHS,
@@ -519,7 +526,7 @@ class MLStudio extends React.Component {
                 features.dispose();
 
                 this._confBuffer.push(result.confidences);
-                if (this._confBuffer.length > 8) this._confBuffer.shift();
+                if (this._confBuffer.length > SMOOTH_WINDOW) this._confBuffer.shift();
                 const smoothed = {};
                 for (const buf of this._confBuffer) {
                     for (const label in buf) {
@@ -568,7 +575,7 @@ class MLStudio extends React.Component {
                 this.setState({liveConfidences: conf, topClassIndex: topIdx});
             },
             {
-                probabilityThreshold: 0.6,
+                probabilityThreshold: AUDIO_THRESHOLD,
                 overlapFactor: 0.5,
                 includeSpectrogram: false,
                 invokeCallbackOnNoiseAndUnknown: true
@@ -710,6 +717,7 @@ class MLStudio extends React.Component {
                 isTraining: true,
                 trainProgress: 0
             });
+            await new Promise(r => setTimeout(r, 60));
             await this._transferRecognizer.train({
                 epochs: AUDIO_EPOCHS,
                 callback: {
@@ -780,7 +788,6 @@ class MLStudio extends React.Component {
                 <div className={styles.modal}>
                     <div className={styles.header}>
                         <div className={styles.headerLeft}>
-                            <span className={styles.headerIcon}>🤖</span>
                             <span className={styles.headerTitle}>ML Studio</span>
                         </div>
                         <button className={styles.closeBtn} onClick={this.props.onClose}>×</button>
@@ -800,7 +807,9 @@ class MLStudio extends React.Component {
                                     onClick={() => this._selectType(t.id)}
                                     disabled={!t.available}
                                 >
-                                    <span className={styles.chooserIcon}>{t.icon}</span>
+                                    <span className={styles.chooserDot} style={{background: t.color}}>
+                                        {t.short}
+                                    </span>
                                     <span className={styles.chooserCardTitle}>{t.title}</span>
                                     <span className={styles.chooserCardDesc}>{t.desc}</span>
                                     {!t.available && (
@@ -836,7 +845,7 @@ class MLStudio extends React.Component {
                 <div className={styles.classTop}>
                     <span className={styles.classDot} style={{background: color}} />
                     {cls.isNoise ? (
-                        <span className={styles.classNoiseName}>🔇 {cls.name}</span>
+                        <span className={styles.classNoiseName}>{cls.name}</span>
                     ) : (
                         <input
                             className={styles.classNameInput}
@@ -850,7 +859,7 @@ class MLStudio extends React.Component {
                                 className={styles.iconBtn}
                                 onClick={() => this._clearClass(idx)}
                                 title="Borrar muestras"
-                            >🗑</button>
+                            >↺</button>
                         )}
                         {this.state.classes.length > 2 && !cls.isNoise && (
                             <button
@@ -906,7 +915,7 @@ class MLStudio extends React.Component {
                         onClick={() => this._audioCaptureSample(idx)}
                         disabled={!libLoaded || capturingClass !== null}
                     >
-                        {isCapturing ? '⏺ Grabando 1s...' : '🎙 Grabar muestra'}
+                        {isCapturing ? 'Grabando 1s...' : 'Grabar muestra'}
                     </button>
                 ) : (
                     <button
@@ -922,7 +931,7 @@ class MLStudio extends React.Component {
                         onPointerCancel={() => this._stopCapture()}
                         disabled={!libLoaded}
                     >
-                        {isCapturing ? '⏺ Capturando...' : `${isPose ? '🧍' : '📷'} Mantén para capturar`}
+                        {isCapturing ? 'Capturando...' : 'Mantén para capturar'}
                     </button>
                 )}
             </div>
@@ -942,7 +951,6 @@ class MLStudio extends React.Component {
 
         const isAudio = projectType === 'audio';
         const isPose = projectType === 'pose';
-        const typeDef = PROJECT_TYPES.find(t => t.id === projectType);
         const typeShort = isAudio ? 'Audio' : (isPose ? 'Pose' : 'Imagen');
         const inputReady = isAudio ? micReady : cameraReady;
 
@@ -961,10 +969,9 @@ class MLStudio extends React.Component {
                     {/* ── Header ── */}
                     <div className={styles.header}>
                         <div className={styles.headerLeft}>
-                            <span className={styles.headerIcon}>🤖</span>
                             <span className={styles.headerTitle}>ML Studio</span>
                             <span className={styles.headerBadge}>
-                                {typeDef.icon} {typeShort}
+                                {typeShort}
                             </span>
                             <span className={styles.headerSep}>/</span>
                             <input
@@ -1012,9 +1019,13 @@ class MLStudio extends React.Component {
                                     {isTraining ? (
                                         <span className={styles.trainSpinnerRow}>
                                             <span className={styles.spinner} />
-                                            {isAudio ? `Entrenando... ${trainProgress}%` : 'Entrenando...'}
+                                            {isAudio ?
+                                                (trainProgress > 0 ?
+                                                    `Entrenando... ${trainProgress}%` :
+                                                    'Preparando entrenamiento...') :
+                                                'Entrenando...'}
                                         </span>
-                                    ) : '▶ Entrenar modelo'}
+                                    ) : 'Entrenar modelo'}
                                 </button>
 
                                 {isAudio && isTraining && (
@@ -1042,17 +1053,17 @@ class MLStudio extends React.Component {
                                 )}
                                 {isTrained && (
                                     <div className={styles.trainedBadge}>
-                                        ✓ Modelo entrenado y listo
+                                        Modelo entrenado y listo
                                     </div>
                                 )}
 
                                 {isTrained && (
                                     <button className={styles.saveBtn} onClick={() => this._saveModel()}>
-                                        💾 Guardar modelo
+                                        Guardar modelo
                                     </button>
                                 )}
                                 {saveNotice && (
-                                    <div className={styles.saveNotice}>✓ {saveNotice}</div>
+                                    <div className={styles.saveNotice}>{saveNotice}</div>
                                 )}
                             </div>
 
@@ -1111,7 +1122,7 @@ class MLStudio extends React.Component {
                                         {micReady && (
                                             <div className={styles.cameraLiveBadge}>
                                                 <span className={styles.cameraLiveDot} />
-                                                🎤 Escuchando
+                                                Escuchando
                                             </div>
                                         )}
                                         {capturingClass !== null && (

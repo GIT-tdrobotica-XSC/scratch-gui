@@ -126,9 +126,17 @@
     background: #f6f8fc;
 }
 
-.chooserIcon {
-    font-size: 3.2rem;
-    line-height: 1;
+.chooserDot {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.9rem;
+    font-weight: 900;
+    box-shadow: 0 6px 18px rgba(30, 50, 100, 0.18);
 }
 
 .chooserCardTitle {
