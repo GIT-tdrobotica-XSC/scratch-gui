@@ -362,7 +362,7 @@ class MLStudio extends React.Component {
                 className={classNames(styles.classCard, {
                     [styles.classCardCapturing]: isCapturing
                 })}
-                style={{borderTopColor: color}}
+                style={{borderLeftColor: color}}
             >
                 <div className={styles.classTop}>
                     <span className={styles.classDot} style={{background: color}} />
@@ -413,11 +413,12 @@ class MLStudio extends React.Component {
                         [styles.recordBtnActive]: isCapturing
                     })}
                     style={!isCapturing && libLoaded ? {background: color} : {}}
-                    onMouseDown={() => this._startCapture(idx)}
-                    onMouseUp={() => this._stopCapture()}
-                    onMouseLeave={() => this._stopCapture()}
-                    onTouchStart={e => { e.preventDefault(); this._startCapture(idx); }}
-                    onTouchEnd={() => this._stopCapture()}
+                    onPointerDown={e => {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        this._startCapture(idx);
+                    }}
+                    onPointerUp={() => this._stopCapture()}
+                    onPointerCancel={() => this._stopCapture()}
                     disabled={!libLoaded}
                 >
                     {isCapturing ? '⏺ Capturando...' : '📷 Mantén para capturar'}
@@ -463,7 +464,10 @@ class MLStudio extends React.Component {
 
                         {/* COLUMNA 1: Clases */}
                         <div className={styles.colClasses}>
-                            <div className={styles.colHeader}>Clases</div>
+                            <div className={styles.colHeader}>
+                                <span className={styles.colHeaderNum}>1</span>
+                                Clases
+                            </div>
                             <div className={styles.classScroll}>
                                 {classes.map((cls, idx) => this._renderClassCard(cls, idx))}
                                 <button className={styles.addClassBtn} onClick={() => this._addClass()}>
@@ -475,7 +479,10 @@ class MLStudio extends React.Component {
 
                         {/* COLUMNA 2: Entrenar */}
                         <div className={styles.colTrain}>
-                            <div className={styles.colHeader}>Entrenamiento</div>
+                            <div className={styles.colHeader}>
+                                <span className={styles.colHeaderNum}>2</span>
+                                Entrenamiento
+                            </div>
                             <div className={styles.trainBox}>
                                 <button
                                     className={classNames(styles.trainBtn, {
@@ -548,7 +555,10 @@ class MLStudio extends React.Component {
 
                         {/* COLUMNA 3: Vista previa */}
                         <div className={styles.colPreview}>
-                            <div className={styles.colHeader}>Vista previa</div>
+                            <div className={styles.colHeader}>
+                                <span className={styles.colHeaderNum}>3</span>
+                                Vista previa
+                            </div>
                             <div className={styles.previewBox}>
                                 <div className={classNames(styles.cameraWrap, {
                                     [styles.cameraWrapLive]: cameraReady
