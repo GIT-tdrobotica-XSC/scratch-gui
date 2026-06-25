@@ -148,19 +148,64 @@ const tmAudioBarStyle = {
     minHeight: '8px'
 };
 
+const TM_AUDIO_BANDS = 7;
+
+// Widget de espectro REAL del micrófono (AnalyserNode), no una animación falsa.
 const TmAudioWidget = () => {
-    const [bars, setBars] = React.useState([0.3, 0.6, 0.4, 0.8, 0.5]);
+    const [bars, setBars] = React.useState(new Array(TM_AUDIO_BANDS).fill(0));
     React.useEffect(() => {
-        const id = setInterval(() => {
-            setBars(b => b.map(() => 0.18 + (Math.random() * 0.82)));
-        }, 140);
-        return () => clearInterval(id);
+        let ctx;
+        let raf;
+        let stream;
+        let cancelled = false;
+        (async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {noiseSuppression: true, echoCancellation: true, autoGainControl: true}
+                });
+                if (cancelled) {
+                    stream.getTracks().forEach(t => t.stop());
+                    return;
+                }
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                ctx = new Ctx();
+                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+                const src = ctx.createMediaStreamSource(stream);
+                const analyser = ctx.createAnalyser();
+                analyser.fftSize = 128;
+                analyser.smoothingTimeConstant = 0.7;
+                src.connect(analyser);
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                const per = Math.floor(data.length / TM_AUDIO_BANDS);
+                const tick = () => {
+                    analyser.getByteFrequencyData(data);
+                    const out = [];
+                    for (let i = 0; i < TM_AUDIO_BANDS; i++) {
+                        let sum = 0;
+                        for (let j = 0; j < per; j++) sum += data[(i * per) + j];
+                        out.push((sum / per) / 255);
+                    }
+                    setBars(out);
+                    raf = requestAnimationFrame(tick);
+                };
+                tick();
+            } catch (e) { /* sin micrófono */ }
+        })();
+        return () => {
+            cancelled = true;
+            if (raf) cancelAnimationFrame(raf);
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (ctx) ctx.close().catch(() => {});
+        };
     }, []);
     return (
         <div style={tmWidgetStyle}>
             <div style={tmAudioBarsStyle}>
                 {bars.map((h, i) => (
-                    <span key={i} style={{...tmAudioBarStyle, height: `${Math.round(h * 100)}%`}} />
+                    <span
+                        key={i}
+                        style={{...tmAudioBarStyle, height: `${Math.max(4, Math.round(h * 100))}%`}}
+                    />
                 ))}
             </div>
             <div style={tmBadgeStyle}>

@@ -5,7 +5,7 @@ import styles from './ml-studio.css';
 const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js';
 const MOBILENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js';
 const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js';
-const POSENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js';
+const POSE_DETECTION_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0/dist/pose-detection.min.js';
 const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js';
 
 const STORAGE_KEY = 'playcode_ml_models';
@@ -98,7 +98,7 @@ class MLStudio extends React.Component {
 
         // image / pose
         this._mobilenet = null;
-        this._posenet = null;
+        this._detector = null; // MoveNet (pose-detection)
         this._classifier = null;
         this._captureTimer = null;
         this._predictTimer = null;
@@ -115,6 +115,7 @@ class MLStudio extends React.Component {
         this._audioData = null;
         this._audioRAF = null;
         this._listening = false;
+        this._audioCapturing = false;
     }
 
     // ─── Storage ──────────────────────────────────────────────────────────────
@@ -128,11 +129,19 @@ class MLStudio extends React.Component {
     }
 
     _writeStorage (models) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(models));
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(models));
+        } catch (e) {
+            console.error('[MLStudio] No se pudo guardar (¿almacenamiento lleno?):', e);
+            this.setState({saveNotice: 'Error: almacenamiento lleno. Borra modelos viejos.'});
+            setTimeout(() => this.setState({saveNotice: null}), 4000);
+            return false;
+        }
         window.playcodeMLModels = models;
         if (window.__scratchVMRuntime) {
             window.__scratchVMRuntime.emit('ML_MODELS_UPDATED', models);
         }
+        return true;
     }
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
@@ -205,7 +214,13 @@ class MLStudio extends React.Component {
 
     async _startMic () {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    noiseSuppression: true,
+                    echoCancellation: true,
+                    autoGainControl: true
+                }
+            });
             this._micStream = stream;
             const Ctx = window.AudioContext || window.webkitAudioContext;
             const ctx = new Ctx();
@@ -299,13 +314,12 @@ class MLStudio extends React.Component {
             this._classifier = window.knnClassifier.create();
 
             if (type === 'pose') {
-                await this._injectScript(POSENET_URL);
-                this._posenet = await window.posenet.load({
-                    architecture: 'MobileNetV1',
-                    outputStride: 16,
-                    inputResolution: {width: 257, height: 257},
-                    multiplier: 0.75
-                });
+                await this._injectScript(POSE_DETECTION_URL);
+                if (window.tf && window.tf.ready) await window.tf.ready();
+                this._detector = await window.poseDetection.createDetector(
+                    window.poseDetection.SupportedModels.MoveNet,
+                    {modelType: window.poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
+                );
             } else {
                 await this._injectScript(MOBILENET_URL);
                 this._mobilenet = await window.mobilenet.load();
@@ -321,11 +335,15 @@ class MLStudio extends React.Component {
 
     // ─── Pose helpers ───────────────────────────────────────────────────────────
 
+    // MoveNet: keypoints con {x, y, score, name}
     _poseToVector (pose) {
         if (!pose || !pose.keypoints) return null;
         const kp = pose.keypoints;
-        const xs = kp.map(k => k.position.x);
-        const ys = kp.map(k => k.position.y);
+        // Requiere que se detecte al menos medio cuerpo con confianza
+        const valid = kp.filter(k => (k.score || 0) >= POSE_MIN_SCORE);
+        if (valid.length < 5) return null;
+        const xs = kp.map(k => k.x);
+        const ys = kp.map(k => k.y);
         const minX = Math.min(...xs);
         const maxX = Math.max(...xs);
         const minY = Math.min(...ys);
@@ -334,10 +352,10 @@ class MLStudio extends React.Component {
         const h = (maxY - minY) || 1;
         const vec = [];
         for (const k of kp) {
-            vec.push((k.position.x - minX) / w);
-            vec.push((k.position.y - minY) / h);
+            vec.push((k.x - minX) / w);
+            vec.push((k.y - minY) / h);
         }
-        return vec; // 34 dims
+        return vec; // 34 dims (17 keypoints × 2)
     }
 
     _startPoseOverlay () {
@@ -345,9 +363,10 @@ class MLStudio extends React.Component {
         const tick = async () => {
             if (this.state.projectType !== 'pose') return;
             const video = this.videoRef.current;
-            if (video && this._posenet && video.readyState >= 2) {
+            if (video && this._detector && video.readyState >= 2) {
                 try {
-                    const pose = await this._posenet.estimateSinglePose(video, {flipHorizontal: false});
+                    const poses = await this._detector.estimatePoses(video, {flipHorizontal: false});
+                    const pose = poses && poses[0];
                     this._lastPoseVec = this._poseToVector(pose);
                     this._drawSkeleton(pose);
                 } catch (e) { /* ignore */ }
@@ -365,23 +384,31 @@ class MLStudio extends React.Component {
         if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (!pose) return;
+        if (!pose || !pose.keypoints) return;
 
-        for (const k of pose.keypoints) {
+        const kp = pose.keypoints;
+        // Huesos
+        const pairs = window.poseDetection.util.getAdjacentPairs(
+            window.poseDetection.SupportedModels.MoveNet
+        );
+        ctx.strokeStyle = '#4c97ff';
+        ctx.lineWidth = 4;
+        for (const [i, j] of pairs) {
+            const a = kp[i];
+            const b = kp[j];
+            if (!a || !b || a.score < POSE_MIN_SCORE || b.score < POSE_MIN_SCORE) continue;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+        }
+        // Puntos
+        for (const k of kp) {
             if (k.score < POSE_MIN_SCORE) continue;
             ctx.beginPath();
-            ctx.arc(k.position.x, k.position.y, 5, 0, 2 * Math.PI);
+            ctx.arc(k.x, k.y, 5, 0, 2 * Math.PI);
             ctx.fillStyle = '#00e676';
             ctx.fill();
-        }
-        const adj = window.posenet.getAdjacentKeyPoints(pose.keypoints, POSE_MIN_SCORE);
-        ctx.strokeStyle = '#4c97ff';
-        ctx.lineWidth = 3;
-        for (const pair of adj) {
-            ctx.beginPath();
-            ctx.moveTo(pair[0].position.x, pair[0].position.y);
-            ctx.lineTo(pair[1].position.x, pair[1].position.y);
-            ctx.stroke();
         }
     }
 
@@ -448,24 +475,33 @@ class MLStudio extends React.Component {
         return cls.isNoise ? NOISE_LABEL : cls.name;
     }
 
-    async _audioCaptureSample (classIndex) {
-        if (!this._transferRecognizer || this.state.capturingClass !== null) return;
-        const cls = this.state.classes[classIndex];
-        const label = this._classLabel(cls);
+    // Mantener presionado graba varias muestras de ~1s seguidas (más datos = mejor modelo)
+    async _audioStartCapture (classIndex) {
+        if (!this._transferRecognizer || this._audioCapturing) return;
+        this._audioCapturing = true;
         this.setState({capturingClass: classIndex});
+        const label = this._classLabel(this.state.classes[classIndex]);
         try {
-            await this._transferRecognizer.collectExample(label);
-            this.setState(prev => ({
-                classes: prev.classes.map((c, i) =>
-                    i === classIndex ? {...c, sampleCount: c.sampleCount + 1} : c
-                ),
-                isTrained: false,
-                capturingClass: null
-            }));
+            while (this._audioCapturing) {
+                await this._transferRecognizer.collectExample(label);
+                if (!this._audioCapturing) break; // soltó mientras grababa
+                this.setState(prev => ({
+                    classes: prev.classes.map((c, i) =>
+                        i === classIndex ? {...c, sampleCount: c.sampleCount + 1} : c
+                    ),
+                    isTrained: false
+                }));
+            }
         } catch (e) {
             console.error('[MLStudio] Error grabando audio:', e);
+        } finally {
+            this._audioCapturing = false;
             this.setState({capturingClass: null});
         }
+    }
+
+    _audioStopCapture () {
+        this._audioCapturing = false;
     }
 
     // ─── Training ─────────────────────────────────────────────────────────────
@@ -619,7 +655,7 @@ class MLStudio extends React.Component {
         };
 
         const savedModels = {...this.state.savedModels, [name]: model};
-        this._writeStorage(savedModels);
+        if (!this._writeStorage(savedModels)) return;
         this.setState({savedModels, saveNotice: `"${name}" guardado correctamente`});
         setTimeout(() => this.setState({saveNotice: null}), 3500);
     }
@@ -653,7 +689,7 @@ class MLStudio extends React.Component {
         };
 
         const savedModels = {...this.state.savedModels, [name]: model};
-        this._writeStorage(savedModels);
+        if (!this._writeStorage(savedModels)) return;
         this.setState({savedModels, saveNotice: `"${name}" guardado correctamente`});
         setTimeout(() => this.setState({saveNotice: null}), 3500);
     }
@@ -912,10 +948,15 @@ class MLStudio extends React.Component {
                             [styles.recordBtnActive]: isCapturing
                         })}
                         style={!isCapturing && libLoaded ? {background: color} : {}}
-                        onClick={() => this._audioCaptureSample(idx)}
-                        disabled={!libLoaded || capturingClass !== null}
+                        onPointerDown={e => {
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            this._audioStartCapture(idx);
+                        }}
+                        onPointerUp={() => this._audioStopCapture()}
+                        onPointerCancel={() => this._audioStopCapture()}
+                        disabled={!libLoaded || (capturingClass !== null && !isCapturing)}
                     >
-                        {isCapturing ? 'Grabando 1s...' : 'Grabar muestra'}
+                        {isCapturing ? 'Grabando...' : 'Mantén para grabar'}
                     </button>
                 ) : (
                     <button

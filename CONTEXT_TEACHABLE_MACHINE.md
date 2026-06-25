@@ -28,8 +28,10 @@ Tecnología: **MobileNet**/**PoseNet** + **KNN Classifier** (imagen/pose) o **Sp
 - En la extensión VM, `loadModel` con `type:'audio'` reconstruye el transfer recognizer y arranca `listen()`; el callback alimenta `_topClass`/`_allConfidences` igual que los otros tipos.
 
 ### Soporte de Pose
-- Extractor: PoseNet (`@tensorflow-models/posenet@2.2.2`), config MobileNetV1 / outputStride 16 / multiplier 0.75
+- Extractor: **MoveNet** vía `@tensorflow-models/pose-detection@2.1.0` (SINGLEPOSE_LIGHTNING). Se migró desde PoseNet 2.2.2 porque era **incompatible con tfjs 3.21** (fallaba en silencio). MoveNet es compatible y más preciso.
+- Keypoints MoveNet: `{x, y, score, name}` (17 puntos COCO). `_poseToVector()` filtra puntos con score < 0.2 y descarta el frame si hay < 5 válidos (evita basura cuando no hay persona).
 - Features: 17 keypoints → vector de 34 dims normalizado por bounding box de la pose (invariante a traslación y escala). Mismo `_poseToVector()` en GUI y VM para que los modelos sean compatibles.
+- Esqueleto: `poseDetection.util.getAdjacentPairs(MoveNet)` para los huesos. `tf.ready()` antes de `createDetector`.
 - El KNN, el suavizado temporal, el guardado y los bloques **se reutilizan igual** que en imagen; solo cambia el extractor de features.
 - En ML Studio se dibuja el **esqueleto** sobre la cámara (canvas overlay espejado). Un rAF loop estima la pose continuamente, guarda `_lastPoseVec` y dibuja; captura y predicción reusan ese vector.
 - Cada modelo guardado lleva `type: 'image' | 'pose'`. La extensión VM ramifica en `loadModel` según `model.type` y carga PoseNet o MobileNet. Modelos sin `type` se asumen `image` (retrocompat).
