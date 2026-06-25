@@ -2,11 +2,16 @@ import React from 'react';
 import classNames from 'classnames';
 import styles from './ml-studio.css';
 
+// Imagen/pose usan tfjs 3.x (rápido, MoveNet). Audio usa tfjs 1.5.2 + speech-commands
+// 0.4.4 — el stack 1.x de Google Teachable Machine. speech-commands con tfjs 3.x falla
+// al compilar shaders en WebGL; con tfjs 1.x funciona. Ambas versiones coexisten: cada
+// librería captura su propio `tf` al cargarse, y nuestro código usa this._tf.
 const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js';
+const TFJS_AUDIO_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2/dist/tf.min.js';
 const MOBILENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js';
 const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js';
 const POSE_DETECTION_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0/dist/pose-detection.min.js';
-const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js';
+const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.4/dist/speech-commands.min.js';
 
 const STORAGE_KEY = 'playcode_ml_models';
 const CAPTURE_INTERVAL_MS = 120;
@@ -97,6 +102,7 @@ class MLStudio extends React.Component {
         this.audioVizRef = React.createRef();  // canvas visualizador (audio)
 
         // image / pose
+        this._tf = null;       // referencia a tfjs 3.x (imagen/pose)
         this._mobilenet = null;
         this._detector = null; // MoveNet (pose-detection)
         this._classifier = null;
@@ -297,15 +303,10 @@ class MLStudio extends React.Component {
         if (this.state.libLoaded || this.state.libLoading) return;
         this.setState({libLoading: true});
         try {
-            await this._injectScript(TFJS_URL);
-
             if (type === 'audio') {
-                // speech-commands es inestable en WebGL (falla al compilar shaders).
-                // El transfer learning de audio es ligero: el backend CPU lo corre bien.
-                try {
-                    await window.tf.setBackend('cpu');
-                    await window.tf.ready();
-                } catch (e) { /* seguir con el backend por defecto */ }
+                // Stack de Google TM: tfjs 1.3.1 + speech-commands 0.4.0 (sin shader error)
+                await this._injectScript(TFJS_AUDIO_URL);
+                window.__tmTf1 = window.__tmTf1 || window.tf;
                 await this._injectScript(SPEECH_URL);
                 this._baseRecognizer = window.speechCommands.create('BROWSER_FFT');
                 await this._baseRecognizer.ensureModelLoaded();
@@ -316,18 +317,17 @@ class MLStudio extends React.Component {
                 return;
             }
 
-            // Imagen/pose usan WebGL (rápido para MobileNet/MoveNet)
-            try {
-                await window.tf.setBackend('webgl');
-                await window.tf.ready();
-            } catch (e) { /* seguir con el backend por defecto */ }
+            // Imagen/pose: tfjs 3.x (capturar la referencia estable)
+            await this._injectScript(TFJS_URL);
+            window.__tmTf3 = window.__tmTf3 || window.tf;
+            this._tf = window.__tmTf3;
 
             await this._injectScript(KNN_URL);
             this._classifier = window.knnClassifier.create();
 
             if (type === 'pose') {
                 await this._injectScript(POSE_DETECTION_URL);
-                if (window.tf && window.tf.ready) await window.tf.ready();
+                if (this._tf && this._tf.ready) await this._tf.ready();
                 this._detector = await window.poseDetection.createDetector(
                     window.poseDetection.SupportedModels.MoveNet,
                     {modelType: window.poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
@@ -428,11 +428,11 @@ class MLStudio extends React.Component {
 
     _extractFeatures () {
         const video = this.videoRef.current;
-        if (!video || video.readyState < 2 || !window.tf) return null;
+        if (!video || video.readyState < 2 || !this._tf) return null;
 
         if (this.state.projectType === 'pose') {
             if (!this._lastPoseVec) return null;
-            return window.tf.tensor1d(this._lastPoseVec);
+            return this._tf.tensor1d(this._lastPoseVec);
         }
         if (!this._mobilenet) return null;
         return this._mobilenet.infer(video, true);
@@ -721,11 +721,11 @@ class MLStudio extends React.Component {
         if (!this._classifier) return;
 
         this._classifier.clearAllClasses();
-        if (window.tf) {
+        if (this._tf) {
             const dataset = {};
             for (const label in model.dataset) {
                 const {data, shape} = model.dataset[label];
-                dataset[label] = window.tf.tensor2d(data, shape);
+                dataset[label] = this._tf.tensor2d(data, shape);
             }
             this._classifier.setClassifierDataset(dataset);
         }
