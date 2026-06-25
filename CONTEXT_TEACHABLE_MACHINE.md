@@ -13,9 +13,19 @@ Sistema completo de machine learning in-browser integrado dentro de PlayCode. Pe
 Al abrir ML Studio aparece una **pantalla de selección de tipo de proyecto** (estilo Google TM):
 - **Imagen** ✅ — reconoce objetos/gestos con MobileNet + KNN
 - **Pose** ✅ — reconoce posturas del cuerpo con PoseNet (17 keypoints) + KNN
-- **Audio** 🔜 — pendiente (speech-commands)
+- **Audio** ✅ — reconoce sonidos con Speech Commands (transfer learning)
 
-Tecnología: **MobileNet** o **PoseNet** (extracción de features) + **KNN Classifier** (clasificación), todo de TensorFlow.js, cargado desde CDN según el tipo de proyecto.
+Tecnología: **MobileNet**/**PoseNet** + **KNN Classifier** (imagen/pose) o **Speech Commands** (audio), todo de TensorFlow.js, cargado desde CDN según el tipo de proyecto.
+
+### Soporte de Audio
+- Modelo: `@tensorflow-models/speech-commands@0.5.4` (BROWSER_FFT base + transfer learning sobre espectrogramas). **No usa KNN.**
+- Micrófono en vez de cámara. Visualizador de frecuencias (Web Audio API + AnalyserNode → canvas con barras).
+- Clase obligatoria **"Ruido de fondo"** (label interno `_background_noise_`), no se puede borrar ni renombrar.
+- Captura: cada click graba 1 muestra de ~1s (`collectExample(label)`), no es "mantener presionado" como imagen/pose.
+- Entrenamiento real con épocas (`train({epochs: 30})`), con barra de progreso (no es instantáneo como KNN).
+- Inferencia con `listen()` (callback continuo), no un predict loop manual.
+- Guardado: `serializeExamples()` → ArrayBuffer → base64 en el campo `audioData` del modelo (formato distinto al `dataset` de KNN). Al cargar: `loadExamples()` + `train()` (re-entrena en unos segundos).
+- En la extensión VM, `loadModel` con `type:'audio'` reconstruye el transfer recognizer y arranca `listen()`; el callback alimenta `_topClass`/`_allConfidences` igual que los otros tipos.
 
 ### Soporte de Pose
 - Extractor: PoseNet (`@tensorflow-models/posenet@2.2.2`), config MobileNetV1 / outputStride 16 / multiplier 0.75

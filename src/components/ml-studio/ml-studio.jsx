@@ -6,11 +6,14 @@ const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.m
 const MOBILENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js';
 const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js';
 const POSENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js';
+const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js';
 
 const STORAGE_KEY = 'playcode_ml_models';
 const CAPTURE_INTERVAL_MS = 120;
 const PREDICT_INTERVAL_MS = 150;
 const POSE_MIN_SCORE = 0.2;
+const NOISE_LABEL = '_background_noise_';
+const AUDIO_EPOCHS = 30;
 
 // Paleta de colores por clase (estilo Teachable Machine)
 const CLASS_COLORS = [
@@ -39,9 +42,26 @@ const PROJECT_TYPES = [
         icon: '🎤',
         title: 'Proyecto de Audio',
         desc: 'Reconoce sonidos y palabras con el micrófono.',
-        available: false
+        available: true
     }
 ];
+
+// ── Helpers base64 ↔ ArrayBuffer (para serializar ejemplos de audio) ──────────
+function abToBase64 (buf) {
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+}
+function base64ToAb (b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+}
 
 class MLStudio extends React.Component {
     constructor (props) {
@@ -55,10 +75,12 @@ class MLStudio extends React.Component {
             ],
             isTrained: false,
             isTraining: false,
+            trainProgress: 0, // % de épocas (modo audio)
             capturingClass: null,
             liveConfidences: {}, // { classIndex: probability }
             topClassIndex: null,
             cameraReady: false,
+            micReady: false,
             libLoaded: false,
             libLoading: false,
             savedModels: this._readStorage(),
@@ -66,15 +88,28 @@ class MLStudio extends React.Component {
         };
 
         this.videoRef = React.createRef();
-        this.overlayRef = React.createRef(); // canvas para el esqueleto (modo pose)
+        this.overlayRef = React.createRef();   // canvas esqueleto (pose)
+        this.audioVizRef = React.createRef();  // canvas visualizador (audio)
+
+        // image / pose
         this._mobilenet = null;
         this._posenet = null;
         this._classifier = null;
         this._captureTimer = null;
         this._predictTimer = null;
         this._poseRAF = null;
-        this._lastPoseVec = null; // último vector de keypoints (modo pose)
+        this._lastPoseVec = null;
         this._stream = null;
+
+        // audio
+        this._baseRecognizer = null;
+        this._transferRecognizer = null;
+        this._micStream = null;
+        this._audioCtx = null;
+        this._analyser = null;
+        this._audioData = null;
+        this._audioRAF = null;
+        this._listening = false;
     }
 
     // ─── Storage ──────────────────────────────────────────────────────────────
@@ -99,9 +134,14 @@ class MLStudio extends React.Component {
 
     componentWillUnmount () {
         this._stopCamera();
+        this._stopMic();
         clearInterval(this._captureTimer);
         clearInterval(this._predictTimer);
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
+        if (this._audioRAF) cancelAnimationFrame(this._audioRAF);
+        if (this._transferRecognizer && this._listening) {
+            try { this._transferRecognizer.stopListening(); } catch (e) { /* noop */ }
+        }
     }
 
     // ─── Project type selection ────────────────────────────────────────────────
@@ -109,12 +149,27 @@ class MLStudio extends React.Component {
     _selectType (type) {
         const def = PROJECT_TYPES.find(t => t.id === type);
         if (!def || !def.available) return;
+
+        if (type === 'audio') {
+            // En audio la primera clase es el ruido de fondo (obligatoria)
+            this.setState({
+                projectType: type,
+                classes: [
+                    {name: 'Ruido de fondo', isNoise: true, sampleCount: 0, thumbnails: []},
+                    {name: 'Clase 1', sampleCount: 0, thumbnails: []}
+                ]
+            });
+            this._startMic();
+            this._loadLibraries(type);
+            return;
+        }
+
         this.setState({projectType: type});
         this._startCamera();
         this._loadLibraries(type);
     }
 
-    // ─── Camera ───────────────────────────────────────────────────────────────
+    // ─── Camera (image / pose) ──────────────────────────────────────────────────
 
     async _startCamera () {
         try {
@@ -139,6 +194,60 @@ class MLStudio extends React.Component {
             this._stream.getTracks().forEach(t => t.stop());
             this._stream = null;
         }
+    }
+
+    // ─── Mic + visualizer (audio) ───────────────────────────────────────────────
+
+    async _startMic () {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            this._micStream = stream;
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            const ctx = new Ctx();
+            this._audioCtx = ctx;
+            const src = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            src.connect(analyser);
+            this._analyser = analyser;
+            this._audioData = new Uint8Array(analyser.frequencyBinCount);
+            this.setState({micReady: true});
+            this._drawAudioViz();
+        } catch (err) {
+            console.error('[MLStudio] Micrófono no disponible:', err);
+        }
+    }
+
+    _stopMic () {
+        if (this._micStream) {
+            this._micStream.getTracks().forEach(t => t.stop());
+            this._micStream = null;
+        }
+        if (this._audioCtx) {
+            try { this._audioCtx.close(); } catch (e) { /* noop */ }
+            this._audioCtx = null;
+        }
+    }
+
+    _drawAudioViz () {
+        const canvas = this.audioVizRef.current;
+        if (canvas && this._analyser && this._audioData) {
+            this._analyser.getByteFrequencyData(this._audioData);
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            const bins = this._audioData.length;
+            const barW = w / bins;
+            for (let i = 0; i < bins; i++) {
+                const v = this._audioData[i] / 255;
+                const barH = v * h;
+                const hue = 170 + (v * 60); // teal → verde
+                ctx.fillStyle = `hsl(${hue}, 80%, ${40 + v * 20}%)`;
+                ctx.fillRect(i * barW, h - barH, barW * 0.8, barH);
+            }
+        }
+        this._audioRAF = requestAnimationFrame(() => this._drawAudioViz());
     }
 
     // ─── CDN Libraries ────────────────────────────────────────────────────────
@@ -169,6 +278,18 @@ class MLStudio extends React.Component {
         this.setState({libLoading: true});
         try {
             await this._injectScript(TFJS_URL);
+
+            if (type === 'audio') {
+                await this._injectScript(SPEECH_URL);
+                this._baseRecognizer = window.speechCommands.create('BROWSER_FFT');
+                await this._baseRecognizer.ensureModelLoaded();
+                this._transferRecognizer = this._baseRecognizer.createTransfer(
+                    this.state.modelName || 'modelo'
+                );
+                this.setState({libLoaded: true, libLoading: false});
+                return;
+            }
+
             await this._injectScript(KNN_URL);
             this._classifier = window.knnClassifier.create();
 
@@ -186,7 +307,6 @@ class MLStudio extends React.Component {
             }
 
             this.setState({libLoaded: true, libLoading: false});
-            // Si la cámara ya está lista y es pose, arrancar el overlay del esqueleto
             if (type === 'pose' && this.state.cameraReady) this._startPoseOverlay();
         } catch (err) {
             console.error('[MLStudio] Error cargando librerías TF:', err);
@@ -196,8 +316,6 @@ class MLStudio extends React.Component {
 
     // ─── Pose helpers ───────────────────────────────────────────────────────────
 
-    // Convierte una pose de PoseNet en un vector normalizado (invariante a
-    // traslación y escala) que sirve como features para el KNN.
     _poseToVector (pose) {
         if (!pose || !pose.keypoints) return null;
         const kp = pose.keypoints;
@@ -214,11 +332,9 @@ class MLStudio extends React.Component {
             vec.push((k.position.x - minX) / w);
             vec.push((k.position.y - minY) / h);
         }
-        return vec; // 34 dims (17 keypoints × 2)
+        return vec; // 34 dims
     }
 
-    // Loop continuo que estima la pose, guarda el último vector y dibuja
-    // el esqueleto sobre la cámara mientras el modo pose esté activo.
     _startPoseOverlay () {
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
         const tick = async () => {
@@ -246,7 +362,6 @@ class MLStudio extends React.Component {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!pose) return;
 
-        // Puntos
         for (const k of pose.keypoints) {
             if (k.score < POSE_MIN_SCORE) continue;
             ctx.beginPath();
@@ -254,7 +369,6 @@ class MLStudio extends React.Component {
             ctx.fillStyle = '#00e676';
             ctx.fill();
         }
-        // Líneas (huesos)
         const adj = window.posenet.getAdjacentKeyPoints(pose.keypoints, POSE_MIN_SCORE);
         ctx.strokeStyle = '#4c97ff';
         ctx.lineWidth = 3;
@@ -266,10 +380,8 @@ class MLStudio extends React.Component {
         }
     }
 
-    // ─── Features (unificado image/pose) ────────────────────────────────────────
+    // ─── Features (image/pose) ──────────────────────────────────────────────────
 
-    // Devuelve un tensor de features para la imagen actual. El llamador es
-    // responsable de hacer dispose(). Retorna null si no hay datos válidos.
     _extractFeatures () {
         const video = this.videoRef.current;
         if (!video || video.readyState < 2 || !window.tf) return null;
@@ -278,12 +390,11 @@ class MLStudio extends React.Component {
             if (!this._lastPoseVec) return null;
             return window.tf.tensor1d(this._lastPoseVec);
         }
-        // image
         if (!this._mobilenet) return null;
         return this._mobilenet.infer(video, true);
     }
 
-    // ─── Capture ──────────────────────────────────────────────────────────────
+    // ─── Capture: image/pose (mantener presionado) ──────────────────────────────
 
     _captureFrame (classIndex) {
         const video = this.videoRef.current;
@@ -326,9 +437,37 @@ class MLStudio extends React.Component {
         this.setState({capturingClass: null});
     }
 
+    // ─── Capture: audio (graba 1 muestra de ~1s) ────────────────────────────────
+
+    _classLabel (cls) {
+        return cls.isNoise ? NOISE_LABEL : cls.name;
+    }
+
+    async _audioCaptureSample (classIndex) {
+        if (!this._transferRecognizer || this.state.capturingClass !== null) return;
+        const cls = this.state.classes[classIndex];
+        const label = this._classLabel(cls);
+        this.setState({capturingClass: classIndex});
+        try {
+            await this._transferRecognizer.collectExample(label);
+            this.setState(prev => ({
+                classes: prev.classes.map((c, i) =>
+                    i === classIndex ? {...c, sampleCount: c.sampleCount + 1} : c
+                ),
+                isTrained: false,
+                capturingClass: null
+            }));
+        } catch (e) {
+            console.error('[MLStudio] Error grabando audio:', e);
+            this.setState({capturingClass: null});
+        }
+    }
+
     // ─── Training ─────────────────────────────────────────────────────────────
 
     async _train () {
+        if (this.state.projectType === 'audio') return this._trainAudio();
+
         const {classes} = this.state;
         if (!this._classifier) return;
         const minSamples = Math.min(...classes.map(c => c.sampleCount));
@@ -340,6 +479,30 @@ class MLStudio extends React.Component {
         this._startPredictLoop();
     }
 
+    async _trainAudio () {
+        if (!this._transferRecognizer) return;
+        this.setState({isTraining: true, trainProgress: 0});
+        try {
+            await this._transferRecognizer.train({
+                epochs: AUDIO_EPOCHS,
+                callback: {
+                    onEpochEnd: (epoch) => {
+                        this.setState({
+                            trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 100)
+                        });
+                    }
+                }
+            });
+            this.setState({isTraining: false, isTrained: true, trainProgress: 100});
+            this._audioStartListen();
+        } catch (e) {
+            console.error('[MLStudio] Error entrenando audio:', e);
+            this.setState({isTraining: false});
+        }
+    }
+
+    // ─── Inference: image/pose loop ─────────────────────────────────────────────
+
     _startPredictLoop () {
         clearInterval(this._predictTimer);
         this._confBuffer = [];
@@ -347,7 +510,6 @@ class MLStudio extends React.Component {
             if (!this._classifier) return;
             if (this._classifier.getNumClasses() < 2) return;
             try {
-                // k del KNN según la clase con menos muestras (entre 3 y 10)
                 const minSamples = Math.min(...this.state.classes.map(c => c.sampleCount || 0));
                 const k = Math.max(3, Math.min(10, Math.floor(minSamples / 2) || 3));
 
@@ -356,7 +518,6 @@ class MLStudio extends React.Component {
                 const result = await this._classifier.predictClass(features, k);
                 features.dispose();
 
-                // Suavizado temporal sobre las últimas 8 predicciones
                 this._confBuffer.push(result.confidences);
                 if (this._confBuffer.length > 8) this._confBuffer.shift();
                 const smoothed = {};
@@ -381,9 +542,53 @@ class MLStudio extends React.Component {
         }, PREDICT_INTERVAL_MS);
     }
 
+    // ─── Inference: audio listen ────────────────────────────────────────────────
+
+    _audioStartListen () {
+        if (!this._transferRecognizer) return;
+        if (this._listening) return;
+        const labels = this._transferRecognizer.wordLabels();
+        this._transferRecognizer.listen(
+            result => {
+                const scores = result.scores;
+                const conf = {};
+                let topIdx = null;
+                let topProb = -1;
+                labels.forEach((label, i) => {
+                    const idx = this.state.classes.findIndex(
+                        c => this._classLabel(c) === label
+                    );
+                    if (idx < 0) return;
+                    conf[idx] = scores[i];
+                    if (scores[i] > topProb) {
+                        topProb = scores[i];
+                        topIdx = idx;
+                    }
+                });
+                this.setState({liveConfidences: conf, topClassIndex: topIdx});
+            },
+            {
+                probabilityThreshold: 0.6,
+                overlapFactor: 0.5,
+                includeSpectrogram: false,
+                invokeCallbackOnNoiseAndUnknown: true
+            }
+        );
+        this._listening = true;
+    }
+
+    _audioStopListen () {
+        if (this._transferRecognizer && this._listening) {
+            try { this._transferRecognizer.stopListening(); } catch (e) { /* noop */ }
+        }
+        this._listening = false;
+    }
+
     // ─── Save / Delete models ─────────────────────────────────────────────────
 
     _saveModel () {
+        if (this.state.projectType === 'audio') return this._saveAudioModel();
+
         const {modelName, classes, projectType} = this.state;
         if (!this._classifier || !this.state.isTrained) return;
         const name = modelName.trim();
@@ -412,6 +617,40 @@ class MLStudio extends React.Component {
         setTimeout(() => this.setState({saveNotice: null}), 3500);
     }
 
+    _saveAudioModel () {
+        const {modelName, classes} = this.state;
+        if (!this._transferRecognizer || !this.state.isTrained) return;
+        const name = modelName.trim();
+        if (!name) return;
+
+        let audioData = null;
+        try {
+            const serialized = this._transferRecognizer.serializeExamples();
+            audioData = abToBase64(serialized);
+        } catch (e) {
+            console.error('[MLStudio] Error serializando audio:', e);
+            return;
+        }
+
+        const model = {
+            name,
+            type: 'audio',
+            classes: classes.map((c, i) => ({
+                index: String(i),
+                name: c.name,
+                label: this._classLabel(c),
+                isNoise: !!c.isNoise
+            })),
+            audioData,
+            createdAt: new Date().toISOString()
+        };
+
+        const savedModels = {...this.state.savedModels, [name]: model};
+        this._writeStorage(savedModels);
+        this.setState({savedModels, saveNotice: `"${name}" guardado correctamente`});
+        setTimeout(() => this.setState({saveNotice: null}), 3500);
+    }
+
     _deleteModel (name) {
         const savedModels = {...this.state.savedModels};
         delete savedModels[name];
@@ -419,11 +658,13 @@ class MLStudio extends React.Component {
         this.setState({savedModels});
     }
 
-    _loadModelToEdit (name) {
+    async _loadModelToEdit (name) {
         const model = this.state.savedModels[name];
-        if (!model || !this._classifier) return;
+        if (!model) return;
 
-        // Reconstruir el classifier
+        if ((model.type || 'image') === 'audio') return this._loadAudioModelToEdit(model);
+        if (!this._classifier) return;
+
         this._classifier.clearAllClasses();
         if (window.tf) {
             const dataset = {};
@@ -434,7 +675,6 @@ class MLStudio extends React.Component {
             this._classifier.setClassifierDataset(dataset);
         }
 
-        // Contar muestras por clase
         const counts = {};
         for (const label in model.dataset) {
             counts[parseInt(label, 10)] = model.dataset[label].shape[0];
@@ -452,6 +692,40 @@ class MLStudio extends React.Component {
         this._startPredictLoop();
     }
 
+    async _loadAudioModelToEdit (model) {
+        if (!this._baseRecognizer) return;
+        this._audioStopListen();
+        try {
+            this._transferRecognizer = this._baseRecognizer.createTransfer(model.name);
+            this._transferRecognizer.loadExamples(base64ToAb(model.audioData));
+            const counts = this._transferRecognizer.getExampleCounts() || {};
+            this.setState({
+                modelName: model.name,
+                classes: model.classes.map(c => ({
+                    name: c.name,
+                    isNoise: !!c.isNoise,
+                    sampleCount: counts[c.label] || 0,
+                    thumbnails: []
+                })),
+                isTraining: true,
+                trainProgress: 0
+            });
+            await this._transferRecognizer.train({
+                epochs: AUDIO_EPOCHS,
+                callback: {
+                    onEpochEnd: (epoch) => {
+                        this.setState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 100)});
+                    }
+                }
+            });
+            this.setState({isTraining: false, isTrained: true, trainProgress: 100});
+            this._audioStartListen();
+        } catch (e) {
+            console.error('[MLStudio] Error cargando modelo de audio:', e);
+            this.setState({isTraining: false});
+        }
+    }
+
     // ─── Class management ─────────────────────────────────────────────────────
 
     _addClass () {
@@ -466,6 +740,7 @@ class MLStudio extends React.Component {
 
     _removeClass (index) {
         if (this.state.classes.length <= 2) return;
+        if (this.state.classes[index].isNoise) return;
         this.setState(prev => ({
             classes: prev.classes.filter((_, i) => i !== index),
             isTrained: false,
@@ -474,6 +749,7 @@ class MLStudio extends React.Component {
         }));
         if (this._classifier) this._classifier.clearAllClasses();
         clearInterval(this._predictTimer);
+        this._audioStopListen();
     }
 
     _renameClass (index, name) {
@@ -493,6 +769,7 @@ class MLStudio extends React.Component {
         }));
         if (this._classifier) this._classifier.clearAllClasses();
         clearInterval(this._predictTimer);
+        this._audioStopListen();
     }
 
     // ─── Render: pantalla de selección ──────────────────────────────────────────
@@ -538,14 +815,15 @@ class MLStudio extends React.Component {
         );
     }
 
-    // ─── Render helpers ───────────────────────────────────────────────────────
+    // ─── Render: card de clase ──────────────────────────────────────────────────
 
     _renderClassCard (cls, idx) {
         const {capturingClass, libLoaded, projectType} = this.state;
         const color = CLASS_COLORS[idx % CLASS_COLORS.length];
         const isCapturing = capturingClass === idx;
+        const isAudio = projectType === 'audio';
         const isPose = projectType === 'pose';
-        const unit = isPose ? 'pose' : 'imagen';
+        const unit = isAudio ? 'sonido' : (isPose ? 'pose' : 'imagen');
 
         return (
             <div
@@ -557,11 +835,15 @@ class MLStudio extends React.Component {
             >
                 <div className={styles.classTop}>
                     <span className={styles.classDot} style={{background: color}} />
-                    <input
-                        className={styles.classNameInput}
-                        value={cls.name}
-                        onChange={e => this._renameClass(idx, e.target.value)}
-                    />
+                    {cls.isNoise ? (
+                        <span className={styles.classNoiseName}>🔇 {cls.name}</span>
+                    ) : (
+                        <input
+                            className={styles.classNameInput}
+                            value={cls.name}
+                            onChange={e => this._renameClass(idx, e.target.value)}
+                        />
+                    )}
                     <div className={styles.classMenu}>
                         {cls.sampleCount > 0 && (
                             <button
@@ -570,7 +852,7 @@ class MLStudio extends React.Component {
                                 title="Borrar muestras"
                             >🗑</button>
                         )}
-                        {this.state.classes.length > 2 && (
+                        {this.state.classes.length > 2 && !cls.isNoise && (
                             <button
                                 className={styles.iconBtn}
                                 onClick={() => this._removeClass(idx)}
@@ -589,31 +871,60 @@ class MLStudio extends React.Component {
                     </span>
                 </div>
 
-                <div className={styles.thumbsGrid}>
-                    {cls.thumbnails.length === 0 ? (
-                        <div className={styles.thumbsEmpty}>
-                            Mantén presionado el botón para capturar {unit === 'pose' ? 'poses' : 'imágenes'}
-                        </div>
-                    ) : cls.thumbnails.map((t, ti) => (
-                        <img key={ti} src={t} className={styles.thumb} alt="" />
-                    ))}
-                </div>
+                {isAudio ? (
+                    <div className={styles.audioSamples}>
+                        {cls.sampleCount === 0 ? (
+                            <div className={styles.thumbsEmpty}>
+                                Graba al menos 3 muestras de {cls.isNoise ? 'ruido ambiente' : 'este sonido'}
+                            </div>
+                        ) : (
+                            <div className={styles.audioDots}>
+                                {Array.from({length: cls.sampleCount}).map((_, di) => (
+                                    <span key={di} className={styles.audioDot} style={{background: color}} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className={styles.thumbsGrid}>
+                        {cls.thumbnails.length === 0 ? (
+                            <div className={styles.thumbsEmpty}>
+                                Mantén presionado el botón para capturar {unit === 'pose' ? 'poses' : 'imágenes'}
+                            </div>
+                        ) : cls.thumbnails.map((t, ti) => (
+                            <img key={ti} src={t} className={styles.thumb} alt="" />
+                        ))}
+                    </div>
+                )}
 
-                <button
-                    className={classNames(styles.recordBtn, {
-                        [styles.recordBtnActive]: isCapturing
-                    })}
-                    style={!isCapturing && libLoaded ? {background: color} : {}}
-                    onPointerDown={e => {
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        this._startCapture(idx);
-                    }}
-                    onPointerUp={() => this._stopCapture()}
-                    onPointerCancel={() => this._stopCapture()}
-                    disabled={!libLoaded}
-                >
-                    {isCapturing ? '⏺ Capturando...' : `${isPose ? '🧍' : '📷'} Mantén para capturar`}
-                </button>
+                {isAudio ? (
+                    <button
+                        className={classNames(styles.recordBtn, {
+                            [styles.recordBtnActive]: isCapturing
+                        })}
+                        style={!isCapturing && libLoaded ? {background: color} : {}}
+                        onClick={() => this._audioCaptureSample(idx)}
+                        disabled={!libLoaded || capturingClass !== null}
+                    >
+                        {isCapturing ? '⏺ Grabando 1s...' : '🎙 Grabar muestra'}
+                    </button>
+                ) : (
+                    <button
+                        className={classNames(styles.recordBtn, {
+                            [styles.recordBtnActive]: isCapturing
+                        })}
+                        style={!isCapturing && libLoaded ? {background: color} : {}}
+                        onPointerDown={e => {
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            this._startCapture(idx);
+                        }}
+                        onPointerUp={() => this._stopCapture()}
+                        onPointerCancel={() => this._stopCapture()}
+                        disabled={!libLoaded}
+                    >
+                        {isCapturing ? '⏺ Capturando...' : `${isPose ? '🧍' : '📷'} Mantén para capturar`}
+                    </button>
+                )}
             </div>
         );
     }
@@ -622,21 +933,26 @@ class MLStudio extends React.Component {
 
     render () {
         const {
-            projectType, modelName, classes, isTrained, isTraining, capturingClass,
-            liveConfidences, topClassIndex, cameraReady, libLoaded, libLoading,
+            projectType, modelName, classes, isTrained, isTraining, trainProgress, capturingClass,
+            liveConfidences, topClassIndex, cameraReady, micReady, libLoaded, libLoading,
             savedModels, saveNotice
         } = this.state;
 
-        // Pantalla de selección de tipo de proyecto
         if (!projectType) return this._renderChooser();
 
+        const isAudio = projectType === 'audio';
         const isPose = projectType === 'pose';
         const typeDef = PROJECT_TYPES.find(t => t.id === projectType);
-        // Mostrar solo los modelos guardados del mismo tipo
+        const typeShort = isAudio ? 'Audio' : (isPose ? 'Pose' : 'Imagen');
+        const inputReady = isAudio ? micReady : cameraReady;
+
         const savedList = Object.values(savedModels).filter(
             m => (m.type || 'image') === projectType
         );
-        const canTrain = libLoaded && classes.every(c => c.sampleCount >= 2) && classes.length >= 2;
+        const minPerClass = isAudio ? 3 : 2;
+        const canTrain = libLoaded &&
+            classes.every(c => c.sampleCount >= minPerClass) &&
+            classes.length >= 2;
 
         return (
             <div className={styles.overlay}>
@@ -648,7 +964,7 @@ class MLStudio extends React.Component {
                             <span className={styles.headerIcon}>🤖</span>
                             <span className={styles.headerTitle}>ML Studio</span>
                             <span className={styles.headerBadge}>
-                                {typeDef.icon} {isPose ? 'Pose' : 'Imagen'}
+                                {typeDef.icon} {typeShort}
                             </span>
                             <span className={styles.headerSep}>/</span>
                             <input
@@ -695,19 +1011,33 @@ class MLStudio extends React.Component {
                                 >
                                     {isTraining ? (
                                         <span className={styles.trainSpinnerRow}>
-                                            <span className={styles.spinner} /> Entrenando...
+                                            <span className={styles.spinner} />
+                                            {isAudio ? `Entrenando... ${trainProgress}%` : 'Entrenando...'}
                                         </span>
                                     ) : '▶ Entrenar modelo'}
                                 </button>
 
+                                {isAudio && isTraining && (
+                                    <div className={styles.audioProgressTrack}>
+                                        <div
+                                            className={styles.audioProgressFill}
+                                            style={{width: `${trainProgress}%`}}
+                                        />
+                                    </div>
+                                )}
+
                                 {!canTrain && libLoaded && (
                                     <div className={styles.trainHint}>
-                                        Captura al menos <b>2 muestras</b> en cada clase para poder entrenar.
+                                        {isAudio ? (
+                                            <span>Graba al menos <b>3 muestras</b> en cada clase (incluido el ruido de fondo).</span>
+                                        ) : (
+                                            <span>Captura al menos <b>2 muestras</b> en cada clase para poder entrenar.</span>
+                                        )}
                                     </div>
                                 )}
                                 {libLoading && (
                                     <div className={styles.trainHint}>
-                                        Cargando {isPose ? 'PoseNet' : 'TensorFlow.js'}...
+                                        Cargando {isAudio ? 'Speech Commands' : (isPose ? 'PoseNet' : 'TensorFlow.js')}...
                                     </div>
                                 )}
                                 {isTrained && (
@@ -762,45 +1092,75 @@ class MLStudio extends React.Component {
                                 Vista previa
                             </div>
                             <div className={styles.previewBox}>
-                                <div className={classNames(styles.cameraWrap, {
-                                    [styles.cameraWrapLive]: cameraReady
-                                })}>
-                                    <video
-                                        ref={this.videoRef}
-                                        className={styles.cameraFeed}
-                                        autoPlay
-                                        muted
-                                        playsInline
-                                    />
-                                    {isPose && (
+                                {isAudio ? (
+                                    <div className={classNames(styles.cameraWrap, styles.audioWrap, {
+                                        [styles.cameraWrapLive]: micReady
+                                    })}>
                                         <canvas
-                                            ref={this.overlayRef}
-                                            className={styles.poseOverlay}
+                                            ref={this.audioVizRef}
+                                            width={480}
+                                            height={200}
+                                            className={styles.audioViz}
                                         />
-                                    )}
-                                    {!cameraReady && (
-                                        <div className={styles.cameraOverlay}>
-                                            <span className={styles.cameraOverlayDot} />
-                                            Iniciando cámara...
-                                        </div>
-                                    )}
-                                    {cameraReady && (
-                                        <div className={styles.cameraLiveBadge}>
-                                            <span className={styles.cameraLiveDot} />
-                                            En vivo
-                                        </div>
-                                    )}
-                                    {capturingClass !== null && (
-                                        <div className={styles.cameraCapturingRing} />
-                                    )}
-                                </div>
+                                        {!micReady && (
+                                            <div className={styles.cameraOverlay}>
+                                                <span className={styles.cameraOverlayDot} />
+                                                Activando micrófono...
+                                            </div>
+                                        )}
+                                        {micReady && (
+                                            <div className={styles.cameraLiveBadge}>
+                                                <span className={styles.cameraLiveDot} />
+                                                🎤 Escuchando
+                                            </div>
+                                        )}
+                                        {capturingClass !== null && (
+                                            <div className={styles.cameraCapturingRing} />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className={classNames(styles.cameraWrap, {
+                                        [styles.cameraWrapLive]: cameraReady
+                                    })}>
+                                        <video
+                                            ref={this.videoRef}
+                                            className={styles.cameraFeed}
+                                            autoPlay
+                                            muted
+                                            playsInline
+                                        />
+                                        {isPose && (
+                                            <canvas
+                                                ref={this.overlayRef}
+                                                className={styles.poseOverlay}
+                                            />
+                                        )}
+                                        {!cameraReady && (
+                                            <div className={styles.cameraOverlay}>
+                                                <span className={styles.cameraOverlayDot} />
+                                                Iniciando cámara...
+                                            </div>
+                                        )}
+                                        {cameraReady && (
+                                            <div className={styles.cameraLiveBadge}>
+                                                <span className={styles.cameraLiveDot} />
+                                                En vivo
+                                            </div>
+                                        )}
+                                        {capturingClass !== null && (
+                                            <div className={styles.cameraCapturingRing} />
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Barras de confianza */}
                                 <div className={styles.outputSection}>
                                     <div className={styles.outputTitle}>Salida</div>
                                     {!isTrained ? (
                                         <div className={styles.outputEmpty}>
-                                            Entrena el modelo para ver las predicciones en vivo
+                                            {inputReady ?
+                                                'Entrena el modelo para ver las predicciones en vivo' :
+                                                'Esperando el sensor...'}
                                         </div>
                                     ) : classes.map((cls, idx) => {
                                         const color = CLASS_COLORS[idx % CLASS_COLORS.length];

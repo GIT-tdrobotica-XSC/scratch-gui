@@ -685,6 +685,69 @@
     pointer-events: none;
 }
 
+/* ── Visualizador de audio ────────────────────────────────────────────────── */
+.audioWrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, #0e1520 0%, #14233a 100%);
+}
+
+.audioViz {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Muestras de audio como puntitos */
+.audioSamples {
+    min-height: 56px;
+    background: #f5f7fc;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.audioDots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.audioDot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    opacity: 0.85;
+}
+
+/* Nombre fijo de la clase de ruido de fondo */
+.classNoiseName {
+    flex: 1;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #6b7890;
+    padding: 3px 2px;
+    min-width: 0;
+}
+
+/* Barra de progreso del entrenamiento de audio */
+.audioProgressTrack {
+    height: 8px;
+    background: #edf0f7;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.audioProgressFill {
+    height: 100%;
+    background: linear-gradient(90deg, #34c954, #28a745);
+    border-radius: 4px;
+    transition: width 0.2s ease-out;
+}
+
 .cameraOverlay {
     position: absolute;
     inset: 0;
