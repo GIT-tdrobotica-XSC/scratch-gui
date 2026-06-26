@@ -14,11 +14,12 @@ const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@
 const POSE_DETECTION_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0/dist/pose-detection.min.js';
 const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.min.js';
 
-const STORAGE_KEY = 'playcode_ml_models';
 const CAPTURE_INTERVAL_MS = 120;
 const PREDICT_INTERVAL_MS = 150;
 const POSE_MIN_SCORE = 0.2;
 const NOISE_LABEL = '_background_noise_';
+const AUDIO_MIN_SAMPLES = 8;   // muestras mínimas por sonido
+const AUDIO_MIN_NOISE = 20;    // muestras mínimas de ruido de fondo
 const AUDIO_EPOCHS = 40;
 const AUDIO_FINETUNE_EPOCHS = 8;   // fine-tuning de capas profundas (mejora precisión)
 const AUDIO_NOISE_MIX = 0.5;       // mezcla ruido de fondo en las muestras (robustez)
@@ -129,23 +130,13 @@ class MLStudio extends React.Component {
 
     // ─── Storage ──────────────────────────────────────────────────────────────
 
+    // Por ahora los modelos viven SOLO en memoria de la sesión (window). Se reinician
+    // al recargar el navegador. El guardado permanente queda pendiente.
     _readStorage () {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        } catch (e) {
-            return {};
-        }
+        return window.playcodeMLModels || {};
     }
 
     _writeStorage (models) {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(models));
-        } catch (e) {
-            console.error('[MLStudio] No se pudo guardar (¿almacenamiento lleno?):', e);
-            this.setState({saveNotice: 'Error: almacenamiento lleno. Borra modelos viejos.'});
-            setTimeout(() => this.setState({saveNotice: null}), 4000);
-            return false;
-        }
         window.playcodeMLModels = models;
         if (window.__scratchVMRuntime) {
             window.__scratchVMRuntime.emit('ML_MODELS_UPDATED', models);
@@ -532,9 +523,10 @@ class MLStudio extends React.Component {
         this.setState({capturingClass: classIndex});
         const cls = this.state.classes[classIndex];
         const label = this._classLabel(cls);
-        // Cada muestra dura ~2s. El ruido de fondo se graba en tramos (se trocean).
+        // Sonidos: muestras de 2s. Ruido de fondo: muestras de 1s.
+        // Visualiza el espectro real mientras graba.
         const opts = {
-            durationSec: 2,
+            durationSec: cls.isNoise ? 1 : 2,
             onSnippet: async spec => { this._drawSpectrogram(spec); }
         };
         try {
@@ -730,28 +722,28 @@ class MLStudio extends React.Component {
         setTimeout(() => this.setState({saveNotice: null}), 3500);
     }
 
-    async _saveAudioModel () {
+    _saveAudioModel () {
         const {modelName, classes} = this.state;
         if (!this._transferRecognizer || !this.state.isTrained) return;
         const name = modelName.trim();
         if (!name) return;
 
-        // Guardar el modelo ENTRENADO en IndexedDB → el bloque lo carga sin re-entrenar.
-        const idbUrl = `indexeddb://playcode-audio-${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        // Compartir el recognizer YA ENTRENADO en memoria → el bloque lo usa directo,
+        // sin re-entrenar (carga instantánea). Se pierde al recargar el navegador.
+        window.playcodeAudioModels = window.playcodeAudioModels || {};
+        window.playcodeAudioModels[name] = this._transferRecognizer;
+
         let audioData = null;
         try {
-            await this._transferRecognizer.save(idbUrl);
             const serialized = this._transferRecognizer.serializeExamples();
             audioData = abToBase64(serialized);
         } catch (e) {
-            console.error('[MLStudio] Error guardando audio:', e);
-            return;
+            console.error('[MLStudio] Error serializando audio:', e);
         }
 
         const model = {
             name,
             type: 'audio',
-            idbUrl,
             classes: classes.map((c, i) => ({
                 index: String(i),
                 name: c.name,
@@ -1002,7 +994,7 @@ class MLStudio extends React.Component {
                     <div className={styles.audioSamples}>
                         {cls.sampleCount === 0 ? (
                             <div className={styles.thumbsEmpty}>
-                                Graba al menos 8 muestras de {cls.isNoise ? 'ruido ambiente' : 'este sonido'}
+                                Graba al menos {cls.isNoise ? '20' : '8'} muestras de {cls.isNoise ? 'ruido ambiente' : 'este sonido'}
                             </div>
                         ) : (
                             <div className={styles.audioDots}>
@@ -1080,10 +1072,12 @@ class MLStudio extends React.Component {
         const savedList = Object.values(savedModels).filter(
             m => (m.type || 'image') === projectType
         );
-        const minPerClass = isAudio ? 8 : 2;
-        const canTrain = libLoaded &&
-            classes.every(c => c.sampleCount >= minPerClass) &&
-            classes.length >= 2;
+        const audioMin = c => (c.isNoise ? AUDIO_MIN_NOISE : AUDIO_MIN_SAMPLES);
+        const canTrain = libLoaded && classes.length >= 2 && (
+            isAudio ?
+                classes.every(c => c.sampleCount >= audioMin(c)) :
+                classes.every(c => c.sampleCount >= 2)
+        );
 
         return (
             <div className={styles.overlay}>
@@ -1163,7 +1157,7 @@ class MLStudio extends React.Component {
                                 {!canTrain && libLoaded && (
                                     <div className={styles.trainHint}>
                                         {isAudio ? (
-                                            <span>Graba al menos <b>8 muestras</b> (~2s cada una) en cada clase, incluido el ruido de fondo.</span>
+                                            <span>Graba <b>8 muestras</b> de cada sonido (~2s) y <b>20 muestras</b> de ruido de fondo (~1s).</span>
                                         ) : (
                                             <span>Captura al menos <b>2 muestras</b> en cada clase para poder entrenar.</span>
                                         )}
