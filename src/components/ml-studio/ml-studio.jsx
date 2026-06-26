@@ -532,20 +532,22 @@ class MLStudio extends React.Component {
         this.setState({capturingClass: classIndex});
         const cls = this.state.classes[classIndex];
         const label = this._classLabel(cls);
-        // El ruido de fondo se graba en tramos largos (se trocean en muestras de ~1s)
+        // Cada muestra dura ~2s. El ruido de fondo se graba en tramos (se trocean).
         const opts = {
+            durationSec: 2,
             onSnippet: async spec => { this._drawSpectrogram(spec); }
         };
-        if (cls.isNoise) opts.durationSec = 4;
         try {
             while (this._audioCapturing) {
                 await this._transferRecognizer.collectExample(label, opts);
                 if (!this._audioCapturing) break; // soltó mientras grababa
-                const inc = cls.isNoise ? 4 : 1; // el ruido aporta ~4 muestras por tramo
+                // Conteo real de speech-commands (countExamples), no aproximado
+                const counts = this._transferRecognizer.countExamples() || {};
                 this.setState(prev => ({
-                    classes: prev.classes.map((c, i) =>
-                        i === classIndex ? {...c, sampleCount: c.sampleCount + inc} : c
-                    ),
+                    classes: prev.classes.map(c => {
+                        const lbl = this._classLabel(c);
+                        return counts[lbl] != null ? {...c, sampleCount: counts[lbl]} : c;
+                    }),
                     isTrained: false
                 }));
             }
@@ -728,24 +730,28 @@ class MLStudio extends React.Component {
         setTimeout(() => this.setState({saveNotice: null}), 3500);
     }
 
-    _saveAudioModel () {
+    async _saveAudioModel () {
         const {modelName, classes} = this.state;
         if (!this._transferRecognizer || !this.state.isTrained) return;
         const name = modelName.trim();
         if (!name) return;
 
+        // Guardar el modelo ENTRENADO en IndexedDB → el bloque lo carga sin re-entrenar.
+        const idbUrl = `indexeddb://playcode-audio-${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
         let audioData = null;
         try {
+            await this._transferRecognizer.save(idbUrl);
             const serialized = this._transferRecognizer.serializeExamples();
             audioData = abToBase64(serialized);
         } catch (e) {
-            console.error('[MLStudio] Error serializando audio:', e);
+            console.error('[MLStudio] Error guardando audio:', e);
             return;
         }
 
         const model = {
             name,
             type: 'audio',
+            idbUrl,
             classes: classes.map((c, i) => ({
                 index: String(i),
                 name: c.name,
@@ -810,7 +816,7 @@ class MLStudio extends React.Component {
         try {
             this._transferRecognizer = this._baseRecognizer.createTransfer(model.name);
             this._transferRecognizer.loadExamples(base64ToAb(model.audioData));
-            const counts = this._transferRecognizer.getExampleCounts() || {};
+            const counts = this._transferRecognizer.countExamples() || {};
             this.setState({
                 modelName: model.name,
                 classes: model.classes.map(c => ({
@@ -996,7 +1002,7 @@ class MLStudio extends React.Component {
                     <div className={styles.audioSamples}>
                         {cls.sampleCount === 0 ? (
                             <div className={styles.thumbsEmpty}>
-                                Graba al menos 3 muestras de {cls.isNoise ? 'ruido ambiente' : 'este sonido'}
+                                Graba al menos 8 muestras de {cls.isNoise ? 'ruido ambiente' : 'este sonido'}
                             </div>
                         ) : (
                             <div className={styles.audioDots}>
@@ -1074,7 +1080,7 @@ class MLStudio extends React.Component {
         const savedList = Object.values(savedModels).filter(
             m => (m.type || 'image') === projectType
         );
-        const minPerClass = isAudio ? 3 : 2;
+        const minPerClass = isAudio ? 8 : 2;
         const canTrain = libLoaded &&
             classes.every(c => c.sampleCount >= minPerClass) &&
             classes.length >= 2;
@@ -1157,7 +1163,7 @@ class MLStudio extends React.Component {
                                 {!canTrain && libLoaded && (
                                     <div className={styles.trainHint}>
                                         {isAudio ? (
-                                            <span>Graba al menos <b>3 muestras</b> en cada clase (incluido el ruido de fondo).</span>
+                                            <span>Graba al menos <b>8 muestras</b> (~2s cada una) en cada clase, incluido el ruido de fondo.</span>
                                         ) : (
                                             <span>Captura al menos <b>2 muestras</b> en cada clase para poder entrenar.</span>
                                         )}
