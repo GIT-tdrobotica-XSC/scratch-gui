@@ -172,7 +172,9 @@ class MLStudio extends React.Component {
         clearInterval(this._predictTimer);
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
         if (this._transferRecognizer && this._listening) {
-            try { this._transferRecognizer.stopListening(); } catch (e) { /* noop */ }
+            try { this._transferRecognizer.stopListening(); } catch (e) {
+                console.warn('[MLStudio] stopListening (unmount):', e);
+            }
         }
     }
 
@@ -279,9 +281,11 @@ class MLStudio extends React.Component {
 
     async _loadLibraries (type) {
         if (this.state.libLoaded || this.state.libLoading) return;
+        console.log(`[MLStudio] Cargando librerías para tipo "${type}"...`);
         this.setState({libLoading: true});
         try {
             await this._injectScript(TFJS_URL); // tfjs 1.5.2 para TODO
+            console.log(`[MLStudio] tfjs ${window.tf && window.tf.version_core ? window.tf.version_core : '?'} listo`);
 
             if (type === 'audio') {
                 forceAudioSampleRate(); // 44100 Hz (evita el mismatch que daña la precisión)
@@ -291,7 +295,8 @@ class MLStudio extends React.Component {
                 this._transferRecognizer = this._baseRecognizer.createTransfer(
                     this.state.modelName || 'modelo'
                 );
-                this.setState({libLoaded: true, libLoading: false, micReady: true});
+                console.log('[MLStudio] Audio listo (speech-commands BROWSER_FFT cargado)');
+                this._safeSetState({libLoaded: true, libLoading: false, micReady: true});
                 return;
             }
 
@@ -306,16 +311,18 @@ class MLStudio extends React.Component {
                     inputResolution: {width: 257, height: 257},
                     multiplier: 0.75
                 });
+                console.log('[MLStudio] Pose listo (PoseNet cargado)');
             } else {
                 await this._injectScript(MOBILENET_URL);
                 this._mobilenet = await window.mobilenet.load();
+                console.log('[MLStudio] Imagen lista (MobileNet cargado)');
             }
 
-            this.setState({libLoaded: true, libLoading: false});
+            this._safeSetState({libLoaded: true, libLoading: false});
             if (type === 'pose' && this.state.cameraReady) this._startPoseOverlay();
         } catch (err) {
             console.error('[MLStudio] Error cargando librerías TF:', err);
-            this.setState({libLoading: false});
+            this._safeSetState({libLoading: false});
         }
     }
 
@@ -345,13 +352,20 @@ class MLStudio extends React.Component {
 
     _startPoseOverlay () {
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
+        console.log('[MLStudio] Iniciando overlay de pose (PoseNet)');
         let loggedErr = false;
+        let loggedOk = false;
         const tick = async () => {
             if (!this._mounted || this.state.projectType !== 'pose') return;
             const video = this.videoRef.current;
             if (video && this._posenet && video.readyState >= 2) {
                 try {
                     const pose = await this._posenet.estimateSinglePose(video, {flipHorizontal: false});
+                    if (!loggedOk && pose && pose.keypoints) {
+                        const n = pose.keypoints.filter(k => k.score >= POSE_MIN_SCORE).length;
+                        console.log(`[MLStudio] PoseNet OK: ${n}/${pose.keypoints.length} keypoints con confianza, score pose ${pose.score && pose.score.toFixed(2)}`);
+                        loggedOk = true;
+                    }
                     this._lastPoseVec = this._poseToVector(pose);
                     this._drawSkeleton(pose);
                 } catch (e) {
@@ -469,6 +483,7 @@ class MLStudio extends React.Component {
         const label = this._classLabel(cls);
         // Como el demo de speech-commands: sonidos → durationMultiplier (~2s);
         // ruido de fondo → durationSec 1 (muestras de 1s). Visualiza con onSnippet.
+        console.log(`[MLStudio] Grabando audio para "${cls.name}" (label="${label}")`);
         const onSnippet = async spec => { this._drawSpectrogram(spec); };
         const opts = cls.isNoise ?
             {durationSec: 1, snippetDurationSec: 0.1, onSnippet} :
@@ -487,6 +502,7 @@ class MLStudio extends React.Component {
                     isTrained: false
                 }));
             }
+            console.log('[MLStudio] Muestras de audio:', this._transferRecognizer.countExamples());
         } catch (e) {
             console.error('[MLStudio] Error grabando audio:', e);
         } finally {
@@ -519,6 +535,7 @@ class MLStudio extends React.Component {
     async _trainAudio () {
         if (!this._transferRecognizer) return;
         this._audioStopListen(); // liberar el micrófono durante el entrenamiento
+        console.log('[MLStudio] Entrenando audio. Muestras:', this._transferRecognizer.countExamples());
         this.setState({isTraining: true, trainProgress: 0});
         // Dar tiempo a React de pintar el loading antes de que train() bloquee el hilo
         await new Promise(r => setTimeout(r, 60));
@@ -539,6 +556,7 @@ class MLStudio extends React.Component {
                     }
                 }
             });
+            console.log('[MLStudio] Entrenamiento de audio terminado');
             this._safeSetState({isTraining: false, isTrained: true, trainProgress: 100});
             if (this._mounted) this._audioStartListen();
         } catch (e) {
@@ -552,6 +570,7 @@ class MLStudio extends React.Component {
     _startPredictLoop () {
         clearInterval(this._predictTimer);
         this._confBuffer = [];
+        this._predictLoggedErr = false;
         this._predictTimer = setInterval(async () => {
             if (!this._classifier) return;
             if (this._classifier.getNumClasses() < 2) return;
@@ -584,7 +603,12 @@ class MLStudio extends React.Component {
                     }
                 }
                 this._safeSetState({liveConfidences: conf, topClassIndex: topIdx});
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                if (!this._predictLoggedErr) {
+                    console.error('[MLStudio] Error en predicción (imagen/pose):', e);
+                    this._predictLoggedErr = true;
+                }
+            }
         }, PREDICT_INTERVAL_MS);
     }
 
@@ -594,6 +618,7 @@ class MLStudio extends React.Component {
         if (!this._transferRecognizer) return;
         if (this._listening) return;
         const labels = this._transferRecognizer.wordLabels();
+        console.log('[MLStudio] Escuchando audio. wordLabels:', labels);
         this._transferRecognizer.listen(
             result => {
                 if (result.spectrogram) this._drawSpectrogram(result.spectrogram);
@@ -626,7 +651,9 @@ class MLStudio extends React.Component {
 
     _audioStopListen () {
         if (this._transferRecognizer && this._listening) {
-            try { this._transferRecognizer.stopListening(); } catch (e) { /* noop */ }
+            try { this._transferRecognizer.stopListening(); } catch (e) {
+                console.warn('[MLStudio] stopListening:', e);
+            }
         }
         this._listening = false;
     }
