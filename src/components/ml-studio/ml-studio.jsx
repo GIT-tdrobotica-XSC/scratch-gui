@@ -2,16 +2,15 @@ import React from 'react';
 import classNames from 'classnames';
 import styles from './ml-studio.css';
 
-// Imagen/pose usan tfjs 3.x (rápido, MoveNet). Audio usa tfjs 1.5.2 + speech-commands
-// 0.4.2 (que requiere exactamente tfjs ^1.5.2) — el stack 1.x de Google Teachable
-// Machine. speech-commands con tfjs 3.x falla al compilar shaders en WebGL; con tfjs 1.x
-// funciona. Ambas versiones coexisten: cada librería captura su propio `tf` al cargarse,
-// y nuestro código usa this._tf.
-const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js';
-const TFJS_AUDIO_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2/dist/tf.min.js';
+// UNA sola versión de tfjs para los tres tipos (1.5.2, el stack de Google Teachable
+// Machine). Dos versiones de tfjs no pueden coexistir: colisionan en el engine global
+// ("t is not a function"). speech-commands exige tfjs ^1.5.2; mobilenet/knn/posenet 1.x
+// también funcionan con 1.5.2. (Pose usa PoseNet, no MoveNet, porque pose-detection
+// requiere tfjs 3.x.)
+const TFJS_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2/dist/tf.min.js';
 const MOBILENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js';
 const KNN_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.4/dist/knn-classifier.min.js';
-const POSE_DETECTION_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0/dist/pose-detection.min.js';
+const POSENET_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js';
 const SPEECH_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.min.js';
 
 const CAPTURE_INTERVAL_MS = 120;
@@ -106,9 +105,8 @@ class MLStudio extends React.Component {
         this.audioVizRef = React.createRef();  // canvas visualizador (audio)
 
         // image / pose
-        this._tf = null;       // referencia a tfjs 3.x (imagen/pose)
         this._mobilenet = null;
-        this._detector = null; // MoveNet (pose-detection)
+        this._posenet = null;  // PoseNet (tfjs 1.x)
         this._classifier = null;
         this._captureTimer = null;
         this._predictTimer = null;
@@ -328,10 +326,9 @@ class MLStudio extends React.Component {
         if (this.state.libLoaded || this.state.libLoading) return;
         this.setState({libLoading: true});
         try {
+            await this._injectScript(TFJS_URL); // tfjs 1.5.2 para TODO
+
             if (type === 'audio') {
-                // Stack de Google TM: tfjs 1.3.1 + speech-commands 0.4.0 (sin shader error)
-                await this._injectScript(TFJS_AUDIO_URL);
-                window.__tmTf1 = window.__tmTf1 || window.tf;
                 await this._injectScript(SPEECH_URL);
                 this._baseRecognizer = window.speechCommands.create('BROWSER_FFT');
                 await this._baseRecognizer.ensureModelLoaded();
@@ -342,21 +339,17 @@ class MLStudio extends React.Component {
                 return;
             }
 
-            // Imagen/pose: tfjs 3.x (capturar la referencia estable)
-            await this._injectScript(TFJS_URL);
-            window.__tmTf3 = window.__tmTf3 || window.tf;
-            this._tf = window.__tmTf3;
-
             await this._injectScript(KNN_URL);
             this._classifier = window.knnClassifier.create();
 
             if (type === 'pose') {
-                await this._injectScript(POSE_DETECTION_URL);
-                if (this._tf && this._tf.ready) await this._tf.ready();
-                this._detector = await window.poseDetection.createDetector(
-                    window.poseDetection.SupportedModels.MoveNet,
-                    {modelType: window.poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
-                );
+                await this._injectScript(POSENET_URL);
+                this._posenet = await window.posenet.load({
+                    architecture: 'MobileNetV1',
+                    outputStride: 16,
+                    inputResolution: {width: 257, height: 257},
+                    multiplier: 0.75
+                });
             } else {
                 await this._injectScript(MOBILENET_URL);
                 this._mobilenet = await window.mobilenet.load();
@@ -372,15 +365,14 @@ class MLStudio extends React.Component {
 
     // ─── Pose helpers ───────────────────────────────────────────────────────────
 
-    // MoveNet: keypoints con {x, y, score, name}
+    // PoseNet: keypoints con {position:{x,y}, score, part}
     _poseToVector (pose) {
         if (!pose || !pose.keypoints) return null;
         const kp = pose.keypoints;
-        // Requiere que se detecte al menos medio cuerpo con confianza
         const valid = kp.filter(k => (k.score || 0) >= POSE_MIN_SCORE);
         if (valid.length < 5) return null;
-        const xs = kp.map(k => k.x);
-        const ys = kp.map(k => k.y);
+        const xs = kp.map(k => k.position.x);
+        const ys = kp.map(k => k.position.y);
         const minX = Math.min(...xs);
         const maxX = Math.max(...xs);
         const minY = Math.min(...ys);
@@ -389,8 +381,8 @@ class MLStudio extends React.Component {
         const h = (maxY - minY) || 1;
         const vec = [];
         for (const k of kp) {
-            vec.push((k.x - minX) / w);
-            vec.push((k.y - minY) / h);
+            vec.push((k.position.x - minX) / w);
+            vec.push((k.position.y - minY) / h);
         }
         return vec; // 34 dims (17 keypoints × 2)
     }
@@ -400,10 +392,9 @@ class MLStudio extends React.Component {
         const tick = async () => {
             if (this.state.projectType !== 'pose') return;
             const video = this.videoRef.current;
-            if (video && this._detector && video.readyState >= 2) {
+            if (video && this._posenet && video.readyState >= 2) {
                 try {
-                    const poses = await this._detector.estimatePoses(video, {flipHorizontal: false});
-                    const pose = poses && poses[0];
+                    const pose = await this._posenet.estimateSinglePose(video, {flipHorizontal: false});
                     this._lastPoseVec = this._poseToVector(pose);
                     this._drawSkeleton(pose);
                 } catch (e) { /* ignore */ }
@@ -425,25 +416,20 @@ class MLStudio extends React.Component {
 
         const kp = pose.keypoints;
         // Huesos
-        const pairs = window.poseDetection.util.getAdjacentPairs(
-            window.poseDetection.SupportedModels.MoveNet
-        );
+        const adj = window.posenet.getAdjacentKeyPoints(kp, POSE_MIN_SCORE);
         ctx.strokeStyle = '#4c97ff';
         ctx.lineWidth = 4;
-        for (const [i, j] of pairs) {
-            const a = kp[i];
-            const b = kp[j];
-            if (!a || !b || a.score < POSE_MIN_SCORE || b.score < POSE_MIN_SCORE) continue;
+        for (const pair of adj) {
             ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
+            ctx.moveTo(pair[0].position.x, pair[0].position.y);
+            ctx.lineTo(pair[1].position.x, pair[1].position.y);
             ctx.stroke();
         }
         // Puntos
         for (const k of kp) {
             if (k.score < POSE_MIN_SCORE) continue;
             ctx.beginPath();
-            ctx.arc(k.x, k.y, 5, 0, 2 * Math.PI);
+            ctx.arc(k.position.x, k.position.y, 5, 0, 2 * Math.PI);
             ctx.fillStyle = '#00e676';
             ctx.fill();
         }
@@ -453,11 +439,11 @@ class MLStudio extends React.Component {
 
     _extractFeatures () {
         const video = this.videoRef.current;
-        if (!video || video.readyState < 2 || !this._tf) return null;
+        if (!video || video.readyState < 2 || !window.tf) return null;
 
         if (this.state.projectType === 'pose') {
             if (!this._lastPoseVec) return null;
-            return this._tf.tensor1d(this._lastPoseVec);
+            return window.tf.tensor1d(this._lastPoseVec);
         }
         if (!this._mobilenet) return null;
         return this._mobilenet.infer(video, true);
@@ -776,11 +762,11 @@ class MLStudio extends React.Component {
         if (!this._classifier) return;
 
         this._classifier.clearAllClasses();
-        if (this._tf) {
+        if (window.tf) {
             const dataset = {};
             for (const label in model.dataset) {
                 const {data, shape} = model.dataset[label];
-                dataset[label] = this._tf.tensor2d(data, shape);
+                dataset[label] = window.tf.tensor2d(data, shape);
             }
             this._classifier.setClassifierDataset(dataset);
         }
@@ -1166,7 +1152,7 @@ class MLStudio extends React.Component {
                                 )}
                                 {libLoading && (
                                     <div className={styles.trainHint}>
-                                        Cargando {isAudio ? 'Speech Commands' : (isPose ? 'MoveNet' : 'TensorFlow.js')}...
+                                        Cargando {isAudio ? 'Speech Commands' : (isPose ? 'PoseNet' : 'TensorFlow.js')}...
                                     </div>
                                 )}
                                 {isTrained && (

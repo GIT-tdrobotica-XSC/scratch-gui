@@ -17,6 +17,8 @@ Al abrir ML Studio aparece una **pantalla de selección de tipo de proyecto** (e
 
 Tecnología: **MobileNet**/**PoseNet** + **KNN Classifier** (imagen/pose) o **Speech Commands** (audio), todo de TensorFlow.js, cargado desde CDN según el tipo de proyecto.
 
+> **IMPORTANTE — una sola versión de tfjs:** todo usa **tfjs 1.5.2** (el stack de Google TM). Se intentó tfjs 3.21 + MoveNet para imagen/pose y tfjs 1.x para audio, pero **dos versiones de tfjs colisionan en el engine global** (`t is not a function`). Por eso: tfjs 1.5.2 para los tres tipos, **PoseNet 2.2.2** (no MoveNet, que requiere tfjs 3.x), mobilenet 2.1.0, knn-classifier 1.2.4, speech-commands 0.4.2.
+
 ### Soporte de Audio
 - **Stack aislado: tfjs 1.5.2 + `@tensorflow-models/speech-commands@0.4.2`** (el stack 1.x de Google TM). speech-commands con tfjs 3.x **falla al compilar shaders en WebGL**; con tfjs 1.x funciona. Coexiste con tfjs 3.21 (imagen/pose) porque cada librería captura su propio `tf` al cargarse y el código usa `this._tf`.
 - BROWSER_FFT base + transfer learning sobre espectrogramas. **No usa KNN.**
