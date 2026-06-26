@@ -524,9 +524,10 @@ class MLStudio extends React.Component {
         const cls = this.state.classes[classIndex];
         const label = this._classLabel(cls);
         // Sonidos: muestras de 2s. Ruido de fondo: muestras de 1s.
-        // Visualiza el espectro real mientras graba.
+        // Visualiza el espectro real mientras graba (snippets de 0.1s).
         const opts = {
             durationSec: cls.isNoise ? 1 : 2,
+            snippetDurationSec: 0.1,
             onSnippet: async spec => { this._drawSpectrogram(spec); }
         };
         try {
