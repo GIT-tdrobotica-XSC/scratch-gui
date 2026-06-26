@@ -114,14 +114,9 @@ class MLStudio extends React.Component {
         this._lastPoseVec = null;
         this._stream = null;
 
-        // audio
+        // audio (speech-commands maneja TODO el micrófono; sin AnalyserNode propio)
         this._baseRecognizer = null;
         this._transferRecognizer = null;
-        this._micStream = null;
-        this._audioCtx = null;
-        this._analyser = null;
-        this._audioData = null;
-        this._audioRAF = null;
         this._listening = false;
         this._audioCapturing = false;
     }
@@ -146,11 +141,9 @@ class MLStudio extends React.Component {
 
     componentWillUnmount () {
         this._stopCamera();
-        this._stopMicPreview();
         clearInterval(this._captureTimer);
         clearInterval(this._predictTimer);
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
-        if (this._audioRAF) cancelAnimationFrame(this._audioRAF);
         if (this._transferRecognizer && this._listening) {
             try { this._transferRecognizer.stopListening(); } catch (e) { /* noop */ }
         }
@@ -171,7 +164,6 @@ class MLStudio extends React.Component {
                     {name: 'Clase 1', sampleCount: 0, thumbnails: []}
                 ]
             });
-            this._startMicPreview();
             this._loadLibraries(type);
             return;
         }
@@ -208,51 +200,10 @@ class MLStudio extends React.Component {
         }
     }
 
-    // ─── Mic preview (audio) ─────────────────────────────────────────────────────
-    // Un solo flujo de micrófono. El preview (AnalyserNode) se LIBERA antes de que
-    // speech-commands grabe/entrene/escuche, para no competir por el micrófono.
+    // ─── Audio visualizer ────────────────────────────────────────────────────────
+    // Como el demo oficial de speech-commands: el espectro viene SOLO del recognizer
+    // (onSnippet al grabar, result.spectrogram al escuchar). Sin AnalyserNode propio.
 
-    async _startMicPreview () {
-        if (this._micStream) return; // ya activo
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    noiseSuppression: true,
-                    echoCancellation: true,
-                    autoGainControl: true
-                }
-            });
-            this._micStream = stream;
-            const Ctx = window.AudioContext || window.webkitAudioContext;
-            const ctx = new Ctx();
-            this._audioCtx = ctx;
-            const src = ctx.createMediaStreamSource(stream);
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 256;
-            src.connect(analyser);
-            this._analyser = analyser;
-            this._audioData = new Uint8Array(analyser.frequencyBinCount);
-            this.setState({micReady: true});
-            this._drawAudioViz();
-        } catch (err) {
-            console.error('[MLStudio] Micrófono no disponible:', err);
-        }
-    }
-
-    _stopMicPreview () {
-        if (this._audioRAF) { cancelAnimationFrame(this._audioRAF); this._audioRAF = null; }
-        this._analyser = null;
-        if (this._micStream) {
-            this._micStream.getTracks().forEach(t => t.stop());
-            this._micStream = null;
-        }
-        if (this._audioCtx) {
-            try { this._audioCtx.close(); } catch (e) { /* noop */ }
-            this._audioCtx = null;
-        }
-    }
-
-    // Dibuja un espectrograma de speech-commands (onSnippet / listen result)
     _drawSpectrogram (spec) {
         const canvas = this.audioVizRef.current;
         if (!canvas || !spec || !spec.data || !spec.frameSize) return;
@@ -272,30 +223,6 @@ class MLStudio extends React.Component {
             const hue = 170 + (v * 60);
             ctx.fillStyle = `hsl(${hue}, 80%, ${40 + (v * 20)}%)`;
             ctx.fillRect(i * barW, h - barH, barW * 0.85, barH);
-        }
-    }
-
-    _drawAudioViz () {
-        const canvas = this.audioVizRef.current;
-        if (canvas && this._analyser && this._audioData) {
-            this._analyser.getByteFrequencyData(this._audioData);
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;
-            const h = canvas.height;
-            ctx.clearRect(0, 0, w, h);
-            const bins = this._audioData.length;
-            const barW = w / bins;
-            for (let i = 0; i < bins; i++) {
-                const v = this._audioData[i] / 255;
-                const barH = v * h;
-                const hue = 170 + (v * 60); // teal → verde
-                ctx.fillStyle = `hsl(${hue}, 80%, ${40 + v * 20}%)`;
-                ctx.fillRect(i * barW, h - barH, barW * 0.8, barH);
-            }
-        }
-        // Solo seguir mientras el preview esté activo (se libera durante captura/escucha)
-        if (this._analyser) {
-            this._audioRAF = requestAnimationFrame(() => this._drawAudioViz());
         }
     }
 
@@ -335,7 +262,7 @@ class MLStudio extends React.Component {
                 this._transferRecognizer = this._baseRecognizer.createTransfer(
                     this.state.modelName || 'modelo'
                 );
-                this.setState({libLoaded: true, libLoading: false});
+                this.setState({libLoaded: true, libLoading: false, micReady: true});
                 return;
             }
 
@@ -505,17 +432,15 @@ class MLStudio extends React.Component {
         if (!this._transferRecognizer || this._audioCapturing) return;
         this._audioCapturing = true;
         this._audioStopListen(); // si estaba escuchando, liberar el micrófono
-        this._stopMicPreview();
         this.setState({capturingClass: classIndex});
         const cls = this.state.classes[classIndex];
         const label = this._classLabel(cls);
-        // Sonidos: muestras de 2s. Ruido de fondo: muestras de 1s.
-        // Visualiza el espectro real mientras graba (snippets de 0.1s).
-        const opts = {
-            durationSec: cls.isNoise ? 1 : 2,
-            snippetDurationSec: 0.1,
-            onSnippet: async spec => { this._drawSpectrogram(spec); }
-        };
+        // Como el demo de speech-commands: sonidos → durationMultiplier (~2s);
+        // ruido de fondo → durationSec 1 (muestras de 1s). Visualiza con onSnippet.
+        const onSnippet = async spec => { this._drawSpectrogram(spec); };
+        const opts = cls.isNoise ?
+            {durationSec: 1, snippetDurationSec: 0.1, onSnippet} :
+            {durationMultiplier: 2, snippetDurationSec: 0.1, onSnippet};
         try {
             while (this._audioCapturing) {
                 await this._transferRecognizer.collectExample(label, opts);
@@ -535,7 +460,6 @@ class MLStudio extends React.Component {
         } finally {
             this._audioCapturing = false;
             this.setState({capturingClass: null});
-            this._startMicPreview(); // restaurar el preview en vivo
         }
     }
 
@@ -561,7 +485,7 @@ class MLStudio extends React.Component {
 
     async _trainAudio () {
         if (!this._transferRecognizer) return;
-        this._stopMicPreview(); // liberar el micrófono durante el entrenamiento
+        this._audioStopListen(); // liberar el micrófono durante el entrenamiento
         this.setState({isTraining: true, trainProgress: 0});
         // Dar tiempo a React de pintar el loading antes de que train() bloquee el hilo
         await new Promise(r => setTimeout(r, 60));
@@ -587,7 +511,6 @@ class MLStudio extends React.Component {
         } catch (e) {
             console.error('[MLStudio] Error entrenando audio:', e);
             this.setState({isTraining: false});
-            this._startMicPreview();
         }
     }
 
@@ -637,7 +560,6 @@ class MLStudio extends React.Component {
     _audioStartListen () {
         if (!this._transferRecognizer) return;
         if (this._listening) return;
-        this._stopMicPreview(); // listen usa el micrófono en exclusiva
         const labels = this._transferRecognizer.wordLabels();
         this._transferRecognizer.listen(
             result => {
@@ -791,7 +713,6 @@ class MLStudio extends React.Component {
     async _loadAudioModelToEdit (model) {
         if (!this._baseRecognizer) return;
         this._audioStopListen();
-        this._stopMicPreview(); // liberar el micrófono durante el reentrenamiento
         try {
             this._transferRecognizer = this._baseRecognizer.createTransfer(model.name);
             this._transferRecognizer.loadExamples(base64ToAb(model.audioData));
