@@ -19,9 +19,11 @@ const CAPTURE_INTERVAL_MS = 120;
 const PREDICT_INTERVAL_MS = 150;
 const POSE_MIN_SCORE = 0.2;
 const NOISE_LABEL = '_background_noise_';
-const AUDIO_EPOCHS = 50;
+const AUDIO_EPOCHS = 40;
+const AUDIO_FINETUNE_EPOCHS = 8;   // fine-tuning de capas profundas (mejora precisión)
+const AUDIO_NOISE_MIX = 0.5;       // mezcla ruido de fondo en las muestras (robustez)
 const SMOOTH_WINDOW = 10; // frames de suavizado temporal (imagen/pose)
-const AUDIO_THRESHOLD = 0.7; // umbral de confianza para la escucha de audio
+const AUDIO_THRESHOLD = 0.5; // umbral de confianza para la escucha de audio
 
 // Paleta de colores por clase (estilo Teachable Machine)
 const CLASS_COLORS = [
@@ -155,7 +157,7 @@ class MLStudio extends React.Component {
 
     componentWillUnmount () {
         this._stopCamera();
-        this._stopMic();
+        this._stopMicPreview();
         clearInterval(this._captureTimer);
         clearInterval(this._predictTimer);
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
@@ -180,7 +182,7 @@ class MLStudio extends React.Component {
                     {name: 'Clase 1', sampleCount: 0, thumbnails: []}
                 ]
             });
-            this._startMic();
+            this._startMicPreview();
             this._loadLibraries(type);
             return;
         }
@@ -217,9 +219,12 @@ class MLStudio extends React.Component {
         }
     }
 
-    // ─── Mic + visualizer (audio) ───────────────────────────────────────────────
+    // ─── Mic preview (audio) ─────────────────────────────────────────────────────
+    // Un solo flujo de micrófono. El preview (AnalyserNode) se LIBERA antes de que
+    // speech-commands grabe/entrene/escuche, para no competir por el micrófono.
 
-    async _startMic () {
+    async _startMicPreview () {
+        if (this._micStream) return; // ya activo
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -245,7 +250,9 @@ class MLStudio extends React.Component {
         }
     }
 
-    _stopMic () {
+    _stopMicPreview () {
+        if (this._audioRAF) { cancelAnimationFrame(this._audioRAF); this._audioRAF = null; }
+        this._analyser = null;
         if (this._micStream) {
             this._micStream.getTracks().forEach(t => t.stop());
             this._micStream = null;
@@ -253,6 +260,29 @@ class MLStudio extends React.Component {
         if (this._audioCtx) {
             try { this._audioCtx.close(); } catch (e) { /* noop */ }
             this._audioCtx = null;
+        }
+    }
+
+    // Dibuja un espectrograma de speech-commands (onSnippet / listen result)
+    _drawSpectrogram (spec) {
+        const canvas = this.audioVizRef.current;
+        if (!canvas || !spec || !spec.data || !spec.frameSize) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        const frameSize = spec.frameSize;
+        const numFrames = Math.floor(spec.data.length / frameSize);
+        const last = numFrames - 1;
+        if (last < 0) return;
+        ctx.clearRect(0, 0, w, h);
+        const barW = w / frameSize;
+        for (let i = 0; i < frameSize; i++) {
+            let v = spec.data[(last * frameSize) + i];
+            v = Math.max(0, Math.min(1, (v + 100) / 100)); // log-mel dB → 0..1 aprox
+            const barH = v * h;
+            const hue = 170 + (v * 60);
+            ctx.fillStyle = `hsl(${hue}, 80%, ${40 + (v * 20)}%)`;
+            ctx.fillRect(i * barW, h - barH, barW * 0.85, barH);
         }
     }
 
@@ -274,7 +304,10 @@ class MLStudio extends React.Component {
                 ctx.fillRect(i * barW, h - barH, barW * 0.8, barH);
             }
         }
-        this._audioRAF = requestAnimationFrame(() => this._drawAudioViz());
+        // Solo seguir mientras el preview esté activo (se libera durante captura/escucha)
+        if (this._analyser) {
+            this._audioRAF = requestAnimationFrame(() => this._drawAudioViz());
+        }
     }
 
     // ─── CDN Libraries ────────────────────────────────────────────────────────
@@ -488,19 +521,30 @@ class MLStudio extends React.Component {
         return cls.isNoise ? NOISE_LABEL : cls.name;
     }
 
-    // Mantener presionado graba varias muestras de ~1s seguidas (más datos = mejor modelo)
+    // Mantener presionado graba varias muestras de ~1s seguidas (más datos = mejor modelo).
+    // Libera el preview del micrófono para que speech-commands lo use en exclusiva, y
+    // visualiza el espectro REAL de lo que graba vía onSnippet.
     async _audioStartCapture (classIndex) {
         if (!this._transferRecognizer || this._audioCapturing) return;
         this._audioCapturing = true;
+        this._audioStopListen(); // si estaba escuchando, liberar el micrófono
+        this._stopMicPreview();
         this.setState({capturingClass: classIndex});
-        const label = this._classLabel(this.state.classes[classIndex]);
+        const cls = this.state.classes[classIndex];
+        const label = this._classLabel(cls);
+        // El ruido de fondo se graba en tramos largos (se trocean en muestras de ~1s)
+        const opts = {
+            onSnippet: async spec => { this._drawSpectrogram(spec); }
+        };
+        if (cls.isNoise) opts.durationSec = 4;
         try {
             while (this._audioCapturing) {
-                await this._transferRecognizer.collectExample(label);
+                await this._transferRecognizer.collectExample(label, opts);
                 if (!this._audioCapturing) break; // soltó mientras grababa
+                const inc = cls.isNoise ? 4 : 1; // el ruido aporta ~4 muestras por tramo
                 this.setState(prev => ({
                     classes: prev.classes.map((c, i) =>
-                        i === classIndex ? {...c, sampleCount: c.sampleCount + 1} : c
+                        i === classIndex ? {...c, sampleCount: c.sampleCount + inc} : c
                     ),
                     isTrained: false
                 }));
@@ -510,6 +554,7 @@ class MLStudio extends React.Component {
         } finally {
             this._audioCapturing = false;
             this.setState({capturingClass: null});
+            this._startMicPreview(); // restaurar el preview en vivo
         }
     }
 
@@ -535,17 +580,24 @@ class MLStudio extends React.Component {
 
     async _trainAudio () {
         if (!this._transferRecognizer) return;
+        this._stopMicPreview(); // liberar el micrófono durante el entrenamiento
         this.setState({isTraining: true, trainProgress: 0});
         // Dar tiempo a React de pintar el loading antes de que train() bloquee el hilo
         await new Promise(r => setTimeout(r, 60));
         try {
+            // Como Google TM: aumento de datos mezclando ruido de fondo + fine-tuning
             await this._transferRecognizer.train({
                 epochs: AUDIO_EPOCHS,
+                fineTuningEpochs: AUDIO_FINETUNE_EPOCHS,
+                augmentByMixingNoiseRatio: AUDIO_NOISE_MIX,
                 callback: {
-                    onEpochEnd: (epoch) => {
-                        this.setState({
-                            trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 100)
-                        });
+                    onEpochEnd: epoch => {
+                        this.setState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 85)});
+                    }
+                },
+                fineTuningCallback: {
+                    onEpochEnd: epoch => {
+                        this.setState({trainProgress: 85 + Math.round(((epoch + 1) / AUDIO_FINETUNE_EPOCHS) * 15)});
                     }
                 }
             });
@@ -554,6 +606,7 @@ class MLStudio extends React.Component {
         } catch (e) {
             console.error('[MLStudio] Error entrenando audio:', e);
             this.setState({isTraining: false});
+            this._startMicPreview();
         }
     }
 
@@ -603,9 +656,11 @@ class MLStudio extends React.Component {
     _audioStartListen () {
         if (!this._transferRecognizer) return;
         if (this._listening) return;
+        this._stopMicPreview(); // listen usa el micrófono en exclusiva
         const labels = this._transferRecognizer.wordLabels();
         this._transferRecognizer.listen(
             result => {
+                if (result.spectrogram) this._drawSpectrogram(result.spectrogram);
                 const scores = result.scores;
                 const conf = {};
                 let topIdx = null;
@@ -626,7 +681,7 @@ class MLStudio extends React.Component {
             {
                 probabilityThreshold: AUDIO_THRESHOLD,
                 overlapFactor: 0.5,
-                includeSpectrogram: false,
+                includeSpectrogram: true,
                 invokeCallbackOnNoiseAndUnknown: true
             }
         );
@@ -751,6 +806,7 @@ class MLStudio extends React.Component {
     async _loadAudioModelToEdit (model) {
         if (!this._baseRecognizer) return;
         this._audioStopListen();
+        this._stopMicPreview(); // liberar el micrófono durante el reentrenamiento
         try {
             this._transferRecognizer = this._baseRecognizer.createTransfer(model.name);
             this._transferRecognizer.loadExamples(base64ToAb(model.audioData));
@@ -769,9 +825,16 @@ class MLStudio extends React.Component {
             await new Promise(r => setTimeout(r, 60));
             await this._transferRecognizer.train({
                 epochs: AUDIO_EPOCHS,
+                fineTuningEpochs: AUDIO_FINETUNE_EPOCHS,
+                augmentByMixingNoiseRatio: AUDIO_NOISE_MIX,
                 callback: {
-                    onEpochEnd: (epoch) => {
-                        this.setState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 100)});
+                    onEpochEnd: epoch => {
+                        this.setState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 85)});
+                    }
+                },
+                fineTuningCallback: {
+                    onEpochEnd: epoch => {
+                        this.setState({trainProgress: 85 + Math.round(((epoch + 1) / AUDIO_FINETUNE_EPOCHS) * 15)});
                     }
                 }
             });

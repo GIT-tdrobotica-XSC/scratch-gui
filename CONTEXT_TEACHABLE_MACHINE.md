@@ -18,14 +18,15 @@ Al abrir ML Studio aparece una **pantalla de selección de tipo de proyecto** (e
 Tecnología: **MobileNet**/**PoseNet** + **KNN Classifier** (imagen/pose) o **Speech Commands** (audio), todo de TensorFlow.js, cargado desde CDN según el tipo de proyecto.
 
 ### Soporte de Audio
-- Modelo: `@tensorflow-models/speech-commands@0.5.4` (BROWSER_FFT base + transfer learning sobre espectrogramas). **No usa KNN.**
-- Micrófono en vez de cámara. Visualizador de frecuencias (Web Audio API + AnalyserNode → canvas con barras).
-- Clase obligatoria **"Ruido de fondo"** (label interno `_background_noise_`), no se puede borrar ni renombrar.
-- Captura: cada click graba 1 muestra de ~1s (`collectExample(label)`), no es "mantener presionado" como imagen/pose.
-- Entrenamiento real con épocas (`train({epochs: 30})`), con barra de progreso (no es instantáneo como KNN).
-- Inferencia con `listen()` (callback continuo), no un predict loop manual.
-- Guardado: `serializeExamples()` → ArrayBuffer → base64 en el campo `audioData` del modelo (formato distinto al `dataset` de KNN). Al cargar: `loadExamples()` + `train()` (re-entrena en unos segundos).
-- En la extensión VM, `loadModel` con `type:'audio'` reconstruye el transfer recognizer y arranca `listen()`; el callback alimenta `_topClass`/`_allConfidences` igual que los otros tipos.
+- **Stack aislado: tfjs 1.5.2 + `@tensorflow-models/speech-commands@0.4.2`** (el stack 1.x de Google TM). speech-commands con tfjs 3.x **falla al compilar shaders en WebGL**; con tfjs 1.x funciona. Coexiste con tfjs 3.21 (imagen/pose) porque cada librería captura su propio `tf` al cargarse y el código usa `this._tf`.
+- BROWSER_FFT base + transfer learning sobre espectrogramas. **No usa KNN.**
+- Un solo flujo de micrófono: el preview (AnalyserNode) se **libera** antes de cada `collectExample`/`train`/`listen` para no competir por el micrófono (evita que no grabe bien). El visualizador usa el espectro REAL vía `onSnippet` (captura) y `result.spectrogram` (escucha).
+- Clase obligatoria **"Ruido de fondo"** (`_background_noise_`); se graba en tramos de 4s (`durationSec`).
+- Captura: **mantener presionado** graba varias muestras de ~1s seguidas (más datos = mejor modelo).
+- **Precisión como Google TM**: `train({epochs:40, fineTuningEpochs:8, augmentByMixingNoiseRatio:0.5})` — el augment mezcla ruido de fondo en las muestras (robustez) y el fine-tuning ajusta capas profundas.
+- Inferencia: `listen()` con `probabilityThreshold:0.5` + `invokeCallbackOnNoiseAndUnknown:true` (reporte continuo para que los bloques respondan).
+- Guardado: `serializeExamples()` → base64 en `audioData`. Al cargar: `loadExamples()` + re-`train()`.
+- En la VM, `loadModel` con `type:'audio'` reconstruye el recognizer, re-entrena con los mismos params y arranca `listen()`; el callback alimenta `_topClass`/`_allConfidences`.
 
 ### Soporte de Pose
 - Extractor: **MoveNet** vía `@tensorflow-models/pose-detection@2.1.0` (SINGLEPOSE_LIGHTNING). Se migró desde PoseNet 2.2.2 porque era **incompatible con tfjs 3.21** (fallaba en silencio). MoveNet es compatible y más preciso.
