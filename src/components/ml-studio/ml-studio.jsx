@@ -59,6 +59,23 @@ const PROJECT_TYPES = [
     }
 ];
 
+// speech-commands (BROWSER_FFT) fue entrenado con audio a 44100 Hz. Muchos sistemas
+// usan 48000 Hz → el espectrograma sale desalineado y el modelo pierde precisión
+// ("Mismatch in sampling rate"). Forzamos el AudioContext a 44100 (el navegador
+// resamplea), así el audio coincide con lo que el modelo espera.
+function forceAudioSampleRate () {
+    const Orig = window.AudioContext || window.webkitAudioContext;
+    if (!Orig || Orig.__pcPatched) return;
+    class PatchedAudioContext extends Orig {
+        constructor (opts) {
+            super(Object.assign({sampleRate: 44100}, opts || {}));
+        }
+    }
+    PatchedAudioContext.__pcPatched = true;
+    window.AudioContext = PatchedAudioContext;
+    if (window.webkitAudioContext) window.webkitAudioContext = PatchedAudioContext;
+}
+
 // ── Helpers base64 ↔ ArrayBuffer (para serializar ejemplos de audio) ──────────
 function abToBase64 (buf) {
     const bytes = new Uint8Array(buf);
@@ -119,6 +136,14 @@ class MLStudio extends React.Component {
         this._transferRecognizer = null;
         this._listening = false;
         this._audioCapturing = false;
+
+        this._mounted = true;
+    }
+
+    // setState seguro: no-op si el componente ya se desmontó (evita memory leak por
+    // callbacks async de train/listen que terminan después de cerrar el panel)
+    _safeSetState (update) {
+        if (this._mounted) this.setState(update);
     }
 
     // ─── Storage ──────────────────────────────────────────────────────────────
@@ -140,6 +165,8 @@ class MLStudio extends React.Component {
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     componentWillUnmount () {
+        this._mounted = false;
+        this._audioCapturing = false;
         this._stopCamera();
         clearInterval(this._captureTimer);
         clearInterval(this._predictTimer);
@@ -184,6 +211,7 @@ class MLStudio extends React.Component {
             if (this.videoRef.current) {
                 this.videoRef.current.srcObject = stream;
                 this.videoRef.current.onloadeddata = () => {
+                    if (!this._mounted) return;
                     this.setState({cameraReady: true});
                     if (this.state.projectType === 'pose') this._startPoseOverlay();
                 };
@@ -256,6 +284,7 @@ class MLStudio extends React.Component {
             await this._injectScript(TFJS_URL); // tfjs 1.5.2 para TODO
 
             if (type === 'audio') {
+                forceAudioSampleRate(); // 44100 Hz (evita el mismatch que daña la precisión)
                 await this._injectScript(SPEECH_URL);
                 this._baseRecognizer = window.speechCommands.create('BROWSER_FFT');
                 await this._baseRecognizer.ensureModelLoaded();
@@ -316,15 +345,18 @@ class MLStudio extends React.Component {
 
     _startPoseOverlay () {
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
+        let loggedErr = false;
         const tick = async () => {
-            if (this.state.projectType !== 'pose') return;
+            if (!this._mounted || this.state.projectType !== 'pose') return;
             const video = this.videoRef.current;
             if (video && this._posenet && video.readyState >= 2) {
                 try {
                     const pose = await this._posenet.estimateSinglePose(video, {flipHorizontal: false});
                     this._lastPoseVec = this._poseToVector(pose);
                     this._drawSkeleton(pose);
-                } catch (e) { /* ignore */ }
+                } catch (e) {
+                    if (!loggedErr) { console.error('[MLStudio] Error PoseNet:', e); loggedErr = true; }
+                }
             }
             this._poseRAF = requestAnimationFrame(tick);
         };
@@ -447,7 +479,7 @@ class MLStudio extends React.Component {
                 if (!this._audioCapturing) break; // soltó mientras grababa
                 // Conteo real de speech-commands (countExamples), no aproximado
                 const counts = this._transferRecognizer.countExamples() || {};
-                this.setState(prev => ({
+                this._safeSetState(prev => ({
                     classes: prev.classes.map(c => {
                         const lbl = this._classLabel(c);
                         return counts[lbl] != null ? {...c, sampleCount: counts[lbl]} : c;
@@ -459,7 +491,7 @@ class MLStudio extends React.Component {
             console.error('[MLStudio] Error grabando audio:', e);
         } finally {
             this._audioCapturing = false;
-            this.setState({capturingClass: null});
+            this._safeSetState({capturingClass: null});
         }
     }
 
@@ -479,6 +511,7 @@ class MLStudio extends React.Component {
 
         this.setState({isTraining: true});
         await new Promise(r => setTimeout(r, 500));
+        if (!this._mounted) return;
         this.setState({isTraining: false, isTrained: true});
         this._startPredictLoop();
     }
@@ -497,20 +530,20 @@ class MLStudio extends React.Component {
                 augmentByMixingNoiseRatio: AUDIO_NOISE_MIX,
                 callback: {
                     onEpochEnd: epoch => {
-                        this.setState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 85)});
+                        this._safeSetState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 85)});
                     }
                 },
                 fineTuningCallback: {
                     onEpochEnd: epoch => {
-                        this.setState({trainProgress: 85 + Math.round(((epoch + 1) / AUDIO_FINETUNE_EPOCHS) * 15)});
+                        this._safeSetState({trainProgress: 85 + Math.round(((epoch + 1) / AUDIO_FINETUNE_EPOCHS) * 15)});
                     }
                 }
             });
-            this.setState({isTraining: false, isTrained: true, trainProgress: 100});
-            this._audioStartListen();
+            this._safeSetState({isTraining: false, isTrained: true, trainProgress: 100});
+            if (this._mounted) this._audioStartListen();
         } catch (e) {
             console.error('[MLStudio] Error entrenando audio:', e);
-            this.setState({isTraining: false});
+            this._safeSetState({isTraining: false});
         }
     }
 
@@ -550,7 +583,7 @@ class MLStudio extends React.Component {
                         topIdx = parseInt(label, 10);
                     }
                 }
-                this.setState({liveConfidences: conf, topClassIndex: topIdx});
+                this._safeSetState({liveConfidences: conf, topClassIndex: topIdx});
             } catch (e) { /* ignore */ }
         }, PREDICT_INTERVAL_MS);
     }
@@ -579,7 +612,7 @@ class MLStudio extends React.Component {
                         topIdx = idx;
                     }
                 });
-                this.setState({liveConfidences: conf, topClassIndex: topIdx});
+                this._safeSetState({liveConfidences: conf, topClassIndex: topIdx});
             },
             {
                 probabilityThreshold: AUDIO_THRESHOLD,
@@ -735,20 +768,20 @@ class MLStudio extends React.Component {
                 augmentByMixingNoiseRatio: AUDIO_NOISE_MIX,
                 callback: {
                     onEpochEnd: epoch => {
-                        this.setState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 85)});
+                        this._safeSetState({trainProgress: Math.round(((epoch + 1) / AUDIO_EPOCHS) * 85)});
                     }
                 },
                 fineTuningCallback: {
                     onEpochEnd: epoch => {
-                        this.setState({trainProgress: 85 + Math.round(((epoch + 1) / AUDIO_FINETUNE_EPOCHS) * 15)});
+                        this._safeSetState({trainProgress: 85 + Math.round(((epoch + 1) / AUDIO_FINETUNE_EPOCHS) * 15)});
                     }
                 }
             });
-            this.setState({isTraining: false, isTrained: true, trainProgress: 100});
-            this._audioStartListen();
+            this._safeSetState({isTraining: false, isTrained: true, trainProgress: 100});
+            if (this._mounted) this._audioStartListen();
         } catch (e) {
             console.error('[MLStudio] Error cargando modelo de audio:', e);
-            this.setState({isTraining: false});
+            this._safeSetState({isTraining: false});
         }
     }
 
