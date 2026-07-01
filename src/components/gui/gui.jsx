@@ -59,26 +59,103 @@ const messages = defineMessages({
 // Assume that it doesn't change for a session.
 let isRendererSupported = null;
 
-const tmWidgetStyle = {
-    position: 'fixed',
-    bottom: '20px',
-    right: '20px',
-    width: '260px',
-    height: '195px',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,191,165,0.3)',
-    border: '3px solid #00bfa5',
-    zIndex: 900,
-    background: '#000'
+// Lógica compartida de drag + resize para los widgets flotantes de TM.
+// Retorna handlers y estilos de posición/tamaño; el componente aplica los estilos
+// y monta los handles invisibles de arrastre y redimensión.
+const useTmWidget = (defaultW, defaultH) => {
+    const [pos, setPos] = React.useState(() => ({
+        x: Math.max(0, window.innerWidth - defaultW - 24),
+        y: Math.max(0, window.innerHeight - defaultH - 24)
+    }));
+    const [size, setSize] = React.useState({w: defaultW, h: defaultH});
+
+    const onDragStart = React.useCallback(e => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        const ox = e.clientX - pos.x;
+        const oy = e.clientY - pos.y;
+        const onMove = m => setPos({x: m.clientX - ox, y: m.clientY - oy});
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }, [pos]);
+
+    const onResizeStart = React.useCallback(e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const sx = e.clientX, sy = e.clientY;
+        const sw = size.w, sh = size.h;
+        const onMove = m => setSize({
+            w: Math.max(180, sw + m.clientX - sx),
+            h: Math.max(120, sh + m.clientY - sy)
+        });
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }, [size]);
+
+    const wrapStyle = {
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        width: size.w,
+        height: size.h,
+        borderRadius: '16px',
+        overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,191,165,0.3)',
+        border: '3px solid #00bfa5',
+        zIndex: 900,
+        background: '#000',
+        userSelect: 'none'
+    };
+
+    return {wrapStyle, onDragStart, onResizeStart};
 };
 
-const tmVideoStyle = {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    display: 'block'
-};
+const TmDragHandle = ({onDragStart}) => (
+    <div
+        onMouseDown={onDragStart}
+        style={{
+            position: 'absolute', top: 0, left: 0, right: 28, height: 32,
+            cursor: 'grab', zIndex: 2
+        }}
+    />
+);
+
+const TmCloseBtn = ({onClose}) => (
+    <button
+        onClick={e => { e.stopPropagation(); onClose(); }}
+        onMouseDown={e => e.stopPropagation()}
+        style={{
+            position: 'absolute', top: 6, right: 6, width: 20, height: 20,
+            borderRadius: '50%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+            color: '#fff', border: '1px solid rgba(255,255,255,0.25)',
+            cursor: 'pointer', fontSize: 13, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 3, lineHeight: 1, padding: 0
+        }}
+        title="Cerrar"
+    >×</button>
+);
+
+const TmResizeHandle = ({onResizeStart}) => (
+    <div
+        onMouseDown={onResizeStart}
+        style={{
+            position: 'absolute', bottom: 3, right: 3,
+            width: 14, height: 14, cursor: 'se-resize', zIndex: 3,
+            borderRight: '3px solid rgba(255,255,255,0.45)',
+            borderBottom: '3px solid rgba(255,255,255,0.45)',
+            borderRadius: '0 0 3px 0'
+        }}
+    />
+);
 
 const tmBadgeStyle = {
     position: 'absolute',
@@ -107,52 +184,45 @@ const tmDotStyle = {
     boxShadow: '0 0 6px #00e676'
 };
 
-const TmCameraWidget = ({stream, flipped}) => {
+const TmCameraWidget = ({stream, flipped, onClose}) => {
     const ref = React.useRef(null);
+    const {wrapStyle, onDragStart, onResizeStart} = useTmWidget(260, 195);
+
     React.useEffect(() => {
         if (ref.current && stream) {
             ref.current.srcObject = stream;
             ref.current.play().catch(() => {});
         }
     }, [stream]);
-    const videoStyle = {
-        ...tmVideoStyle,
-        transform: flipped ? 'scaleX(-1)' : 'none'
-    };
+
     return (
-        <div style={tmWidgetStyle}>
-            <video ref={ref} style={videoStyle} autoPlay muted playsInline />
+        <div style={wrapStyle}>
+            <TmDragHandle onDragStart={onDragStart} />
+            <video
+                ref={ref}
+                style={{width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                    transform: flipped ? 'scaleX(-1)' : 'none'}}
+                autoPlay
+                muted
+                playsInline
+            />
             <div style={tmBadgeStyle}>
                 <span style={tmDotStyle} />
                 IA en vivo
             </div>
+            <TmCloseBtn onClose={onClose} />
+            <TmResizeHandle onResizeStart={onResizeStart} />
         </div>
     );
-};
-
-const tmAudioBarsStyle = {
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: '7px',
-    width: '100%',
-    height: '100%',
-    padding: '28px 24px'
-};
-
-const tmAudioBarStyle = {
-    width: '14px',
-    background: 'linear-gradient(180deg, #00e676, #00bfa5)',
-    borderRadius: '6px',
-    transition: 'height 0.12s ease-out',
-    minHeight: '8px'
 };
 
 const TM_AUDIO_BANDS = 7;
 
 // Widget de espectro REAL del micrófono (AnalyserNode), no una animación falsa.
-const TmAudioWidget = () => {
+const TmAudioWidget = ({onClose}) => {
     const [bars, setBars] = React.useState(new Array(TM_AUDIO_BANDS).fill(0));
+    const {wrapStyle, onDragStart, onResizeStart} = useTmWidget(260, 195);
+
     React.useEffect(() => {
         let ctx;
         let raf;
@@ -198,13 +268,23 @@ const TmAudioWidget = () => {
             if (ctx) ctx.close().catch(() => {});
         };
     }, []);
+
     return (
-        <div style={tmWidgetStyle}>
-            <div style={tmAudioBarsStyle}>
+        <div style={wrapStyle}>
+            <TmDragHandle onDragStart={onDragStart} />
+            <div style={{
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                gap: '7px', width: '100%', height: '100%', padding: '28px 24px'
+            }}>
                 {bars.map((h, i) => (
                     <span
                         key={i}
-                        style={{...tmAudioBarStyle, height: `${Math.max(4, Math.round(h * 100))}%`}}
+                        style={{
+                            width: '14px', borderRadius: '6px',
+                            background: 'linear-gradient(180deg, #00e676, #00bfa5)',
+                            transition: 'height 0.12s ease-out', minHeight: '8px',
+                            height: `${Math.max(4, Math.round(h * 100))}%`
+                        }}
                     />
                 ))}
             </div>
@@ -212,6 +292,8 @@ const TmAudioWidget = () => {
                 <span style={tmDotStyle} />
                 Escuchando
             </div>
+            <TmCloseBtn onClose={onClose} />
+            <TmResizeHandle onResizeStart={onResizeStart} />
         </div>
     );
 };
@@ -592,10 +674,25 @@ const GUIComponent = props => {
                             </Box>
                         </Box>
                         {tmCameraStream && (
-                            <TmCameraWidget stream={tmCameraStream} flipped={tmVideoFlipped} />
+                            <TmCameraWidget
+                                stream={tmCameraStream}
+                                flipped={tmVideoFlipped}
+                                onClose={() => {
+                                    // Avisar al VM para que libere cámara e inferencia;
+                                    // el VM emitirá TM_CAMERA_STOPPED y el estado local
+                                    // se limpia vía el listener de eventos ya existente.
+                                    if (props.vm) props.vm.runtime.emit('TM_CLOSE_CAMERA');
+                                    else setTmCameraStream(null);
+                                }}
+                            />
                         )}
                         {tmAudioActive && !tmCameraStream && (
-                            <TmAudioWidget />
+                            <TmAudioWidget
+                                onClose={() => {
+                                    if (props.vm) props.vm.runtime.emit('TM_CLOSE_AUDIO');
+                                    else setTmAudioActive(false);
+                                }}
+                            />
                         )}
                         {mlStudioOpen && (
                             <MLStudio onClose={() => setMlStudioOpen(false)} />

@@ -23,7 +23,22 @@ const AUDIO_EPOCHS = 40;
 const AUDIO_FINETUNE_EPOCHS = 8;   // fine-tuning de capas profundas (mejora precisión)
 const AUDIO_NOISE_MIX = 0.5;       // mezcla ruido de fondo en las muestras (robustez)
 const SMOOTH_WINDOW = 10; // frames de suavizado temporal (imagen/pose)
-const AUDIO_THRESHOLD = 0.5; // umbral de confianza para la escucha de audio
+// Como invokeCallbackOnNoiseAndUnknown=true hace que speech-commands invoque el
+// callback SIEMPRE (ignora su propio probabilityThreshold), aplicamos nuestro
+// propio umbral + suavizado sobre los scores promediados (igual que Google TM).
+const AUDIO_THRESHOLD = 0.75; // umbral de confianza para la escucha de audio
+// 2 (no más): con 4 lecturas, un pico real de ~95% se diluía con las lecturas vecinas
+// más bajas de un sonido breve (aplausos, palabras cortas) y nunca cruzaba el umbral.
+const AUDIO_SMOOTH_WINDOW = 2;
+
+// Conexiones del esqueleto PoseNet (pares de índices). Se hardcodean porque
+// window.posenet.getAdjacentKeyPoints no siempre está disponible en el bundle CDN.
+const POSENET_CONNECTIONS = [
+    [0,1],[0,2],[1,3],[2,4],           // cara
+    [5,6],[5,7],[7,9],[6,8],[8,10],    // hombros y brazos
+    [5,11],[6,12],[11,12],             // torso
+    [11,13],[13,15],[12,14],[14,16]    // piernas
+];
 
 // Paleta de colores por clase (estilo Teachable Machine)
 const CLASS_COLORS = [
@@ -171,11 +186,18 @@ class MLStudio extends React.Component {
         clearInterval(this._captureTimer);
         clearInterval(this._predictTimer);
         if (this._poseRAF) cancelAnimationFrame(this._poseRAF);
-        if (this._transferRecognizer && this._listening) {
-            try { this._transferRecognizer.stopListening(); } catch (e) {
+        // No confiar solo en this._listening: si la VM tomó el micrófono mientras el
+        // panel seguía abierto, isListening() refleja el estado real del recognizer.
+        if (this._transferRecognizer) {
+            try {
+                if (this._transferRecognizer.isListening && this._transferRecognizer.isListening()) {
+                    this._transferRecognizer.stopListening();
+                }
+            } catch (e) {
                 console.warn('[MLStudio] stopListening (unmount):', e);
             }
         }
+        this._listening = false;
     }
 
     // ─── Project type selection ────────────────────────────────────────────────
@@ -245,38 +267,57 @@ class MLStudio extends React.Component {
         const last = numFrames - 1;
         if (last < 0) return;
         ctx.clearRect(0, 0, w, h);
-        const barW = w / frameSize;
-        for (let i = 0; i < frameSize; i++) {
-            let v = spec.data[(last * frameSize) + i];
-            v = Math.max(0, Math.min(1, (v + 100) / 100)); // log-mel dB → 0..1 aprox
+        // Agrupamos cada 4 bins de frecuencia en 1 barra visual (232 → ~58). Dibujar
+        // 232 fillRect con un fillStyle hsl(...) distinto cada vez (CSS parseado 232
+        // veces por frame, varias veces por segundo) era lo que tartamudeaba el
+        // espectro; menos barras = menos llamadas al canvas sin perder legibilidad.
+        const GROUP = 4;
+        const numBars = Math.ceil(frameSize / GROUP);
+        const barW = w / numBars;
+        for (let bar = 0; bar < numBars; bar++) {
+            let v = 0;
+            let count = 0;
+            for (let i = bar * GROUP; i < Math.min(frameSize, (bar + 1) * GROUP); i++) {
+                v += spec.data[(last * frameSize) + i];
+                count++;
+            }
+            v = Math.max(0, Math.min(1, ((v / count) + 100) / 100)); // log-mel dB → 0..1 aprox
             const barH = v * h;
             const hue = 170 + (v * 60);
             ctx.fillStyle = `hsl(${hue}, 80%, ${40 + (v * 20)}%)`;
-            ctx.fillRect(i * barW, h - barH, barW * 0.85, barH);
+            ctx.fillRect(bar * barW, h - barH, barW * 0.85, barH);
         }
     }
 
     // ─── CDN Libraries ────────────────────────────────────────────────────────
 
     _injectScript (src) {
-        return new Promise((resolve, reject) => {
+        // Cache de promesas en window: la VM (teachablemachine/index.js) carga los
+        // MISMOS CDN (tfjs, speech-commands) por su cuenta. Antes cada lado hacía su
+        // propio querySelector + addEventListener('load', ...) sobre el <script> del
+        // otro: si el load ya había disparado entre el check y el addEventListener,
+        // ese listener nunca se ejecutaba y la promesa quedaba colgada para siempre
+        // (eso traba el bloque "cargar modelo", que es async, y con él la bandera
+        // verde). Una única promesa compartida por URL evita esa carrera.
+        if (!window.__pcScriptPromises) window.__pcScriptPromises = {};
+        if (window.__pcScriptPromises[src]) return window.__pcScriptPromises[src];
+        const p = new Promise((resolve, reject) => {
             const existing = document.querySelector(`script[src="${src}"]`);
             if (existing && existing.getAttribute('data-loaded') === 'true') return resolve();
-            if (existing) {
-                existing.addEventListener('load', resolve);
-                existing.addEventListener('error', reject);
-                return;
+            const s = existing || document.createElement('script');
+            if (!existing) {
+                s.src = src;
+                s.async = true;
+                document.head.appendChild(s);
             }
-            const s = document.createElement('script');
-            s.src = src;
-            s.async = true;
-            s.onload = () => {
+            s.addEventListener('load', () => {
                 s.setAttribute('data-loaded', 'true');
                 resolve();
-            };
-            s.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
-            document.head.appendChild(s);
+            });
+            s.addEventListener('error', () => reject(new Error(`No se pudo cargar ${src}`)));
         });
+        window.__pcScriptPromises[src] = p;
+        return p;
     }
 
     async _loadLibraries (type) {
@@ -360,6 +401,13 @@ class MLStudio extends React.Component {
             const video = this.videoRef.current;
             if (video && this._posenet && video.readyState >= 2) {
                 try {
+                    // PoseNet reescala las coordenadas usando los atributos HTML
+                    // width/height del <video> (no videoWidth/videoHeight). Como el
+                    // tamaño del elemento lo da el CSS (className), esos atributos
+                    // quedaban en 0 → todos los keypoints salían en (0,0), con scores
+                    // válidos pero sin posición real (por eso no se dibujaba nada).
+                    if (video.width !== video.videoWidth) video.width = video.videoWidth;
+                    if (video.height !== video.videoHeight) video.height = video.videoHeight;
                     const pose = await this._posenet.estimateSinglePose(video, {flipHorizontal: false});
                     if (!loggedOk && pose && pose.keypoints) {
                         const n = pose.keypoints.filter(k => k.score >= POSE_MIN_SCORE).length;
@@ -388,14 +436,15 @@ class MLStudio extends React.Component {
         if (!pose || !pose.keypoints) return;
 
         const kp = pose.keypoints;
-        // Huesos
-        const adj = window.posenet.getAdjacentKeyPoints(kp, POSE_MIN_SCORE);
+        // Huesos — conexiones hardcodeadas (getAdjacentKeyPoints no siempre está en CDN)
         ctx.strokeStyle = '#4c97ff';
         ctx.lineWidth = 4;
-        for (const pair of adj) {
+        for (const [i, j] of POSENET_CONNECTIONS) {
+            if (!kp[i] || !kp[j]) continue;
+            if (kp[i].score < POSE_MIN_SCORE || kp[j].score < POSE_MIN_SCORE) continue;
             ctx.beginPath();
-            ctx.moveTo(pair[0].position.x, pair[0].position.y);
-            ctx.lineTo(pair[1].position.x, pair[1].position.y);
+            ctx.moveTo(kp[i].position.x, kp[i].position.y);
+            ctx.lineTo(kp[j].position.x, kp[j].position.y);
             ctx.stroke();
         }
         // Puntos
@@ -471,35 +520,44 @@ class MLStudio extends React.Component {
         return cls.isNoise ? NOISE_LABEL : cls.name;
     }
 
-    // Mantener presionado graba varias muestras de ~1s seguidas (más datos = mejor modelo).
-    // Libera el preview del micrófono para que speech-commands lo use en exclusiva, y
-    // visualiza el espectro REAL de lo que graba vía onSnippet.
+    // Un click = grabación fija. Para sonidos: 1 llamada de 2s → 2 muestras.
+    // Para ruido de fondo: bucle automático de AUDIO_MIN_NOISE muestras de 1s
+    // (como el botón "Grabar 20 segundos" de Google TM). No hay hold-to-record.
     async _audioStartCapture (classIndex) {
         if (!this._transferRecognizer || this._audioCapturing) return;
         this._audioCapturing = true;
-        this._audioStopListen(); // si estaba escuchando, liberar el micrófono
-        this.setState({capturingClass: classIndex});
+        this._audioStopListen();
+        this._safeSetState({capturingClass: classIndex, isTrained: false});
         const cls = this.state.classes[classIndex];
         const label = this._classLabel(cls);
-        // Como el demo de speech-commands: sonidos → durationMultiplier (~2s);
-        // ruido de fondo → durationSec 1 (muestras de 1s). Visualiza con onSnippet.
-        console.log(`[MLStudio] Grabando audio para "${cls.name}" (label="${label}")`);
         const onSnippet = async spec => { this._drawSpectrogram(spec); };
-        const opts = cls.isNoise ?
-            {durationSec: 1, snippetDurationSec: 0.1, onSnippet} :
-            {durationMultiplier: 2, snippetDurationSec: 0.1, onSnippet};
+        console.log(`[MLStudio] Grabando audio para "${cls.name}" (label="${label}")`);
         try {
-            while (this._audioCapturing) {
-                await this._transferRecognizer.collectExample(label, opts);
-                if (!this._audioCapturing) break; // soltó mientras grababa
-                // Conteo real de speech-commands (countExamples), no aproximado
+            if (cls.isNoise) {
+                // Ruido de fondo: AUDIO_MIN_NOISE muestras de 1s en serie
+                for (let i = 0; i < AUDIO_MIN_NOISE && this._audioCapturing; i++) {
+                    await this._transferRecognizer.collectExample(label, {
+                        durationSec: 1, snippetDurationSec: 0.1, onSnippet
+                    });
+                    const counts = this._transferRecognizer.countExamples() || {};
+                    this._safeSetState(prev => ({
+                        classes: prev.classes.map(c => {
+                            const lbl = this._classLabel(c);
+                            return counts[lbl] != null ? {...c, sampleCount: counts[lbl]} : c;
+                        })
+                    }));
+                }
+            } else {
+                // Sonido: una grabación de 2s (durationMultiplier=2 → 2 muestras)
+                await this._transferRecognizer.collectExample(label, {
+                    durationMultiplier: 2, snippetDurationSec: 0.1, onSnippet
+                });
                 const counts = this._transferRecognizer.countExamples() || {};
                 this._safeSetState(prev => ({
                     classes: prev.classes.map(c => {
                         const lbl = this._classLabel(c);
                         return counts[lbl] != null ? {...c, sampleCount: counts[lbl]} : c;
-                    }),
-                    isTrained: false
+                    })
                 }));
             }
             console.log('[MLStudio] Muestras de audio:', this._transferRecognizer.countExamples());
@@ -512,7 +570,7 @@ class MLStudio extends React.Component {
     }
 
     _audioStopCapture () {
-        this._audioCapturing = false;
+        this._audioCapturing = false; // cancela el bucle de ruido en la próxima iteración
     }
 
     // ─── Training ─────────────────────────────────────────────────────────────
@@ -614,15 +672,39 @@ class MLStudio extends React.Component {
 
     // ─── Inference: audio listen ────────────────────────────────────────────────
 
-    _audioStartListen () {
+    async _audioStartListen () {
         if (!this._transferRecognizer) return;
         if (this._listening) return;
+        // El recognizer es compartido con la extensión VM (window.playcodeAudioModels).
+        // Si la VM se quedó escuchando (bloque "cargar modelo" usado mientras este panel
+        // seguía abierto), hay que liberarlo primero o compiten por el micrófono.
+        try {
+            if (this._transferRecognizer.isListening && this._transferRecognizer.isListening()) {
+                await this._transferRecognizer.stopListening();
+            }
+        } catch (e) {
+            console.warn('[MLStudio] stopListening previo:', e);
+        }
         const labels = this._transferRecognizer.wordLabels();
         console.log('[MLStudio] Escuchando audio. wordLabels:', labels);
+        this._audioConfBuffer = [];
         this._transferRecognizer.listen(
             result => {
-                if (result.spectrogram) this._drawSpectrogram(result.spectrogram);
+                // Sin espectrograma en vivo: calcularlo y dibujarlo en cada ventana de
+                // análisis (varias veces/seg, junto a la inferencia real del modelo) era
+                // lo que tartamudeaba. En esta fase solo importan las barras de confianza.
                 const scores = result.scores;
+
+                // Suavizado temporal: promediar las últimas N lecturas (igual que
+                // imagen/pose) para que un pico de ruido no dispare una clase.
+                this._audioConfBuffer.push(scores);
+                if (this._audioConfBuffer.length > AUDIO_SMOOTH_WINDOW) this._audioConfBuffer.shift();
+                const avg = new Array(scores.length).fill(0);
+                for (const s of this._audioConfBuffer) {
+                    for (let i = 0; i < s.length; i++) avg[i] += s[i];
+                }
+                for (let i = 0; i < avg.length; i++) avg[i] /= this._audioConfBuffer.length;
+
                 const conf = {};
                 let topIdx = null;
                 let topProb = -1;
@@ -631,18 +713,26 @@ class MLStudio extends React.Component {
                         c => this._classLabel(c) === label
                     );
                     if (idx < 0) return;
-                    conf[idx] = scores[i];
-                    if (scores[i] > topProb) {
-                        topProb = scores[i];
+                    conf[idx] = avg[i];
+                    if (avg[i] > topProb) {
+                        topProb = avg[i];
                         topIdx = idx;
                     }
                 });
-                this._safeSetState({liveConfidences: conf, topClassIndex: topIdx});
+                // Solo reporta una clase "ganadora" si supera el umbral propio;
+                // si no, no hay detección clara (evita falsos positivos entre clases).
+                this._safeSetState({
+                    liveConfidences: conf,
+                    topClassIndex: topProb >= AUDIO_THRESHOLD ? topIdx : null
+                });
             },
             {
                 probabilityThreshold: AUDIO_THRESHOLD,
-                overlapFactor: 0.5,
-                includeSpectrogram: true,
+                // 0.35 (no 0.5): cada ventana de análisis corre inferencia WebGL, que
+                // compite por GPU con el render del stage de Scratch detrás del modal.
+                // Menos ventanas/seg = menos contención = menos tartamudeo en vivo.
+                overlapFactor: 0.35,
+                includeSpectrogram: false,
                 invokeCallbackOnNoiseAndUnknown: true
             }
         );
@@ -687,8 +777,8 @@ class MLStudio extends React.Component {
 
         const savedModels = {...this.state.savedModels, [name]: model};
         if (!this._writeStorage(savedModels)) return;
-        this.setState({savedModels, saveNotice: `"${name}" guardado correctamente`});
-        setTimeout(() => this.setState({saveNotice: null}), 3500);
+        this._safeSetState({savedModels, saveNotice: `"${name}" guardado correctamente`});
+        setTimeout(() => this._safeSetState({saveNotice: null}), 3500);
     }
 
     _saveAudioModel () {
@@ -725,8 +815,8 @@ class MLStudio extends React.Component {
 
         const savedModels = {...this.state.savedModels, [name]: model};
         if (!this._writeStorage(savedModels)) return;
-        this.setState({savedModels, saveNotice: `"${name}" guardado correctamente`});
-        setTimeout(() => this.setState({saveNotice: null}), 3500);
+        this._safeSetState({savedModels, saveNotice: `"${name}" guardado correctamente`});
+        setTimeout(() => this._safeSetState({saveNotice: null}), 3500);
     }
 
     _deleteModel (name) {
@@ -962,7 +1052,9 @@ class MLStudio extends React.Component {
                     <div className={styles.audioSamples}>
                         {cls.sampleCount === 0 ? (
                             <div className={styles.thumbsEmpty}>
-                                Graba al menos {cls.isNoise ? '20' : '8'} muestras de {cls.isNoise ? 'ruido ambiente' : 'este sonido'}
+                                {cls.isNoise ?
+                                    'Graba al menos 20 muestras de ruido ambiente' :
+                                    'Graba al menos 8 muestras. Repite el sonido 2-3 veces en cada grabación de 2s (no lo digas una sola vez y esperes)'}
                             </div>
                         ) : (
                             <div className={styles.audioDots}>
@@ -990,15 +1082,22 @@ class MLStudio extends React.Component {
                             [styles.recordBtnActive]: isCapturing
                         })}
                         style={!isCapturing && libLoaded ? {background: color} : {}}
-                        onPointerDown={e => {
-                            e.currentTarget.setPointerCapture(e.pointerId);
-                            this._audioStartCapture(idx);
-                        }}
-                        onPointerUp={() => this._audioStopCapture()}
-                        onPointerCancel={() => this._audioStopCapture()}
-                        disabled={!libLoaded || (capturingClass !== null && !isCapturing)}
+                        onClick={() => this._audioStartCapture(idx)}
+                        disabled={!libLoaded || capturingClass !== null ||
+                            (cls.isNoise && cls.sampleCount >= AUDIO_MIN_NOISE)}
+                        title={
+                            cls.isNoise
+                                ? (cls.sampleCount >= AUDIO_MIN_NOISE
+                                    ? 'Ya tienes suficiente ruido grabado. Borra (↺) antes de volver a grabar para no desbalancear el modelo'
+                                    : undefined)
+                                : 'Repite el sonido 2-3 veces durante la grabación'
+                        }
                     >
-                        {isCapturing ? 'Grabando...' : 'Mantén para grabar'}
+                        {isCapturing
+                            ? 'Grabando...'
+                            : cls.isNoise
+                                ? (cls.sampleCount >= AUDIO_MIN_NOISE ? 'Suficiente ruido' : `Grabar ${AUDIO_MIN_NOISE}s`)
+                                : 'Grabar (repite 2-3x, 2s)'}
                     </button>
                 ) : (
                     <button
@@ -1192,12 +1291,22 @@ class MLStudio extends React.Component {
                                     <div className={classNames(styles.cameraWrap, styles.audioWrap, {
                                         [styles.cameraWrapLive]: micReady
                                     })}>
-                                        <canvas
-                                            ref={this.audioVizRef}
-                                            width={480}
-                                            height={200}
-                                            className={styles.audioViz}
-                                        />
+                                        {/* El espectrograma solo se dibuja mientras se graba: durante
+                                            la escucha (entrenado) tartamudeaba al competir por GPU con
+                                            la inferencia del modelo; ahí basta con las barras de confianza. */}
+                                        {isTrained ? (
+                                            <div className={styles.cameraOverlay}>
+                                                <span className={styles.cameraLiveDot} />
+                                                Escuchando (ver barras de confianza abajo)
+                                            </div>
+                                        ) : (
+                                            <canvas
+                                                ref={this.audioVizRef}
+                                                width={480}
+                                                height={200}
+                                                className={styles.audioViz}
+                                            />
+                                        )}
                                         {!micReady && (
                                             <div className={styles.cameraOverlay}>
                                                 <span className={styles.cameraOverlayDot} />
