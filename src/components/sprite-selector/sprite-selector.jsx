@@ -12,9 +12,15 @@ import FirmwareUpdaterModal from './firmware-updater-modal.jsx';
 import StageSelector from '../../containers/stage-selector.jsx';
 import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 import { isRtl } from 'scratch-l10n';
-import extensionLibrary from '../../lib/libraries/extensions';
 import playiot from '../../lib/libraries/extensions/playiot';
+import playme from '../../lib/libraries/extensions/playme';
 import extensionModalStyles from './extension-modal.css';
+
+// El modal "Agregar dispositivo" (panel de Dispositivos) SOLO debe listar
+// dispositivos de hardware (PlayIoT, PlayMe), no extensiones de software como
+// Teachable Machine. Esa es una lista aparte de lib/libraries/extensions/index.jsx,
+// que alimenta el botón general "Agregar Extensión" del área de bloques.
+const deviceLibrary = [playiot, playme];
 
 import styles from './sprite-selector.css';
 
@@ -612,7 +618,7 @@ class SpriteSelectorComponent extends React.Component {
                                         </button>
                                     </div>
                                     <div className={extensionModalStyles.extensionList}>
-                                        {extensionLibrary.map((extension, index) => (
+                                        {deviceLibrary.map((extension, index) => (
                                             <button
                                                 key={index}
                                                 onClick={() => this.handleSelectExtension(extension)}
