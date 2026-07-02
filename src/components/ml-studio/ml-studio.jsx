@@ -108,6 +108,79 @@ function base64ToAb (b64) {
     return bytes.buffer;
 }
 
+// ── Persistencia (IndexedDB) ──────────────────────────────────────────────────
+// Antes los modelos vivían SOLO en window.playcodeMLModels (memoria de la
+// sesión): se perdían al recargar la página, así que "abrir ML Studio" siempre
+// empezaba desde cero. IndexedDB persiste los modelos entre sesiones sin el
+// límite de tamaño de localStorage (los datasets de audio/imagen pueden pesar
+// varios MB). El mismo helper está duplicado en scratch-vm/teachablemachine
+// (paquetes separados, sin import cruzado); ambos leen/escriben la misma DB del
+// navegador. window.playcodeMLModels sigue siendo la caché sincrónica que usan
+// los bloques (los menús de Scratch no pueden esperar una promesa).
+const ML_DB_NAME = 'playcode-ml-studio';
+const ML_DB_STORE = 'models';
+
+function _openMlDb () {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(ML_DB_NAME, 1);
+        req.onupgradeneeded = () => {
+            if (!req.result.objectStoreNames.contains(ML_DB_STORE)) {
+                req.result.createObjectStore(ML_DB_STORE, {keyPath: 'name'});
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function mlDbGetAll () {
+    const db = await _openMlDb();
+    return new Promise((resolve, reject) => {
+        const req = db.transaction(ML_DB_STORE, 'readonly').objectStore(ML_DB_STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function mlDbPut (model) {
+    const db = await _openMlDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(ML_DB_STORE, 'readwrite');
+        tx.objectStore(ML_DB_STORE).put(model);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function mlDbDelete (name) {
+    const db = await _openMlDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(ML_DB_STORE, 'readwrite');
+        tx.objectStore(ML_DB_STORE).delete(name);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// Une lo guardado en IndexedDB con lo que ya haya en memoria de esta sesión
+// (lo de memoria gana: puede incluir borrados/guardados más recientes que
+// todavía no terminaron de escribirse en la DB). Se cachea en window para que
+// GUI y VM (que hidratan por separado) no dupliquen el trabajo.
+function hydrateMlModelsFromDb () {
+    if (window.__pcMlHydratePromise) return window.__pcMlHydratePromise;
+    window.__pcMlHydratePromise = (async () => {
+        try {
+            const rows = await mlDbGetAll();
+            const fromDb = {};
+            rows.forEach(m => { fromDb[m.name] = m; });
+            window.playcodeMLModels = Object.assign({}, fromDb, window.playcodeMLModels || {});
+        } catch (e) {
+            console.warn('[MLStudio] No se pudo leer IndexedDB:', e);
+        }
+    })();
+    return window.__pcMlHydratePromise;
+}
+
 class MLStudio extends React.Component {
     constructor (props) {
         super(props);
@@ -151,6 +224,9 @@ class MLStudio extends React.Component {
         this._transferRecognizer = null;
         this._listening = false;
         this._audioCapturing = false;
+        // Nombre bajo el cual this._transferRecognizer quedó cacheado en
+        // window.playcodeAudioModels (o null si aún no se ha guardado). Ver _saveAudioModel.
+        this._audioSavedAsName = null;
 
         this._mounted = true;
     }
@@ -179,6 +255,14 @@ class MLStudio extends React.Component {
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
+    componentDidMount () {
+        // Los modelos guardados en sesiones anteriores viven en IndexedDB; hasta que
+        // termine de leerlos, savedModels solo refleja lo que ya hubiera en memoria.
+        hydrateMlModelsFromDb().then(() => {
+            if (this._mounted) this._safeSetState({savedModels: this._readStorage()});
+        });
+    }
+
     componentWillUnmount () {
         this._mounted = false;
         this._audioCapturing = false;
@@ -202,9 +286,12 @@ class MLStudio extends React.Component {
 
     // ─── Project type selection ────────────────────────────────────────────────
 
+    // Devuelve la promesa de _loadLibraries para que quien quiera continuar un
+    // modelo guardado (_continueModel) sepa cuándo el classifier/recognizer ya
+    // está listo para recibir el dataset.
     _selectType (type) {
         const def = PROJECT_TYPES.find(t => t.id === type);
-        if (!def || !def.available) return;
+        if (!def || !def.available) return Promise.resolve();
 
         if (type === 'audio') {
             // En audio la primera clase es el ruido de fondo (obligatoria)
@@ -215,13 +302,22 @@ class MLStudio extends React.Component {
                     {name: 'Clase 1', sampleCount: 0, thumbnails: []}
                 ]
             });
-            this._loadLibraries(type);
-            return;
+            return this._loadLibraries(type);
         }
 
         this.setState({projectType: type});
         this._startCamera();
-        this._loadLibraries(type);
+        return this._loadLibraries(type);
+    }
+
+    // Desde la pantalla de selección: elegir directamente un modelo guardado para
+    // continuar entrenándolo, sin pasar primero por "capturar desde cero".
+    _continueModel (name) {
+        const model = this.state.savedModels[name];
+        if (!model) return;
+        this._selectType(model.type || 'image').then(() => {
+            if (this._mounted) this._loadModelToEdit(name);
+        });
     }
 
     // ─── Camera (image / pose) ──────────────────────────────────────────────────
@@ -336,6 +432,7 @@ class MLStudio extends React.Component {
                 this._transferRecognizer = this._baseRecognizer.createTransfer(
                     this.state.modelName || 'modelo'
                 );
+                this._audioSavedAsName = null;
                 console.log('[MLStudio] Audio listo (speech-commands BROWSER_FFT cargado)');
                 this._safeSetState({libLoaded: true, libLoading: false, micReady: true});
                 return;
@@ -777,6 +874,7 @@ class MLStudio extends React.Component {
 
         const savedModels = {...this.state.savedModels, [name]: model};
         if (!this._writeStorage(savedModels)) return;
+        mlDbPut(model).catch(e => console.error('[MLStudio] Error guardando en IndexedDB:', e));
         this._safeSetState({savedModels, saveNotice: `"${name}" guardado correctamente`});
         setTimeout(() => this._safeSetState({saveNotice: null}), 3500);
     }
@@ -788,9 +886,20 @@ class MLStudio extends React.Component {
         if (!name) return;
 
         // Compartir el recognizer YA ENTRENADO en memoria → el bloque lo usa directo,
-        // sin re-entrenar (carga instantánea). Se pierde al recargar el navegador.
+        // sin re-entrenar (carga instantánea).
         window.playcodeAudioModels = window.playcodeAudioModels || {};
+        // Si este mismo recognizer (en edición) ya estaba cacheado bajo OTRO nombre
+        // (el usuario cambió el nombre y guardó "como nuevo" sin recargar un modelo
+        // distinto), hay que romper ese alias: si no, ambos nombres apuntarían al
+        // mismo objeto vivo y seguir editando/entrenando aquí contaminaría en
+        // silencio el modelo anterior ya guardado. El nombre anterior conserva su
+        // audioData serializado y simplemente se re-entrena la próxima vez que se
+        // cargue (fallback ya soportado en la extensión VM).
+        if (this._audioSavedAsName && this._audioSavedAsName !== name) {
+            delete window.playcodeAudioModels[this._audioSavedAsName];
+        }
         window.playcodeAudioModels[name] = this._transferRecognizer;
+        this._audioSavedAsName = name;
 
         let audioData = null;
         try {
@@ -815,6 +924,7 @@ class MLStudio extends React.Component {
 
         const savedModels = {...this.state.savedModels, [name]: model};
         if (!this._writeStorage(savedModels)) return;
+        mlDbPut(model).catch(e => console.error('[MLStudio] Error guardando en IndexedDB:', e));
         this._safeSetState({savedModels, saveNotice: `"${name}" guardado correctamente`});
         setTimeout(() => this._safeSetState({saveNotice: null}), 3500);
     }
@@ -824,6 +934,9 @@ class MLStudio extends React.Component {
         delete savedModels[name];
         this._writeStorage(savedModels);
         this.setState({savedModels});
+        mlDbDelete(name).catch(e => console.error('[MLStudio] Error borrando de IndexedDB:', e));
+        if (window.playcodeAudioModels) delete window.playcodeAudioModels[name];
+        if (this._audioSavedAsName === name) this._audioSavedAsName = null;
     }
 
     async _loadModelToEdit (name) {
@@ -864,7 +977,11 @@ class MLStudio extends React.Component {
         if (!this._baseRecognizer) return;
         this._audioStopListen();
         try {
+            // Instancia nueva y sin caché: distinta al objeto (si lo hay) todavía
+            // guardado en window.playcodeAudioModels[model.name], así que editarla
+            // aquí no contamina lo ya guardado hasta que se vuelva a pulsar "Guardar".
             this._transferRecognizer = this._baseRecognizer.createTransfer(model.name);
+            this._audioSavedAsName = null;
             this._transferRecognizer.loadExamples(base64ToAb(model.audioData));
             const counts = this._transferRecognizer.countExamples() || {};
             this.setState({
@@ -951,6 +1068,8 @@ class MLStudio extends React.Component {
     // ─── Render: pantalla de selección ──────────────────────────────────────────
 
     _renderChooser () {
+        const savedList = Object.values(this.state.savedModels)
+            .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         return (
             <div className={styles.overlay}>
                 <div className={styles.modal}>
@@ -986,6 +1105,38 @@ class MLStudio extends React.Component {
                                 </button>
                             ))}
                         </div>
+                        {savedList.length > 0 && (
+                            <div className={styles.chooserContinueWrap}>
+                                <div className={styles.chooserContinueTitle}>
+                                    O continúa entrenando un modelo guardado
+                                </div>
+                                <div className={styles.chooserContinueList}>
+                                    {savedList.map(m => {
+                                        const t = PROJECT_TYPES.find(
+                                            p => p.id === (m.type || 'image')
+                                        );
+                                        return (
+                                            <button
+                                                key={m.name}
+                                                className={styles.chooserContinueItem}
+                                                onClick={() => this._continueModel(m.name)}
+                                                title="Cargar para continuar el entrenamiento"
+                                            >
+                                                <span
+                                                    className={styles.chooserContinueType}
+                                                    style={{background: t ? t.color : '#8a95b0'}}
+                                                >
+                                                    {t ? t.short : '?'}
+                                                </span>
+                                                <span className={styles.chooserContinueName}>
+                                                    {m.name}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
