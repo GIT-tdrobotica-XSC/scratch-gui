@@ -14,13 +14,14 @@ import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 import { isRtl } from 'scratch-l10n';
 import playiot from '../../lib/libraries/extensions/playiot';
 import playme from '../../lib/libraries/extensions/playme';
+import playgo from '../../lib/libraries/extensions/playgo';
 import extensionModalStyles from './extension-modal.css';
 
 // El modal "Agregar dispositivo" (panel de Dispositivos) SOLO debe listar
-// dispositivos de hardware (PlayIoT, PlayMe), no extensiones de software como
+// dispositivos de hardware (PlayIoT, PlayMe, PlayGo), no extensiones de software como
 // Teachable Machine. Esa es una lista aparte de lib/libraries/extensions/index.jsx,
 // que alimenta el botón general "Agregar Extensión" del área de bloques.
-const deviceLibrary = [playiot, playme];
+const deviceLibrary = [playiot, playme, playgo];
 
 import styles from './sprite-selector.css';
 
@@ -504,8 +505,9 @@ class SpriteSelectorComponent extends React.Component {
             activeUpdatingPort: null
         });
 
-        // PlayIoT: reconectar desde aquí (PlayMe ya reconectó desde onReconnect del modal)
-        if (device && activeUpdatingPort && device.extensionId !== 'playme') {
+        // PlayIoT: reconectar desde aquí (PlayMe y PlayGo, mismo chip ESP32-S3, ya
+        // reconectaron desde onReconnect del modal)
+        if (device && activeUpdatingPort && device.extensionId !== 'playme' && device.extensionId !== 'playgo') {
             const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[device.extensionId];
 
             if (peripheral && typeof peripheral.reconnect === 'function') {

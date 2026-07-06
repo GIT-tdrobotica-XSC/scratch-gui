@@ -5,6 +5,10 @@ import styles from './firmware-updater-modal.css';
 
 const PLAYIOT_ID = 'playiot';
 const PLAYME_ID = 'playme';
+const PLAYGO_ID = 'playgo';
+// PlayGo usa el mismo chip ESP32-S3 (USB-JTAG nativo) que PlayMe: mismo
+// bootloaderAddress, mismo tipo de reset por RTS, misma reconexión inmediata.
+const isNativeUsbChip = id => id === PLAYME_ID || id === PLAYGO_ID;
 
 const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, onReconnect }) => {
     const [progress, setProgress] = useState(0);
@@ -101,8 +105,8 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
             setStatus(`Escribiendo firmware ${extension.toUpperCase()}...`);
             setProgress(20);
 
-            // ESP32-S3 (PlayMe): bootloader at 0x0000. Original ESP32 (PlayIoT): 0x1000.
-            const bootloaderAddress = extensionId === PLAYME_ID ? 0x0000 : 0x1000;
+            // ESP32-S3 (PlayMe, PlayGo): bootloader at 0x0000. Original ESP32 (PlayIoT): 0x1000.
+            const bootloaderAddress = isNativeUsbChip(extensionId) ? 0x0000 : 0x1000;
             const filesData = [
                 { data: bootloader, address: bootloaderAddress },
                 { data: partitions, address: 0x8000 },
@@ -142,16 +146,16 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
             // ====== PASO 5: RESET (condicional por placa) ======
             setStatus('Reiniciando dispositivo...');
 
-            if (extensionId === PLAYME_ID) {
-                // ESP32-S3 USB-JTAG: RTS → EN pin. HardReset(usingUsbOtg=true) solo
-                // libera RTS pero nunca lo aserta, así que es un no-op después de main().
+            if (isNativeUsbChip(extensionId)) {
+                // ESP32-S3 USB-JTAG (PlayMe, PlayGo): RTS → EN pin. HardReset(usingUsbOtg=true)
+                // solo libera RTS pero nunca lo aserta, así que es un no-op después de main().
                 // Pulsamos RTS manualmente: HIGH (EN bajo = reset) → LOW (EN alto = boot).
                 try {
                     await transport.setRTS(true);
                     await new Promise(r => setTimeout(r, 100));
                     await transport.setRTS(false);
                 } catch (e) {
-                    console.warn('Error en reset PlayMe:', e);
+                    console.warn('Error en reset PlayMe/PlayGo:', e);
                 }
             } else {
                 // PlayIoT: comportamiento original (funciona bien)
@@ -173,14 +177,14 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
                 transport = null;
             }
 
-            // PlayMe: reconectar inmediatamente (como PIO: reset → monitor de una)
+            // PlayMe/PlayGo: reconectar inmediatamente (como PIO: reset → monitor de una)
             // No esperar — el dispositivo arranca mientras el modal muestra éxito.
-            if (extensionId === PLAYME_ID && onReconnect) {
+            if (isNativeUsbChip(extensionId) && onReconnect) {
                 onReconnect(port);
             }
 
             // PlayIoT sigue reconectando desde handleCloseFirmwareModal (necesita más tiempo)
-            const bootWait = extensionId === PLAYME_ID ? 800 : 1500;
+            const bootWait = isNativeUsbChip(extensionId) ? 800 : 1500;
             await new Promise(resolve => setTimeout(resolve, bootWait));
 
             setProgress(100);
