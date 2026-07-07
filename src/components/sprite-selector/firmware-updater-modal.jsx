@@ -6,9 +6,11 @@ import styles from './firmware-updater-modal.css';
 const PLAYIOT_ID = 'playiot';
 const PLAYME_ID = 'playme';
 const PLAYGO_ID = 'playgo';
-// PlayGo usa el mismo chip ESP32-S3 (USB-JTAG nativo) que PlayMe: mismo
-// bootloaderAddress, mismo tipo de reset por RTS, misma reconexión inmediata.
-const isNativeUsbChip = id => id === PLAYME_ID || id === PLAYGO_ID;
+// Solo PlayMe usa USB-JTAG nativo del ESP32-S3 (sin puente serie, sin pulso
+// DTR/RTS de reset). PlayGo, aunque también es ESP32-S3, tiene un puente
+// CH340K + circuito de auto-reset por DTR (igual que PlayIoT, confirmado en
+// el esquemático v7.1) — así que se agrupa con PlayIoT, no con PlayMe.
+const isNativeUsbChip = id => id === PLAYME_ID;
 
 const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, onReconnect }) => {
     const [progress, setProgress] = useState(0);
@@ -16,8 +18,12 @@ const FirmwareUpdaterModal = ({ port, extensionId, onClose, onUpdatingChange, on
     const [error, setError] = useState(null);
     const [isSuccess, setIsSuccess] = useState(false);
     const [selectedExtension, setSelectedExtension] = useState(null);
+    // PlayGo tiene un circuito de auto-reset (CH340 + flip-flop) que en teoría
+    // podría no necesitar el paso manual de BOOT, pero sin poder probarlo en
+    // hardware real se deja en modo seguro (igual que PlayIoT) hasta confirmar
+    // empíricamente que el auto-reset funciona solo.
     const [waitingForBoot, setWaitingForBoot] = useState(
-        extensionId === PLAYIOT_ID
+        extensionId === PLAYIOT_ID || extensionId === PLAYGO_ID
     );
 
     // Iniciar flasheo automáticamente si no se requiere paso de Boot

@@ -505,9 +505,9 @@ class SpriteSelectorComponent extends React.Component {
             activeUpdatingPort: null
         });
 
-        // PlayIoT: reconectar desde aquí (PlayMe y PlayGo, mismo chip ESP32-S3, ya
-        // reconectaron desde onReconnect del modal)
-        if (device && activeUpdatingPort && device.extensionId !== 'playme' && device.extensionId !== 'playgo') {
+        // PlayIoT y PlayGo (ambos con puente CH340 + reset por DTR/RTS) reconectan
+        // desde aquí; PlayMe (USB-JTAG nativo) ya reconectó desde onReconnect del modal.
+        if (device && activeUpdatingPort && device.extensionId !== 'playme') {
             const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions[device.extensionId];
 
             if (peripheral && typeof peripheral.reconnect === 'function') {
