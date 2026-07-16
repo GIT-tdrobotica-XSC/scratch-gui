@@ -791,6 +791,10 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
         xmlOpen,
         eventsXML, gap,
         controlXML, gap,
+        // Sensores (tecla presionada, mouse, etc.) habilitados en modo
+        // dispositivo para poder mover motores/actuadores desde el teclado
+        // (ej. "si tecla flecha arriba presionada -> avanzar").
+        sensingXML, gap,
         operatorsXML, gap,
         variablesXML, gap,
         myBlocksXML
