@@ -34,6 +34,10 @@
     background-color: #e05a5a;
 }
 
+.toast.reconnecting {
+    background-color: #e8912d;
+}
+
 .toast.exiting {
     animation: slideUp 0.22s ease-in forwards;
 }

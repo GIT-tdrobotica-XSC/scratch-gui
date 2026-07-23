@@ -32,13 +32,16 @@ const DeviceToast = ({vm}) => {
 
         const handleConnected = () => addToast('connected', 'Dispositivo conectado');
         const handleDisconnected = () => addToast('disconnected', 'Dispositivo desconectado');
+        const handleReconnecting = () => addToast('reconnecting', 'Reconectando dispositivo…');
 
         vm.on('PERIPHERAL_CONNECTED', handleConnected);
         vm.on('PERIPHERAL_DISCONNECTED', handleDisconnected);
+        vm.on('PERIPHERAL_RECONNECTING', handleReconnecting);
 
         return () => {
             vm.removeListener('PERIPHERAL_CONNECTED', handleConnected);
             vm.removeListener('PERIPHERAL_DISCONNECTED', handleDisconnected);
+            vm.removeListener('PERIPHERAL_RECONNECTING', handleReconnecting);
         };
     }, [vm]);
 
@@ -52,7 +55,7 @@ const DeviceToast = ({vm}) => {
                     className={`${styles.toast} ${styles[toast.type]} ${toast.exiting ? styles.exiting : ''}`}
                 >
                     <span className={styles.icon}>
-                        {toast.type === 'connected' ? '✓' : '○'}
+                        {toast.type === 'connected' ? '✓' : (toast.type === 'reconnecting' ? '⟳' : '○')}
                     </span>
                     {toast.message}
                 </div>
