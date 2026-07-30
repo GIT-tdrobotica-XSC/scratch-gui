@@ -757,7 +757,7 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     //   → muestra TODOS los bloques normales + categoría del dispositivo activo
     // Modo sprite/escenario:
     //   → muestra todos los bloques normales, SIN categorías de dispositivo
-    const deviceExtensionIds = ['playiot', 'playme', 'playgo'];
+    const deviceExtensionIds = ['playiot', 'playme', 'playgo', 'playboard'];
     const activeDeviceId = window.activeDeviceExtensionId;
     const isDeviceTarget = !!(activeDeviceId && deviceExtensionIds.includes(activeDeviceId) && !isStage);
 

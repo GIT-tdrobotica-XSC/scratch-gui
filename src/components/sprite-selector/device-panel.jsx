@@ -40,6 +40,13 @@ class DevicePanel extends React.Component {
         const selectedDevice = devices && devices[selectedDeviceIndex] ? devices[selectedDeviceIndex] : null;
         const isSmall = stageSize === 'small';
 
+        // Dispositivos flasheables desde PlayCode (ESP32, vía esptool-js). Los
+        // que no están aquí (p. ej. PlayBoard/Arduino UNO = ATmega328p, que se
+        // flashea con Arduino IDE) NO muestran el botón "Actualizar Firmware".
+        const FIRMWARE_UPDATABLE = ['playiot', 'playme', 'playgo'];
+        const canUpdateFirmware = selectedDevice &&
+            FIRMWARE_UPDATABLE.includes(selectedDevice.extensionId);
+
         return (
             <div className={classNames(styles.devicePanelWrapper, {
                 [styles.devicePanelWrapperSmall]: isSmall
@@ -166,12 +173,14 @@ class DevicePanel extends React.Component {
                                                 Desconectar
                                             </button>
 
-                                            <button
-                                                className={classNames(styles.button, styles.firmwareButton)}
-                                                onClick={onUpdateFirmware}
-                                            >
-                                                Actualizar Firmware
-                                            </button>
+                                            {canUpdateFirmware && (
+                                                <button
+                                                    className={classNames(styles.button, styles.firmwareButton)}
+                                                    onClick={onUpdateFirmware}
+                                                >
+                                                    Actualizar Firmware
+                                                </button>
+                                            )}
                                         </>
                                     )}
                                 </div>
