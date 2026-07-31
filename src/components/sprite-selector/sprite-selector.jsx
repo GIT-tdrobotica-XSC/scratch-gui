@@ -229,7 +229,10 @@ class SpriteSelectorComponent extends React.Component {
         if (selected) {
             const selectedPeripheral = vm.runtime.peripheralExtensions &&
                 vm.runtime.peripheralExtensions[selected.extensionId];
-            const status = (selectedPeripheral && selectedPeripheral.programStatus) || null;
+            // Sin conexión no llega telemetría, así que el último estado
+            // conocido está desfasado: mejor no mostrar nada que mentir.
+            const connected = selectedPeripheral && selectedPeripheral.isConnected();
+            const status = (connected && selectedPeripheral.programStatus) || null;
             const current = this.state.programStatus;
             const changed = (status && current) ?
                 (status.st !== current.st || status.sz !== current.sz) :
@@ -537,6 +540,31 @@ class SpriteSelectorComponent extends React.Component {
         }
     }
 
+    handleEraseProgram = async () => {
+        const { selectedDeviceIndex, devices } = this.state;
+        const device = devices[selectedDeviceIndex];
+        const peripheral = device && this.props.vm.runtime.peripheralExtensions &&
+            this.props.vm.runtime.peripheralExtensions[device.extensionId];
+        if (!peripheral || typeof peripheral.eraseProgram !== 'function') return;
+
+        // Se confirma porque no hay deshacer: el programa vive solo en la
+        // memoria del robot, y los bloques del proyecto pueden haber cambiado
+        // desde que se subió.
+        const ok = window.confirm(
+            '¿Borrar el programa que está guardado en el robot?\n\n' +
+            'El robot dejará de funcionar solo cuando lo enciendas. ' +
+            'Tus bloques no se borran: puedes volver a subirlos cuando quieras.'
+        );
+        if (!ok) return;
+
+        try {
+            await peripheral.eraseProgram();
+            this.setState({ programStatus: peripheral.programStatus || null });
+        } catch (e) {
+            console.warn('No se pudo borrar el programa de la placa:', e);
+        }
+    }
+
     handleStopProgram = async () => {
         const { selectedDeviceIndex, devices } = this.state;
         const device = devices[selectedDeviceIndex];
@@ -693,6 +721,7 @@ class SpriteSelectorComponent extends React.Component {
                             onUpdateFirmware={this.handleFirmwareUpdate}
                             onUploadProgram={this.handleUploadProgram}
                             onStopProgram={this.handleStopProgram}
+                            onEraseProgram={this.handleEraseProgram}
                             programStatus={this.state.programStatus}
                             onAddDevice={this.handleAddDevice}
                             onRemoveDevice={this.handleRemoveDevice}

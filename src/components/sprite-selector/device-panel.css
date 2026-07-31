@@ -357,6 +357,23 @@
     box-shadow: 0 3px 8px rgba(237, 137, 54, 0.25);
 }
 
+/* Borrar es destructivo pero no urgente: se deja discreto (contorno, no
+   relleno) para que no compita con "Subir" ni se pulse por error. */
+.erase-program-button {
+    background: transparent;
+    color: #a0aec0;
+    border: 1px solid #cbd5e0;
+    box-shadow: none;
+    font-weight: 600;
+}
+
+.erase-program-button:hover:not(:disabled) {
+    background-color: #fff5f5;
+    border-color: #fc8181;
+    color: #c53030;
+    box-shadow: none;
+}
+
 /* ─── Empty state (cuando no hay dispositivos) ────────────────────────────── */
 
 .empty-state {

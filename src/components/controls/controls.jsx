@@ -19,6 +19,14 @@ const messages = defineMessages({
         id: 'gui.controls.stop',
         defaultMessage: 'Stop',
         description: 'Stop button title'
+    },
+    // El tooltip dice QUE HACER, no solo que esta deshabilitado: un control
+    // apagado sin explicacion se lee como que la aplicacion se rompio.
+    programRunningTitle: {
+        id: 'gui.controls.programRunning',
+        defaultMessage: 'Tu robot está corriendo su propio programa. Para probar en vivo, ' +
+            'pulsa «Detener programa» en la pestaña Dispositivos.',
+        description: 'Tooltip when the board is running its own compiled program'
     }
 });
 
@@ -29,9 +37,11 @@ const Controls = function (props) {
         intl,
         onGreenFlagClick,
         onStopAllClick,
+        programRunning,
         turbo,
         ...componentProps
     } = props;
+    const disabledTitle = intl.formatMessage(messages.programRunningTitle);
     return (
         <div
             className={classNames(styles.controlsContainer, className)}
@@ -39,12 +49,14 @@ const Controls = function (props) {
         >
             <GreenFlag
                 active={active}
-                title={intl.formatMessage(messages.goTitle)}
+                disabled={programRunning}
+                title={programRunning ? disabledTitle : intl.formatMessage(messages.goTitle)}
                 onClick={onGreenFlagClick}
             />
             <StopAll
                 active={active}
-                title={intl.formatMessage(messages.stopTitle)}
+                disabled={programRunning}
+                title={programRunning ? disabledTitle : intl.formatMessage(messages.stopTitle)}
                 onClick={onStopAllClick}
             />
             {turbo ? (
@@ -60,11 +72,13 @@ Controls.propTypes = {
     intl: intlShape.isRequired,
     onGreenFlagClick: PropTypes.func.isRequired,
     onStopAllClick: PropTypes.func.isRequired,
+    programRunning: PropTypes.bool,
     turbo: PropTypes.bool
 };
 
 Controls.defaultProps = {
     active: false,
+    programRunning: false,
     turbo: false
 };
 

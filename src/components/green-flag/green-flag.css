@@ -17,3 +17,30 @@
 .green-flag.is-active {
     background-color: $looks-transparent;
 }
+
+/* Modo autónomo: la placa corre su propio programa e ignora las órdenes en
+   vivo, así que este control no haría nada. Se apaga en gris y respira
+   suavemente -- el pulso comunica "hay algo pasando en otro lado", que es
+   distinto de "esto está roto". El tooltip dice cómo recuperar el control. */
+.green-flag.is-disabled {
+    filter: grayscale(100%);
+    opacity: 0.4;
+    cursor: not-allowed;
+    animation: program-running-pulse 2s ease-in-out infinite;
+}
+
+.green-flag.is-disabled:hover {
+    background-color: transparent;
+}
+
+@keyframes program-running-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.65; }
+}
+
+/* Quien haya pedido menos movimiento en su sistema no debería ver el pulso. */
+@media (prefers-reduced-motion: reduce) {
+    .green-flag.is-disabled {
+        animation: none;
+    }
+}

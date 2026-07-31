@@ -9,6 +9,7 @@ const GreenFlagComponent = function (props) {
     const {
         active,
         className,
+        disabled,
         onClick,
         title,
         ...componentProps
@@ -19,13 +20,14 @@ const GreenFlagComponent = function (props) {
                 className,
                 styles.greenFlag,
                 {
-                    [styles.isActive]: active
+                    [styles.isActive]: active,
+                    [styles.isDisabled]: disabled
                 }
             )}
             draggable={false}
             src={greenFlagIcon}
             title={title}
-            onClick={onClick}
+            onClick={disabled ? undefined : onClick}
             {...componentProps}
         />
     );
@@ -33,11 +35,13 @@ const GreenFlagComponent = function (props) {
 GreenFlagComponent.propTypes = {
     active: PropTypes.bool,
     className: PropTypes.string,
+    disabled: PropTypes.bool,
     onClick: PropTypes.func.isRequired,
     title: PropTypes.string
 };
 GreenFlagComponent.defaultProps = {
     active: false,
+    disabled: false,
     title: 'Go'
 };
 export default GreenFlagComponent;

@@ -20,3 +20,30 @@
 .stop-all.is-active {
     opacity: 1;
 }
+
+/* Modo autónomo: mismo criterio que la bandera verde (ver green-flag.css).
+   Va después de .is-active para ganarle en especificidad, porque la base de
+   este botón ya juega con la opacidad. */
+.stop-all.is-disabled,
+.stop-all.is-active.is-disabled {
+    filter: grayscale(100%);
+    opacity: 0.4;
+    cursor: not-allowed;
+    animation: stop-program-running-pulse 2s ease-in-out infinite;
+}
+
+.stop-all.is-disabled:hover {
+    background-color: transparent;
+}
+
+@keyframes stop-program-running-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.65; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stop-all.is-disabled,
+    .stop-all.is-active.is-disabled {
+        animation: none;
+    }
+}

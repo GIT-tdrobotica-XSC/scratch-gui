@@ -9,6 +9,7 @@ const StopAllComponent = function (props) {
     const {
         active,
         className,
+        disabled,
         onClick,
         title,
         ...componentProps
@@ -19,13 +20,14 @@ const StopAllComponent = function (props) {
                 className,
                 styles.stopAll,
                 {
-                    [styles.isActive]: active
+                    [styles.isActive]: active,
+                    [styles.isDisabled]: disabled
                 }
             )}
             draggable={false}
             src={stopAllIcon}
             title={title}
-            onClick={onClick}
+            onClick={disabled ? undefined : onClick}
             {...componentProps}
         />
     );
@@ -34,12 +36,14 @@ const StopAllComponent = function (props) {
 StopAllComponent.propTypes = {
     active: PropTypes.bool,
     className: PropTypes.string,
+    disabled: PropTypes.bool,
     onClick: PropTypes.func.isRequired,
     title: PropTypes.string
 };
 
 StopAllComponent.defaultProps = {
     active: false,
+    disabled: false,
     title: 'Stop'
 };
 

@@ -35,6 +35,7 @@ class DevicePanel extends React.Component {
             onUpdateFirmware,
             onUploadProgram,
             onStopProgram,
+            onEraseProgram,
             programStatus,
             onAddDevice,
             onRemoveDevice
@@ -58,6 +59,11 @@ class DevicePanel extends React.Component {
             PROGRAM_UPLOADABLE.includes(selectedDevice.extensionId);
 
         const isProgramRunning = programStatus && programStatus.st === 'running';
+        // Hay programa guardado tanto si está corriendo como si está detenido:
+        // en ambos casos sigue en la memoria del robot y volverá a arrancar al
+        // encenderlo.
+        const hasProgram = programStatus &&
+            (programStatus.st === 'running' || programStatus.st === 'loaded');
         const PROGRAM_STATE_LABELS = {
             running: 'Corriendo en el robot',
             loaded: 'Cargado (detenido)',
@@ -224,6 +230,19 @@ class DevicePanel extends React.Component {
                                                 </button>
                                             )}
 
+                                            {/* Borrar solo aparece si hay algo que borrar. Sin esto,
+                                                un programa subido acompaña al robot para siempre:
+                                                arranca solo cada vez que se enciende. */}
+                                            {canUploadProgram && hasProgram && (
+                                                <button
+                                                    className={classNames(styles.button, styles.eraseProgramButton)}
+                                                    onClick={onEraseProgram}
+                                                    title="Quita el programa de la memoria del robot"
+                                                >
+                                                    {'🗑 Borrar programa'}
+                                                </button>
+                                            )}
+
                                             {canUpdateFirmware && (
                                                 <button
                                                     className={classNames(styles.button, styles.firmwareButton)}
@@ -272,6 +291,7 @@ DevicePanel.propTypes = {
     onUpdateFirmware: PropTypes.func,
     onUploadProgram: PropTypes.func,
     onStopProgram: PropTypes.func,
+    onEraseProgram: PropTypes.func,
     programStatus: PropTypes.shape({
         st: PropTypes.string,
         sz: PropTypes.number,
@@ -293,6 +313,7 @@ DevicePanel.defaultProps = {
     onUpdateFirmware: () => { },
     onUploadProgram: () => { },
     onStopProgram: () => { },
+    onEraseProgram: () => { },
     onAddDevice: () => { },
     onRemoveDevice: () => { },
     onLoadExtension: () => { }
