@@ -341,6 +341,22 @@
     box-shadow: 0 3px 8px rgba(76, 151, 255, 0.25);
 }
 
+/* Acción primaria del panel: subir el programa a la placa para que el robot
+   funcione sin el computador. Se destaca más que los demás botones porque,
+   una vez existe, es lo más importante que se puede hacer aquí. */
+.upload-button {
+    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    color: white;
+    box-shadow: 0 3px 10px rgba(46, 204, 113, 0.35);
+    font-size: 0.9rem;
+}
+
+.stop-program-button {
+    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+    color: white;
+    box-shadow: 0 3px 8px rgba(237, 137, 54, 0.25);
+}
+
 /* ─── Empty state (cuando no hay dispositivos) ────────────────────────────── */
 
 .empty-state {

@@ -1,0 +1,258 @@
+/* Modal de "Subir a la placa".
+   Sigue el mismo lenguaje visual que firmware-updater-modal.css para que las
+   dos operaciones sobre el dispositivo se sientan de la misma familia. */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal {
+    background-color: white;
+    border-radius: 12px;
+    width: 460px;
+    max-width: 92vw;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.close-button:hover {
+    color: #333;
+}
+
+/* ─── Progreso ──────────────────────────────────────────────────────────── */
+
+.progress-area {
+    text-align: center;
+}
+
+.device-line {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 12px;
+}
+
+.ble-hint {
+    color: #888;
+    font-style: italic;
+}
+
+.status-text {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 12px;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 12px;
+    background-color: #e9edf2;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    transition: width 0.25s ease;
+}
+
+.progress-percent {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #666;
+    font-weight: 600;
+}
+
+/* ─── Errores de compilación ────────────────────────────────────────────── */
+
+.error-area {
+    background-color: #fff5f5;
+    border: 1px solid #ffd6d6;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.error-heading {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #c53030;
+}
+
+.error-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.error-item {
+    padding: 10px 0;
+    border-top: 1px solid #ffe0e0;
+}
+
+.error-item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.error-message {
+    font-size: 13.5px;
+    color: #2d3748;
+    line-height: 1.45;
+}
+
+.error-hint {
+    margin-top: 5px;
+    font-size: 12.5px;
+    color: #718096;
+    line-height: 1.4;
+}
+
+.show-block-button {
+    margin-top: 8px;
+    background-color: #fff;
+    border: 1px solid #fc8181;
+    color: #c53030;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.show-block-button:hover {
+    background-color: #fed7d7;
+}
+
+/* ─── Éxito ─────────────────────────────────────────────────────────────── */
+
+.success-area {
+    text-align: center;
+    padding: 6px 0;
+}
+
+.success-icon {
+    font-size: 40px;
+    line-height: 1;
+}
+
+.success-title {
+    margin: 10px 0 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #276749;
+}
+
+.success-text {
+    margin: 0;
+    font-size: 13.5px;
+    color: #4a5568;
+    line-height: 1.5;
+}
+
+.stats-line {
+    margin: 12px 0 0;
+    font-size: 12px;
+    color: #a0aec0;
+}
+
+.warnings-box {
+    margin-top: 14px;
+    text-align: left;
+}
+
+.warnings-toggle {
+    background: none;
+    border: none;
+    color: #b7791f;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+}
+
+.warning-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.warning-item {
+    font-size: 12.5px;
+    color: #744210;
+    line-height: 1.45;
+    margin-bottom: 4px;
+}
+
+/* ─── Pie ───────────────────────────────────────────────────────────────── */
+
+.footer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.action-button {
+    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.action-button:hover {
+    opacity: 0.9;
+}
+
+.retry-button {
+    background-color: #edf2f7;
+    color: #4a5568;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.retry-button:hover {
+    background-color: #e2e8f0;
+}

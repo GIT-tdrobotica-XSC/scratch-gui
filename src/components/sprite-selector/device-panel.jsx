@@ -33,6 +33,9 @@ class DevicePanel extends React.Component {
             onConnect,
             onDisconnect,
             onUpdateFirmware,
+            onUploadProgram,
+            onStopProgram,
+            programStatus,
             onAddDevice,
             onRemoveDevice
         } = this.props;
@@ -46,6 +49,21 @@ class DevicePanel extends React.Component {
         const FIRMWARE_UPDATABLE = ['playiot', 'playme', 'playgo'];
         const canUpdateFirmware = selectedDevice &&
             FIRMWARE_UPDATABLE.includes(selectedDevice.extensionId);
+
+        // Dispositivos que pueden ejecutar un programa compilado por su cuenta
+        // (sin el computador conectado). Se amplía por fases a medida que cada
+        // firmware incorpora el intérprete de bytecode.
+        const PROGRAM_UPLOADABLE = ['playgo'];
+        const canUploadProgram = selectedDevice &&
+            PROGRAM_UPLOADABLE.includes(selectedDevice.extensionId);
+
+        const isProgramRunning = programStatus && programStatus.st === 'running';
+        const PROGRAM_STATE_LABELS = {
+            running: 'Corriendo en el robot',
+            loaded: 'Cargado (detenido)',
+            empty: 'Sin programa',
+            error: 'Con error'
+        };
 
         return (
             <div className={classNames(styles.devicePanelWrapper, {
@@ -154,6 +172,18 @@ class DevicePanel extends React.Component {
                                         </span>
                                     </div>
 
+                                    {canUploadProgram && selectedDevice.isConnected && programStatus && (
+                                        <div className={styles.infoRow}>
+                                            <span className={styles.infoLabel}>
+                                                Programa
+                                            </span>
+                                            <span className={styles.infoValue}>
+                                                {PROGRAM_STATE_LABELS[programStatus.st] || '—'}
+                                                {programStatus.sz > 0 && ` · ${programStatus.sz} B`}
+                                            </span>
+                                        </div>
+                                    )}
+
                                 </div>
 
                                 <div className={styles.buttonGroup}>
@@ -172,6 +202,27 @@ class DevicePanel extends React.Component {
                                             >
                                                 Desconectar
                                             </button>
+
+                                            {/* Acción primaria: una vez existe, es lo más
+                                                importante que se puede hacer con el robot. */}
+                                            {canUploadProgram && (
+                                                <button
+                                                    className={classNames(styles.button, styles.uploadButton)}
+                                                    onClick={onUploadProgram}
+                                                    title="Envía tus bloques al robot para que funcione sin el computador"
+                                                >
+                                                    {'⬆ Subir a la placa'}
+                                                </button>
+                                            )}
+
+                                            {canUploadProgram && isProgramRunning && (
+                                                <button
+                                                    className={classNames(styles.button, styles.stopProgramButton)}
+                                                    onClick={onStopProgram}
+                                                >
+                                                    {'■ Detener programa'}
+                                                </button>
+                                            )}
 
                                             {canUpdateFirmware && (
                                                 <button
@@ -219,6 +270,14 @@ DevicePanel.propTypes = {
     onConnect: PropTypes.func,
     onDisconnect: PropTypes.func,
     onUpdateFirmware: PropTypes.func,
+    onUploadProgram: PropTypes.func,
+    onStopProgram: PropTypes.func,
+    programStatus: PropTypes.shape({
+        st: PropTypes.string,
+        sz: PropTypes.number,
+        crc: PropTypes.number,
+        err: PropTypes.number
+    }),
     onAddDevice: PropTypes.func,
     onRemoveDevice: PropTypes.func,
     onLoadExtension: PropTypes.func,
@@ -232,6 +291,8 @@ DevicePanel.defaultProps = {
     onConnect: () => { },
     onDisconnect: () => { },
     onUpdateFirmware: () => { },
+    onUploadProgram: () => { },
+    onStopProgram: () => { },
     onAddDevice: () => { },
     onRemoveDevice: () => { },
     onLoadExtension: () => { }

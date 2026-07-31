@@ -9,6 +9,7 @@ import ActionMenu from '../action-menu/action-menu.jsx';
 import Tabs from './tabs.jsx';
 import DevicePanel from './device-panel.jsx';
 import FirmwareUpdaterModal from './firmware-updater-modal.jsx';
+import ProgramUploadModal from './program-upload-modal.jsx';
 import StageSelector from '../../containers/stage-selector.jsx';
 import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 import { isRtl } from 'scratch-l10n';
@@ -78,11 +79,16 @@ class SpriteSelectorComponent extends React.Component {
             isUpdatingFirmware: false,
             isReconnecting: false,
             firmwareStatus: null,  // null | 'updated' | 'outdated'
-            firmwareChecking: false
+            firmwareChecking: false,
+            // Modo autónomo: subida del programa compilado a la placa.
+            showUploadModal: false,
+            uploadTargetId: null,  // target cuyos bloques se están subiendo
+            programStatus: null    // {st, sz, crc, err} tal como lo reporta la placa
         };
         this.connectionCheckInterval = null;
         this._rxCheckTimers = {};
         this._fwPollIntervals = {};
+        this._programPollInterval = null;
     }
 
     componentDidMount() {
@@ -214,6 +220,21 @@ class SpriteSelectorComponent extends React.Component {
 
         if (hasChanges) {
             this.setState({ devices: updatedDevices });
+        }
+
+        // Estado del programa autónomo del dispositivo seleccionado. Se lee en
+        // este mismo ciclo (que ya corre cada 500 ms) en vez de montar otro
+        // timer: el peripheral lo mantiene al día desde la telemetría.
+        const selected = devices[this.state.selectedDeviceIndex];
+        if (selected) {
+            const selectedPeripheral = vm.runtime.peripheralExtensions &&
+                vm.runtime.peripheralExtensions[selected.extensionId];
+            const status = (selectedPeripheral && selectedPeripheral.programStatus) || null;
+            const current = this.state.programStatus;
+            const changed = (status && current) ?
+                (status.st !== current.st || status.sz !== current.sz) :
+                (status !== current);
+            if (changed) this.setState({ programStatus: status });
         }
     }
 
@@ -464,6 +485,73 @@ class SpriteSelectorComponent extends React.Component {
         }
     }
 
+    /**
+     * Resuelve (creándolo si hace falta) el target que guarda los bloques del
+     * dispositivo seleccionado. Mismo patrón que handleTabChange: el id
+     * cacheado puede haber quedado obsoleto al cargar un proyecto.
+     */
+    resolveDeviceTargetId = device => {
+        const { vm } = this.props;
+        if (!device || !vm) return null;
+
+        if (device.targetId && vm.runtime.getTargetById(device.targetId)) {
+            return device.targetId;
+        }
+        const existing = vm.runtime.targets.find(
+            t => t.isDeviceTarget && t.deviceExtensionId === device.extensionId
+        );
+        const targetId = existing ?
+            existing.id :
+            vm.createDeviceTarget(device.extensionId, device.name);
+
+        this.setState(prev => ({
+            devices: prev.devices.map(d => (
+                d.extensionId === device.extensionId ? { ...d, targetId } : d
+            ))
+        }));
+        return targetId;
+    }
+
+    handleUploadProgram = () => {
+        const { selectedDeviceIndex, devices } = this.state;
+        const device = devices[selectedDeviceIndex];
+        if (!device) return;
+
+        // Sin esto, "Subir a la placa" compilaría los bloques del sprite que
+        // estuviera abierto en vez de los del robot. Se guarda el id resuelto
+        // en el estado en vez de leerlo luego de `devices`, para no depender
+        // de en qué orden cuajen los dos setState.
+        const targetId = this.resolveDeviceTargetId(device);
+        this.setState({ showUploadModal: true, uploadTargetId: targetId });
+    }
+
+    handleCloseUploadModal = () => {
+        this.setState({ showUploadModal: false, uploadTargetId: null });
+        // Refrescar el estado del programa que muestra el panel.
+        const { selectedDeviceIndex, devices } = this.state;
+        const device = devices[selectedDeviceIndex];
+        const peripheral = device && this.props.vm.runtime.peripheralExtensions &&
+            this.props.vm.runtime.peripheralExtensions[device.extensionId];
+        if (peripheral && typeof peripheral.queryProgram === 'function') {
+            peripheral.queryProgram().catch(() => { });
+        }
+    }
+
+    handleStopProgram = async () => {
+        const { selectedDeviceIndex, devices } = this.state;
+        const device = devices[selectedDeviceIndex];
+        const peripheral = device && this.props.vm.runtime.peripheralExtensions &&
+            this.props.vm.runtime.peripheralExtensions[device.extensionId];
+        if (!peripheral || typeof peripheral.stopProgram !== 'function') return;
+
+        try {
+            await peripheral.stopProgram();
+            this.setState({ programStatus: peripheral.programStatus || null });
+        } catch (e) {
+            console.warn('No se pudo detener el programa de la placa:', e);
+        }
+    }
+
     handleFirmwareUpdate = async () => {
         const { selectedDeviceIndex, devices } = this.state;
         const { vm } = this.props;
@@ -603,6 +691,9 @@ class SpriteSelectorComponent extends React.Component {
                             onConnect={this.handleDeviceConnect}
                             onDisconnect={this.handleDeviceDisconnect}
                             onUpdateFirmware={this.handleFirmwareUpdate}
+                            onUploadProgram={this.handleUploadProgram}
+                            onStopProgram={this.handleStopProgram}
+                            programStatus={this.state.programStatus}
                             onAddDevice={this.handleAddDevice}
                             onRemoveDevice={this.handleRemoveDevice}
                             onLoadExtension={this.props.onLoadExtension}
@@ -693,6 +784,24 @@ class SpriteSelectorComponent extends React.Component {
                                 </div>
                             </div>
                         )}
+
+                        {/* Modal de subida del programa compilado (modo autónomo) */}
+                        {this.state.showUploadModal && (() => {
+                            const device = devices[selectedDeviceIndex];
+                            const peripheral = device && this.props.vm.runtime.peripheralExtensions &&
+                                this.props.vm.runtime.peripheralExtensions[device.extensionId];
+                            if (!device || !peripheral) return null;
+                            return (
+                                <ProgramUploadModal
+                                    vm={this.props.vm}
+                                    targetId={this.state.uploadTargetId || device.targetId}
+                                    peripheral={peripheral}
+                                    deviceName={device.name}
+                                    transport={peripheral._activeTransport === peripheral._ble ? 'ble' : 'usb'}
+                                    onClose={this.handleCloseUploadModal}
+                                />
+                            );
+                        })()}
 
                         {/* Modal de Actualización de Firmware */}
                         {this.state.showFirmwareModal && (
