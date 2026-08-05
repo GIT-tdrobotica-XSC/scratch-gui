@@ -10,6 +10,7 @@ import Tabs from './tabs.jsx';
 import DevicePanel from './device-panel.jsx';
 import FirmwareUpdaterModal from './firmware-updater-modal.jsx';
 import ProgramUploadModal from './program-upload-modal.jsx';
+import RemoteControlModal from './remote-control-modal.jsx';
 import StageSelector from '../../containers/stage-selector.jsx';
 import { STAGE_DISPLAY_SIZES } from '../../lib/layout-constants';
 import { isRtl } from 'scratch-l10n';
@@ -83,6 +84,7 @@ class SpriteSelectorComponent extends React.Component {
             // Modo autónomo: subida del programa compilado a la placa.
             showUploadModal: false,
             uploadTargetId: null,  // target cuyos bloques se están subiendo
+            showRemoteModal: false,
             programStatus: null    // {st, sz, crc, err} tal como lo reporta la placa
         };
         this.connectionCheckInterval = null;
@@ -540,6 +542,14 @@ class SpriteSelectorComponent extends React.Component {
         }
     }
 
+    handleOpenRemote = () => {
+        this.setState({ showRemoteModal: true });
+    }
+
+    handleCloseRemote = () => {
+        this.setState({ showRemoteModal: false });
+    }
+
     handleEraseProgram = async () => {
         const { selectedDeviceIndex, devices } = this.state;
         const device = devices[selectedDeviceIndex];
@@ -722,6 +732,7 @@ class SpriteSelectorComponent extends React.Component {
                             onUploadProgram={this.handleUploadProgram}
                             onStopProgram={this.handleStopProgram}
                             onEraseProgram={this.handleEraseProgram}
+                            onOpenRemote={this.handleOpenRemote}
                             programStatus={this.state.programStatus}
                             onAddDevice={this.handleAddDevice}
                             onRemoveDevice={this.handleRemoveDevice}
@@ -813,6 +824,21 @@ class SpriteSelectorComponent extends React.Component {
                                 </div>
                             </div>
                         )}
+
+                        {/* Control remoto en pantalla */}
+                        {this.state.showRemoteModal && (() => {
+                            const device = devices[selectedDeviceIndex];
+                            const peripheral = device && this.props.vm.runtime.peripheralExtensions &&
+                                this.props.vm.runtime.peripheralExtensions[device.extensionId];
+                            if (!device || !peripheral) return null;
+                            return (
+                                <RemoteControlModal
+                                    peripheral={peripheral}
+                                    deviceName={device.name}
+                                    onClose={this.handleCloseRemote}
+                                />
+                            );
+                        })()}
 
                         {/* Modal de subida del programa compilado (modo autónomo) */}
                         {this.state.showUploadModal && (() => {

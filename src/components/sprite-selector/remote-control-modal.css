@@ -1,0 +1,171 @@
+/* Control remoto en pantalla. Sigue el lenguaje visual de los otros modales
+   del panel de dispositivos, pero con forma de mando: los botones son grandes
+   y separados porque se usan con el dedo y a toda velocidad, no se leen. */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal {
+    background-color: white;
+    border-radius: 14px;
+    width: 430px;
+    max-width: 94vw;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /* El control se maneja con los dedos: seleccionar texto sin querer al
+       arrastrar sobre los botones arruina la experiencia. */
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.title {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.close-button:hover {
+    color: #333;
+}
+
+.subtitle {
+    margin: 8px 0 18px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #718096;
+}
+
+/* ─── El mando ────────────────────────────────────────────────────────── */
+
+.pad {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.5rem 0 1rem;
+    flex-wrap: wrap;
+}
+
+.dpad {
+    display: grid;
+    grid-template-areas:
+        ".    up    ."
+        "left .     right"
+        ".    down  .";
+    gap: 6px;
+}
+
+.up    { grid-area: up; }
+.down  { grid-area: down; }
+.left  { grid-area: left; }
+.right { grid-area: right; }
+
+.actions {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 8px;
+}
+
+.pad-button {
+    width: 58px;
+    height: 58px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    background: linear-gradient(180deg, #4A5568 0%, #2D3748 100%);
+    color: white;
+    box-shadow: 0 3px 0 #1A202C, 0 4px 8px rgba(0, 0, 0, 0.18);
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
+    touch-action: none;
+}
+
+.dpad .pad-button {
+    background: linear-gradient(180deg, #4C97FF 0%, #2F80ED 100%);
+    box-shadow: 0 3px 0 #1E5FBF, 0 4px 8px rgba(47, 128, 237, 0.25);
+}
+
+/* Hundido: el botón baja y pierde su sombra inferior, como una tecla real.
+   El movimiento es la única confirmación cuando se pulsa a ciegas. */
+.pad-button.down {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #1A202C, 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dpad .pad-button.down {
+    box-shadow: 0 0 0 #1E5FBF, 0 1px 3px rgba(47, 128, 237, 0.3);
+}
+
+.pad-button:focus-visible {
+    outline: 3px solid #F6AD55;
+    outline-offset: 2px;
+}
+
+.glyph {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.key-hint {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+}
+
+/* ─── Pie ─────────────────────────────────────────────────────────────── */
+
+.footer {
+    border-top: 1px solid #edf2f7;
+    padding-top: 12px;
+}
+
+.hint {
+    margin: 0 0 4px;
+    font-size: 12px;
+    color: #4a5568;
+}
+
+.safety {
+    margin: 0;
+    font-size: 11.5px;
+    color: #a0aec0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pad-button {
+        transition: none;
+    }
+}

@@ -359,6 +359,12 @@
 
 /* Borrar es destructivo pero no urgente: se deja discreto (contorno, no
    relleno) para que no compita con "Subir" ni se pulse por error. */
+.remote-button {
+    background: linear-gradient(135deg, #9F7AEA 0%, #7C5BD9 100%);
+    color: white;
+    box-shadow: 0 3px 8px rgba(124, 91, 217, 0.25);
+}
+
 .erase-program-button {
     background: transparent;
     color: #a0aec0;

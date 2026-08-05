@@ -36,6 +36,7 @@ class DevicePanel extends React.Component {
             onUploadProgram,
             onStopProgram,
             onEraseProgram,
+            onOpenRemote,
             programStatus,
             onAddDevice,
             onRemoveDevice
@@ -233,6 +234,19 @@ class DevicePanel extends React.Component {
                                             {/* Borrar solo aparece si hay algo que borrar. Sin esto,
                                                 un programa subido acompaña al robot para siempre:
                                                 arranca solo cada vez que se enciende. */}
+                                            {/* El control es util en los DOS modos: en vivo
+                                                y con el programa autonomo corriendo. Por eso no
+                                                depende de que haya programa subido. */}
+                                            {canUploadProgram && (
+                                                <button
+                                                    className={classNames(styles.button, styles.remoteButton)}
+                                                    onClick={onOpenRemote}
+                                                    title="Manda botones al robot desde la pantalla o el teclado"
+                                                >
+                                                    {'🎮 Control remoto'}
+                                                </button>
+                                            )}
+
                                             {canUploadProgram && hasProgram && (
                                                 <button
                                                     className={classNames(styles.button, styles.eraseProgramButton)}
@@ -292,6 +306,7 @@ DevicePanel.propTypes = {
     onUploadProgram: PropTypes.func,
     onStopProgram: PropTypes.func,
     onEraseProgram: PropTypes.func,
+    onOpenRemote: PropTypes.func,
     programStatus: PropTypes.shape({
         st: PropTypes.string,
         sz: PropTypes.number,
@@ -314,6 +329,7 @@ DevicePanel.defaultProps = {
     onUploadProgram: () => { },
     onStopProgram: () => { },
     onEraseProgram: () => { },
+    onOpenRemote: () => { },
     onAddDevice: () => { },
     onRemoveDevice: () => { },
     onLoadExtension: () => { }
