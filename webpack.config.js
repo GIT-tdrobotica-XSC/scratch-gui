@@ -123,7 +123,8 @@ const buildConfig = baseConfig.clone()
             gui: './src/playground/index.jsx',
             blocksonly: './src/playground/blocks-only.jsx',
             compatibilitytesting: './src/playground/compatibility-testing.jsx',
-            player: './src/playground/player.jsx'
+            player: './src/playground/player.jsx',
+            control: './src/playground/control.jsx'
         },
         output: {
             path: path.resolve(__dirname, 'build')
@@ -155,6 +156,15 @@ const buildConfig = baseConfig.clone()
         filename: 'player.html',
         template: 'src/playground/index.ejs',
         title: 'Scratch 3.0 GUI: Player Example'
+    }))
+    // Mando suelto para el celular: pagina aparte, sin el editor de bloques.
+    // Usa su propia plantilla porque necesita apagar el zoom por doble toque.
+    .addPlugin(new HtmlWebpackPlugin({
+        ...commonHtmlWebpackPluginOptions,
+        chunks: ['control'],
+        filename: 'control.html',
+        template: 'src/playground/control.ejs',
+        title: 'PlayGo - Mando'
     }))
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
