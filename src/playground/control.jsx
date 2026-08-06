@@ -18,13 +18,31 @@
 
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
+import PropTypes from 'prop-types';
 
+// El resolvedor de import/no-unresolved de eslint no sigue el campo
+// "exports" de package.json (webpack sí, por eso esto compila bien) --
+// somos el primer archivo de scratch-gui que importa una ruta interna de
+// scratch-vm en vez del paquete completo. Deshabilitado a propósito, no por
+// descuido.
+// eslint-disable-next-line import/no-unresolved
 import PlayGoBLE from 'scratch-vm/src/extensions/playgo/playgo-ble';
+// eslint-disable-next-line import/no-unresolved
 import RemoteControl, {REMOTE_BUTTONS, KEY_MAP} from 'scratch-vm/src/extensions/common/remote-control';
 
 import styles from './control.css';
 
-/** Botón del mando: se pinta y reporta pulsar/soltar por punteros. */
+/**
+ * Botón del mando: se pinta y reporta pulsar/soltar por punteros.
+ * @param {object} props Props del componente.
+ * @param {object} props.button Descriptor del botón (`index`, `label`, `glyph`).
+ * @param {boolean} props.pressed Si está presionado ahora mismo.
+ * @param {boolean} props.disabled Si el mando aún no está conectado.
+ * @param {Function} props.onPress Se llama con el índice al presionar.
+ * @param {Function} props.onRelease Se llama con el índice al soltar.
+ * @param {string} props.className Clases CSS del botón.
+ * @returns {React.ReactElement} El botón.
+ */
 const PadButton = ({button, pressed, disabled, onPress, onRelease, className}) => {
     // Se usan eventos de puntero y no click: un click sólo llega al soltar, y
     // aquí hace falta saber que el botón se está MANTENIENDO pulsado.
@@ -46,6 +64,10 @@ const PadButton = ({button, pressed, disabled, onPress, onRelease, className}) =
         onRelease(button.index);
     }, [button.index, onRelease]);
 
+    // Un dedo que mantiene presionado no debe abrir el menú contextual del
+    // navegador -- se movería el robot Y aparecería un menú tapando todo.
+    const handleContextMenu = useCallback(e => e.preventDefault(), []);
+
     return (
         <button
             className={`${className} ${pressed ? styles.pressed : ''}`}
@@ -56,11 +78,24 @@ const PadButton = ({button, pressed, disabled, onPress, onRelease, className}) =
             onPointerUp={handleUp}
             onPointerCancel={handleUp}
             onPointerLeave={handleUp}
-            onContextMenu={e => e.preventDefault()}
+            onContextMenu={handleContextMenu}
         >
             {button.glyph}
         </button>
     );
+};
+
+PadButton.propTypes = {
+    button: PropTypes.shape({
+        index: PropTypes.number.isRequired,
+        label: PropTypes.string.isRequired,
+        glyph: PropTypes.string.isRequired
+    }).isRequired,
+    pressed: PropTypes.bool.isRequired,
+    disabled: PropTypes.bool.isRequired,
+    onPress: PropTypes.func.isRequired,
+    onRelease: PropTypes.func.isRequired,
+    className: PropTypes.string.isRequired
 };
 
 const byId = id => REMOTE_BUTTONS.find(b => b.id === id);
@@ -97,6 +132,9 @@ const Control = () => {
         try {
             const ble = new PlayGoBLE();
             await ble.connect();
+            // No hay carrera real: el botón queda deshabilitado durante
+            // 'connecting', así que connect() nunca se solapa consigo mismo.
+            // eslint-disable-next-line require-atomic-updates
             bleRef.current = ble;
 
             const remote = new RemoteControl(line => ble.write(line));
@@ -126,6 +164,9 @@ const Control = () => {
             try {
                 await bleRef.current.disconnect();
             } catch (e) { /* ya estaba caído */ }
+            // Doble click en "Desconectar" en el peor caso llama disconnect()
+            // dos veces sobre el mismo objeto -- el catch de arriba ya lo cubre.
+            // eslint-disable-next-line require-atomic-updates
             bleRef.current = null;
         }
         setMask(0);
@@ -135,17 +176,17 @@ const Control = () => {
 
     // Teclado físico, para que un computador también sirva de mando.
     useEffect(() => {
-        if (status !== 'ready') return undefined;
+        if (status !== 'ready') return;
 
         const onKeyDown = e => {
             const index = KEY_MAP[e.code];
-            if (index === undefined || e.repeat) return;
+            if (typeof index === 'undefined' || e.repeat) return;
             e.preventDefault();
             handlePress(index);
         };
         const onKeyUp = e => {
             const index = KEY_MAP[e.code];
-            if (index === undefined) return;
+            if (typeof index === 'undefined') return;
             e.preventDefault();
             handleRelease(index);
         };
@@ -183,7 +224,7 @@ const Control = () => {
     // Mantener la pantalla encendida mientras se juega: un teléfono que se
     // apaga a los 30 s corta el control en mitad de una partida.
     useEffect(() => {
-        if (status !== 'ready' || !navigator.wakeLock) return undefined;
+        if (status !== 'ready' || !navigator.wakeLock) return;
         let lock = null;
         let cancelled = false;
         navigator.wakeLock.request('screen')
@@ -227,7 +268,10 @@ const Control = () => {
                     {!supported && (
                         <div className={styles.notice}>
                             <p className={styles.noticeTitle}>{'Este navegador no puede conectarse'}</p>
-                            <p>{'Necesitas Chrome en Android o en el computador. Safari (iPhone y iPad) todavía no permite conectar robots por Bluetooth.'}</p>
+                            <p>
+                                {'Necesitas Chrome en Android o en el computador. '}
+                                {'Safari (iPhone y iPad) todavía no permite conectar robots por Bluetooth.'}
+                            </p>
                         </div>
                     )}
 
@@ -236,7 +280,8 @@ const Control = () => {
                             <div className={styles.hero}>{'🎮'}</div>
                             <h1 className={styles.title}>{'Maneja tu robot'}</h1>
                             <p className={styles.lead}>
-                                {'Enciende tu PlayGo y pulsa el botón. No necesitas tener el programa abierto: el robot sigue con lo que ya le subiste.'}
+                                {'Enciende tu PlayGo y pulsa el botón. No necesitas tener el programa abierto: '}
+                                {'el robot sigue con lo que ya le subiste.'}
                             </p>
                             <button
                                 className={styles.connectButton}
