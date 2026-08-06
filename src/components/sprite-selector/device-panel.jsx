@@ -55,7 +55,12 @@ class DevicePanel extends React.Component {
         // Dispositivos que pueden ejecutar un programa compilado por su cuenta
         // (sin el computador conectado). Se amplía por fases a medida que cada
         // firmware incorpora el intérprete de bytecode.
-        const PROGRAM_UPLOADABLE = ['playgo'];
+        //
+        // TEMPORAL: vacía a propósito para las pruebas de campo con la PlayGo
+        // "pelada" (sin nada del compilador visible) -- oculta en cascada
+        // subir/detener/borrar programa y el control remoto, sin tocar el
+        // JSX de abajo. Volver a poner ['playgo'] cuando termine esa prueba.
+        const PROGRAM_UPLOADABLE = [];
         const canUploadProgram = selectedDevice &&
             PROGRAM_UPLOADABLE.includes(selectedDevice.extensionId);
 
