@@ -56,17 +56,23 @@ class DevicePanel extends React.Component {
         // (sin el computador conectado). Se amplía por fases a medida que cada
         // firmware incorpora el intérprete de bytecode.
         //
-        // En producción/staging permanece oculto mientras dura la prueba de
+        // En producción real permanece oculto mientras dura la prueba de
         // campo con la PlayGo "pelada" (oculta en cascada subir/detener/
         // borrar programa y el control remoto, sin tocar el JSX de abajo).
-        // En local (npm start) se muestra siempre, para poder seguir
-        // trabajando en esto sin editar este archivo a mano cada vez.
-        // Mismo patrón que ya usan keycloak-hoc.jsx y playground/player.jsx
-        // (process.env.NODE_ENV === 'production', resuelto por webpack según
-        // el modo -- no hace falta tocar el DefinePlugin de webpack.config.js).
-        // Volver a poner ['playgo'] en la rama de producción cuando termine
-        // esa prueba de campo.
-        const PROGRAM_UPLOADABLE = process.env.NODE_ENV === 'production' ? [] : ['playgo'];
+        // En local (npm start) y en staging se muestra siempre.
+        //
+        // Staging también compila con NODE_ENV=production (mismo build que
+        // producción, ver ecosystem.staging.js en STAGING_SETUP_BRIEFING.md),
+        // así que NODE_ENV solo no alcanza para distinguirlos -- se suma el
+        // hostname, que sí es distinto entre playcode.tdrobotica.co (real) y
+        // staging.playcode.tdrobotica.co. No requiere tocar el deploy del
+        // servidor ni el DefinePlugin de webpack.config.js.
+        // Volver a poner ['playgo'] sin condición cuando termine esa prueba
+        // de campo en producción real.
+        const isStagingHost = typeof window !== 'undefined' &&
+            window.location.hostname.startsWith('staging.');
+        const PROGRAM_UPLOADABLE = (process.env.NODE_ENV === 'production' && !isStagingHost) ?
+            [] : ['playgo'];
         const canUploadProgram = selectedDevice &&
             PROGRAM_UPLOADABLE.includes(selectedDevice.extensionId);
 
