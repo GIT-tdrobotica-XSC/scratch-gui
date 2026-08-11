@@ -1,6 +1,14 @@
 /* Control remoto en pantalla. Sigue el lenguaje visual de los otros modales
    del panel de dispositivos, pero con forma de mando: los botones son grandes
-   y separados porque se usan con el dedo y a toda velocidad, no se leen. */
+   y separados porque se usan con el dedo y a toda velocidad, no se leen.
+
+   El acento (verde, radio 16px) coincide a propósito con el de la página
+   suelta del mando para el celular (playground/control.css) -- misma
+   función, mismo color de identidad, aunque los dos no sean pixel a pixel
+   idénticos (ese sigue oscuro, pensado para uso táctil al sol/de noche). */
+
+@import "../../css/z-index.css";
+@import "../../css/compiler-tokens.css";
 
 .modal-overlay {
     position: fixed;
@@ -8,20 +16,20 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--compiler-modal-overlay);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 10000;
+    z-index: 510; /* z-index.css: $z-index-modal -- hardcodeado, ver nota en compiler-tokens.css */
 }
 
 .modal {
     background-color: white;
-    border-radius: 14px;
+    border-radius: var(--compiler-radius-lg);
     width: 430px;
     max-width: 94vw;
     padding: 22px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--compiler-modal-shadow);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     /* El control se maneja con los dedos: seleccionar texto sin querer al
        arrastrar sobre los botones arruina la experiencia. */
@@ -97,7 +105,7 @@
     width: 58px;
     height: 58px;
     border: none;
-    border-radius: 12px;
+    border-radius: var(--compiler-radius-lg);
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -111,9 +119,11 @@
     touch-action: none;
 }
 
+/* Verde, no azul -- para que la cruceta comparta el acento de identidad del
+   control remoto con la página del mando del celular (control.css). */
 .dpad .pad-button {
-    background: linear-gradient(180deg, #4C97FF 0%, #2F80ED 100%);
-    box-shadow: 0 3px 0 #1E5FBF, 0 4px 8px rgba(47, 128, 237, 0.25);
+    background: linear-gradient(180deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
+    box-shadow: 0 3px 0 #1B7A43, 0 4px 8px rgba(46, 204, 113, 0.3);
 }
 
 /* Hundido: el botón baja y pierde su sombra inferior, como una tecla real.
@@ -124,7 +134,7 @@
 }
 
 .dpad .pad-button.down {
-    box-shadow: 0 0 0 #1E5FBF, 0 1px 3px rgba(47, 128, 237, 0.3);
+    box-shadow: 0 0 0 #1B7A43, 0 1px 3px rgba(46, 204, 113, 0.35);
 }
 
 .pad-button:focus-visible {

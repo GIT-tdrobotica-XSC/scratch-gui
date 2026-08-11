@@ -2,28 +2,34 @@
    Sigue el mismo lenguaje visual que firmware-updater-modal.css para que las
    dos operaciones sobre el dispositivo se sientan de la misma familia. */
 
+@import "../../css/z-index.css";
+@import "../../css/compiler-tokens.css";
+
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--compiler-modal-overlay);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 10000;
+    /* $z-index-modal (510), no 10000: ese valor coincidía por accidente con
+       $z-index-context-menu, el nivel más alto del sistema -- un modal no
+       debería competir con un menú contextual de Blockly por encima. */
+    z-index: 510; /* z-index.css: $z-index-modal -- hardcodeado, ver nota en compiler-tokens.css */
 }
 
 .modal {
     background-color: white;
-    border-radius: 12px;
+    border-radius: var(--compiler-radius-md);
     width: 460px;
     max-width: 92vw;
     max-height: 88vh;
     overflow-y: auto;
     padding: 24px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--compiler-modal-shadow);
     position: relative;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
@@ -87,7 +93,7 @@
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    background: linear-gradient(135deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
     transition: width 0.25s ease;
 }
 
@@ -103,7 +109,7 @@
 .error-area {
     background-color: #fff5f5;
     border: 1px solid #ffd6d6;
-    border-radius: 10px;
+    border-radius: var(--compiler-radius-md);
     padding: 14px 16px;
 }
 
@@ -228,10 +234,10 @@
 }
 
 .action-button {
-    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    background: linear-gradient(135deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--compiler-radius-sm);
     padding: 8px 20px;
     font-size: 14px;
     font-weight: 700;

@@ -1,0 +1,75 @@
+/*
+ * Tokens de la familia visual del compilador: panel de dispositivo y sus
+ * tres modales (subir programa, control remoto, actualizar firmware).
+ *
+ * CSS custom properties reales (no la sintaxis $var de postcss-simple-vars
+ * que usa colors.css) -- a propósito, y no por preferencia de estilo: se
+ * verificó en el bundle compilado real que ese mecanismo $var NO se está
+ * resolviendo en este proyecto (71 apariciones crudas de $ui-modal-overlay/
+ * $z-index-modal encontradas sin resolver en producción, incluso en
+ * modal.css, que se asumía funcionando -- nadie lo había comprobado en
+ * navegador, solo en el código fuente). Es un bug preexistente del proyecto,
+ * ajeno a este trabajo, y arreglarlo de raíz queda fuera de este alcance.
+ *
+ * Las custom properties no tienen ese problema: no dependen de que un
+ * @import se inserte textualmente antes de resolver -- se heredan por
+ * cascada en tiempo de ejecución, así que basta con que este archivo se
+ * cargue en la página (ya se carga, vía @import, aunque ese @import no se
+ * inline textualmente) para que :root quede definido y cualquier otro
+ * archivo pueda usar var(--compiler-accent) sin importar el orden de carga.
+ * Es el mismo mecanismo que ya usa control.css (la página del mando para
+ * el celular), verificado funcionando en el navegador.
+ *
+ * Vive aparte de colors.css a propósito, más allá del bug: esta familia
+ * tiene su propio lenguaje visual ya asentado -- cards blancas centradas,
+ * overlay negro simple, radios grandes, sombras de color a juego con el
+ * botón -- que deliberadamente NO se alinea con el modal genérico de la
+ * app (overlay azul translúcido, banda de color en el header).
+ *
+ * Jerarquía de un solo acento: --compiler-accent es el ÚNICO color que se
+ * usa en degradado completo + sombra de color, reservado para la acción
+ * primaria de cada pantalla (Subir a la placa). El resto de acciones usa
+ * su color de categoría solo en versión "tint" (fondo tenue, sin
+ * degradado).
+ */
+
+:root {
+    --compiler-accent: #2ECC71;
+    --compiler-accent-deep: #27AE60;
+    --compiler-accent-tint: rgba(46, 204, 113, 0.12);
+
+    --compiler-danger: #FF6B6B;
+    --compiler-danger-deep: #ee5253;
+    --compiler-danger-tint: rgba(255, 107, 107, 0.14);
+
+    --compiler-info: #4c97ff;
+    --compiler-info-deep: #2f80ed;
+    --compiler-info-tint: rgba(76, 151, 255, 0.12);
+
+    --compiler-warn: #ed8936;
+    --compiler-warn-tint: rgba(237, 137, 54, 0.12);
+
+    --compiler-purple: #7C5BD9;
+    --compiler-purple-tint: rgba(124, 91, 217, 0.12);
+
+    --compiler-neutral-tint: rgba(160, 174, 192, 0.15);
+
+    --compiler-radius-sm: 8px;
+    --compiler-radius-md: 10px;
+    --compiler-radius-lg: 14px;
+
+    /* Escala de elevación: 3 niveles reutilizables en vez de que cada
+       archivo invente su propio box-shadow. --compiler-shadow-accent es la
+       excepción deliberada -- solo la lleva la acción primaria. */
+    --compiler-shadow-rest: 0 2px 6px rgba(0, 0, 0, 0.08);
+    --compiler-shadow-hover: 0 6px 14px rgba(0, 0, 0, 0.12);
+    --compiler-shadow-accent: 0 4px 12px rgba(46, 204, 113, 0.3);
+
+    --compiler-modal-overlay: rgba(0, 0, 0, 0.5);
+    --compiler-modal-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* NOTA: --compiler-accent debe coincidir a mano con --accent en
+   control.css (la página suelta del mando para el celular) -- ese archivo
+   no puede importar este porque vive fuera del árbol de módulos de React.
+   Si cambias uno, cambia el otro. */
