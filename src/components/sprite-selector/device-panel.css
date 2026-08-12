@@ -1,5 +1,4 @@
 @import "../../css/colors.css";
-@import "../../css/compiler-tokens.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    DEVICE PANEL — Layout B (2 columnas lateral, estilo mBlock)
@@ -282,48 +281,6 @@
     flex-shrink: 0;
 }
 
-/* Estado del programa: hasta ahora era texto plano, mientras que el estado
-   de conexión (arriba) ya tenía su punto de color -- misma jerarquía de
-   información, trato visual distinto. Se le da el mismo nivel: un chip con
-   punto + texto, fondo tenue del color de su estado. */
-.program-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
-}
-
-.program-badge-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: currentColor;
-    flex-shrink: 0;
-}
-
-.program-badge-running {
-    background: var(--compiler-accent-tint);
-    color: #1a8a4d;
-}
-
-.program-badge-loaded {
-    background: var(--compiler-info-tint);
-    color: #2f6fce;
-}
-
-.program-badge-empty {
-    background: var(--compiler-neutral-tint);
-    color: #718096;
-}
-
-.program-badge-error {
-    background: var(--compiler-danger-tint);
-    color: #c53030;
-}
-
 /* Grupo de botones — sin auto-margin, fluyen tras el status */
 .button-group {
     display: flex;
@@ -339,7 +296,7 @@
     min-width: 0;
     padding: 0.7rem 0.9rem;
     border: none;
-    border-radius: var(--compiler-radius-md);
+    border-radius: 10px;
     font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
@@ -348,12 +305,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.45rem;
 }
 
 .button:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: var(--compiler-shadow-hover);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
 }
 
 .button:active:not(:disabled) {
@@ -367,31 +323,6 @@
     color: #a0aec0;
 }
 
-/* Ícono dentro de un botón: un solo SVG por acción, coloreado por CSS via
-   mask-image en vez de <img> (que no puede heredar color). Así el mismo
-   archivo sirve tanto para el botón de acento (ícono blanco) como para los
-   tonales (ícono del color de su categoría) sin duplicar el SVG. */
-.btn-icon {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    background-color: currentColor;
-    mask-position: center;
-    mask-repeat: no-repeat;
-    mask-size: contain;
-    -webkit-mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-size: contain;
-}
-
-.icon-upload    { mask-image: url("./icon--upload.svg");   -webkit-mask-image: url("./icon--upload.svg"); }
-.icon-stop      { mask-image: url("./icon--stop.svg");     -webkit-mask-image: url("./icon--stop.svg"); }
-.icon-gamepad   { mask-image: url("./icon--gamepad.svg");  -webkit-mask-image: url("./icon--gamepad.svg"); }
-.icon-trash     { mask-image: url("./icon--trash.svg");    -webkit-mask-image: url("./icon--trash.svg"); }
-.icon-firmware  { mask-image: url("./icon--firmware.svg"); -webkit-mask-image: url("./icon--firmware.svg"); }
-
-/* Conectar/desconectar comunican un estado binario crítico, no una acción
-   secundaria -- se quedan con color pleno, fuera del tratamiento tonal. */
 .connect-button {
     background: linear-gradient(135deg, #51C141 0%, #3ebb2d 100%);
     color: white;
@@ -399,61 +330,41 @@
 }
 
 .disconnect-button {
-    background: linear-gradient(135deg, var(--compiler-danger) 0%, var(--compiler-danger-deep) 100%);
+    background: linear-gradient(135deg, #FF6B6B 0%, #ee5253 100%);
     color: white;
     box-shadow: 0 3px 8px rgba(255, 107, 107, 0.25);
 }
 
-/* Acción primaria del panel: subir el programa a la placa para que el robot
-   funcione sin el computador. Es el ÚNICO botón con degradado completo y
-   sombra de color -- el resto usa tratamiento tonal (ver abajo) para que el
-   ojo vaya directo aquí primero. */
-.upload-button {
-    background: linear-gradient(135deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
+.firmware-button {
+    background: linear-gradient(135deg, #4c97ff 0%, #2f80ed 100%);
     color: white;
-    box-shadow: var(--compiler-shadow-accent);
+    box-shadow: 0 3px 8px rgba(76, 151, 255, 0.25);
+}
+
+/* Acción primaria del panel: subir el programa a la placa para que el robot
+   funcione sin el computador. Se destaca más que los demás botones porque,
+   una vez existe, es lo más importante que se puede hacer aquí. */
+.upload-button {
+    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    color: white;
+    box-shadow: 0 3px 10px rgba(46, 204, 113, 0.35);
     font-size: 0.9rem;
 }
 
-/* ─── Botones secundarios: tratamiento tonal ──────────────────────────────
-   Fondo tenue del color de su categoría, texto/ícono en el color sólido,
-   sin degradado. Conservan su identidad de color (naranja/morado/azul)
-   para seguir siendo distinguibles entre sí, pero ya no compiten en
-   intensidad con "Subir a la placa". */
-
 .stop-program-button {
-    background: var(--compiler-warn-tint);
-    color: var(--compiler-warn);
-    box-shadow: var(--compiler-shadow-rest);
-}
-
-.stop-program-button:hover:not(:disabled) {
-    box-shadow: var(--compiler-shadow-hover);
-}
-
-.remote-button {
-    background: var(--compiler-purple-tint);
-    color: var(--compiler-purple);
-    box-shadow: var(--compiler-shadow-rest);
-}
-
-.remote-button:hover:not(:disabled) {
-    box-shadow: var(--compiler-shadow-hover);
-}
-
-.firmware-button {
-    background: var(--compiler-info-tint);
-    color: var(--compiler-info-deep);
-    box-shadow: var(--compiler-shadow-rest);
-}
-
-.firmware-button:hover:not(:disabled) {
-    box-shadow: var(--compiler-shadow-hover);
+    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+    color: white;
+    box-shadow: 0 3px 8px rgba(237, 137, 54, 0.25);
 }
 
 /* Borrar es destructivo pero no urgente: se deja discreto (contorno, no
-   relleno) para que no compita con "Subir" ni se pulse por error. Ya
-   estaba bien diseñado así -- no entra en el tratamiento tonal de arriba. */
+   relleno) para que no compita con "Subir" ni se pulse por error. */
+.remote-button {
+    background: linear-gradient(135deg, #9F7AEA 0%, #7C5BD9 100%);
+    color: white;
+    box-shadow: 0 3px 8px rgba(124, 91, 217, 0.25);
+}
+
 .erase-program-button {
     background: transparent;
     color: #a0aec0;

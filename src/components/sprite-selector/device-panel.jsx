@@ -56,23 +56,13 @@ class DevicePanel extends React.Component {
         // (sin el computador conectado). Se amplía por fases a medida que cada
         // firmware incorpora el intérprete de bytecode.
         //
-        // En producción real permanece oculto mientras dura la prueba de
-        // campo con la PlayGo "pelada" (oculta en cascada subir/detener/
-        // borrar programa y el control remoto, sin tocar el JSX de abajo).
-        // En local (npm start) y en staging se muestra siempre.
-        //
-        // Staging también compila con NODE_ENV=production (mismo build que
-        // producción, ver ecosystem.staging.js en STAGING_SETUP_BRIEFING.md),
-        // así que NODE_ENV solo no alcanza para distinguirlos -- se suma el
-        // hostname, que sí es distinto entre playcode.tdrobotica.co (real) y
-        // staging.playcode.tdrobotica.co. No requiere tocar el deploy del
-        // servidor ni el DefinePlugin de webpack.config.js.
-        // Volver a poner ['playgo'] sin condición cuando termine esa prueba
-        // de campo en producción real.
-        const isStagingHost = typeof window !== 'undefined' &&
-            window.location.hostname.startsWith('staging.');
-        const PROGRAM_UPLOADABLE = (process.env.NODE_ENV === 'production' && !isStagingHost) ?
-            [] : ['playgo'];
+        // En producción permanece oculto mientras dura la prueba de campo con
+        // la PlayGo "pelada" (oculta en cascada subir/detener/borrar programa y
+        // el control remoto, sin tocar el JSX de abajo). En local (npm start)
+        // se muestra siempre, para poder seguir probando sin editar este
+        // archivo a mano cada vez. Mismo patrón que ya usan keycloak-hoc.jsx y
+        // playground/player.jsx: webpack resuelve NODE_ENV según el modo.
+        const PROGRAM_UPLOADABLE = process.env.NODE_ENV === 'production' ? [] : ['playgo'];
         const canUploadProgram = selectedDevice &&
             PROGRAM_UPLOADABLE.includes(selectedDevice.extensionId);
 
@@ -201,13 +191,7 @@ class DevicePanel extends React.Component {
                                             <span className={styles.infoLabel}>
                                                 Programa
                                             </span>
-                                            <span
-                                                className={classNames(
-                                                    styles.programBadge,
-                                                    styles[`programBadge${(programStatus.st || 'empty').replace(/^./, c => c.toUpperCase())}`]
-                                                )}
-                                            >
-                                                <span className={styles.programBadgeDot} />
+                                            <span className={styles.infoValue}>
                                                 {PROGRAM_STATE_LABELS[programStatus.st] || '—'}
                                                 {programStatus.sz > 0 && ` · ${programStatus.sz} B`}
                                             </span>
@@ -241,8 +225,7 @@ class DevicePanel extends React.Component {
                                                     onClick={onUploadProgram}
                                                     title="Envía tus bloques al robot para que funcione sin el computador"
                                                 >
-                                                    <span className={classNames(styles.btnIcon, styles.iconUpload)} />
-                                                    {'Subir a la placa'}
+                                                    {'⬆ Subir a la placa'}
                                                 </button>
                                             )}
 
@@ -251,8 +234,7 @@ class DevicePanel extends React.Component {
                                                     className={classNames(styles.button, styles.stopProgramButton)}
                                                     onClick={onStopProgram}
                                                 >
-                                                    <span className={classNames(styles.btnIcon, styles.iconStop)} />
-                                                    {'Detener programa'}
+                                                    {'■ Detener programa'}
                                                 </button>
                                             )}
 
@@ -268,8 +250,7 @@ class DevicePanel extends React.Component {
                                                     onClick={onOpenRemote}
                                                     title="Manda botones al robot desde la pantalla o el teclado"
                                                 >
-                                                    <span className={classNames(styles.btnIcon, styles.iconGamepad)} />
-                                                    {'Control remoto'}
+                                                    {'🎮 Control remoto'}
                                                 </button>
                                             )}
 
@@ -279,8 +260,7 @@ class DevicePanel extends React.Component {
                                                     onClick={onEraseProgram}
                                                     title="Quita el programa de la memoria del robot"
                                                 >
-                                                    <span className={classNames(styles.btnIcon, styles.iconTrash)} />
-                                                    {'Borrar programa'}
+                                                    {'🗑 Borrar programa'}
                                                 </button>
                                             )}
 
@@ -289,8 +269,7 @@ class DevicePanel extends React.Component {
                                                     className={classNames(styles.button, styles.firmwareButton)}
                                                     onClick={onUpdateFirmware}
                                                 >
-                                                    <span className={classNames(styles.btnIcon, styles.iconFirmware)} />
-                                                    {'Actualizar Firmware'}
+                                                    Actualizar Firmware
                                                 </button>
                                             )}
                                         </>

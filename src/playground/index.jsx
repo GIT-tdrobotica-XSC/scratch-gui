@@ -10,11 +10,8 @@ import ReactDOM from 'react-dom';
 import AppStateHOC from '../lib/app-state-hoc.jsx';
 import BrowserModalComponent from '../components/browser-modal/browser-modal.jsx';
 import supportedBrowser from '../lib/supported-browser';
-import initAutoScale from '../lib/auto-scale.js';
 
 import styles from './index.css';
-
-initAutoScale();
 
 const appTarget = document.createElement('div');
 appTarget.className = styles.app;

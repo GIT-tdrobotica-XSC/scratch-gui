@@ -1,0 +1,40 @@
+/*
+ * PlayCode - Responsive scaling
+ * Uses CSS zoom to scale the entire UI uniformly on smaller screens.
+ * zoom is supported in Chrome, Edge, Safari, and Firefox 126+.
+ */
+
+/* Laptop 1366x768 (resolución más común) - el panel inferior queda cortado sin esto */
+@media screen and (max-width: 1366px) and (min-width: 1281px) {
+    html {
+        zoom: 0.75;
+    }
+}
+
+/* Laptop 1280px - ligera reducción */
+@media screen and (max-width: 1280px) and (min-width: 1025px) {
+    html {
+        zoom: 0.80;
+    }
+}
+
+/* Laptop pequeña / tablet grande: 768px - 1024px */
+@media screen and (max-width: 1024px) and (min-width: 769px) {
+    html {
+        zoom: 0.65;
+    }
+}
+
+/* Tablet mediana: hasta 768px */
+@media screen and (max-width: 768px) {
+    html {
+        zoom: 0.55;
+    }
+}
+
+/* Pantallas cortas (altura ≤768px): también escalar para que no se corte el panel inferior */
+@media screen and (max-height: 768px) and (min-width: 1281px) {
+    html {
+        zoom: 0.75;
+    }
+}
