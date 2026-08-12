@@ -418,6 +418,16 @@ const control = function (isInitialSetup, isStage, targetId, colors) {
         <block id="repeat_until" type="control_repeat_until"/>
         ${blockSeparator}
         <block type="control_stop"/>
+        ${blockSeparator}
+        <block type="control_start_as_clone"/>
+        ${blockSeparator}
+        <block type="control_create_clone_of">
+            <value name="CLONE_OPTION">
+                <shadow type="control_create_clone_of_menu">
+                </shadow>
+            </value>
+        </block>
+        <block type="control_delete_this_clone"/>
         ${categorySeparator}
     </category>
     `;
