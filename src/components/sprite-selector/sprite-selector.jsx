@@ -806,11 +806,26 @@ class SpriteSelectorComponent extends React.Component {
                                     <div className={styles.firmwareStatusIcon}>{'⚠️'}</div>
                                     <p className={styles.firmwareStatusTitle}>{'Firmware desactualizado'}</p>
                                     <p className={styles.firmwareStatusText}>{'Tu dispositivo necesita una actualización para funcionar. No puedes continuar hasta actualizar.'}</p>
+                                    {/* PlayGo tiene auto-reset y NO debe pedir BOOT: mantenerlo
+                                        pulsado deja GPIO0 en bajo durante el reset posterior y el
+                                        equipo rearranca en modo descarga (parece "congelado").
+                                        Ver nota en firmware-updater-modal.jsx. */}
                                     <ol className={styles.firmwareGuideList}>
-                                        <li>{'Mantén presionado el botón '}<strong>{'BOOT'}</strong>{' de tu dispositivo'}</li>
-                                        <li>{'Haz clic en '}<strong>{'Actualizar firmware'}</strong>{' sin soltar el botón'}</li>
-                                        <li>{'Suelta BOOT cuando veas que el progreso avanza'}</li>
-                                        <li>{'Espera a que finalice y reconecta tu dispositivo'}</li>
+                                        {devices[selectedDeviceIndex] &&
+                                            devices[selectedDeviceIndex].extensionId === 'playgo' ? (
+                                            <React.Fragment>
+                                                <li>{'Haz clic en '}<strong>{'Actualizar firmware'}</strong></li>
+                                                <li>{'No toques ningún botón del dispositivo durante el proceso'}</li>
+                                                <li>{'Espera a que finalice y reconecta tu dispositivo'}</li>
+                                            </React.Fragment>
+                                        ) : (
+                                            <React.Fragment>
+                                                <li>{'Mantén presionado el botón '}<strong>{'BOOT'}</strong>{' de tu dispositivo'}</li>
+                                                <li>{'Haz clic en '}<strong>{'Actualizar firmware'}</strong>{' sin soltar el botón'}</li>
+                                                <li>{'Suelta BOOT cuando veas que el progreso avanza'}</li>
+                                                <li>{'Espera a que finalice y reconecta tu dispositivo'}</li>
+                                            </React.Fragment>
+                                        )}
                                     </ol>
                                     <button
                                         className={styles.firmwareStatusButton}
