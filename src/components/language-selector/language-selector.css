@@ -5,7 +5,7 @@
 .language-select {
     position: absolute;
     width: 100%;
-    height: $menu-bar-height;
+    height: var(--tl-menubar-h, 46px); /* $var no resuelve en el bundle; ver css/taller.css */
     opacity: 0;
     user-select: none;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;

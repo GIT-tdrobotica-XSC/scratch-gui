@@ -17,7 +17,9 @@
         simplifies by all of this by removing padding from the equation.
     */
     box-sizing: border-box;
-    height: $menu-bar-height;
+    /* var() y no $menu-bar-height: ese $var no resuelve en el bundle, así que
+       la altura quedaba sin aplicar. Ver nota en css/taller.css. */
+    height: var(--tl-menubar-h, 46px);
 
     /*
         @todo: This adds ~20px in Chrome, when scrolling to the right,
@@ -27,9 +29,30 @@
     font-family: $font-primary;
     font-size: $menu-bar-standard-font-size;
     font-weight: 700;
-    background: linear-gradient(135deg, $looks-secondary 0%, $looks-secondary-dark 100%);
+
+    /*
+        Chasis de la máquina: grafito con una franja roja de marca abajo (ver
+        ::after). Antes la barra entera era roja; al ocupar tanto área, el rojo
+        competía con los colores de los bloques. Concentrado en una franja,
+        la identidad se lee igual de fuerte y el marco deja de gritar.
+    */
+    position: relative;
+    background: linear-gradient(180deg, var(--tl-chassis-2, #3A3135) 0%, var(--tl-chassis, #2B2427) 100%);
     color: $ui-white;
-    box-shadow: 0 2px 8px hsla(0, 0%, 0%, 0.2);
+    box-shadow: 0 2px 10px rgba(20, 12, 16, .22);
+}
+
+.menu-bar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        var(--tl-red, #CC0000) 0%,
+        var(--tl-red-lift, #FF3B3B) 48%,
+        var(--tl-red, #CC0000) 100%);
 }
 
 .main-menu {
@@ -62,7 +85,7 @@
     position: relative;
     align-items: center;
     white-space: nowrap;
-    height: $menu-bar-height;
+    height: var(--tl-menubar-h, 46px);
 }
 
 .menu-bar-item.hoverable {

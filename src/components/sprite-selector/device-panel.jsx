@@ -4,6 +4,19 @@ import React from 'react';
 
 import styles from './device-panel.css';
 
+/**
+ * Panel de dispositivos.
+ *
+ * Se lee de arriba abajo respondiendo una pregunta por bloque:
+ *   1. ¿CUÁL es mi robot?      -> tira selectora
+ *   2. ¿EN QUÉ ESTADO está?    -> héroe con el robot en grande
+ *   3. ¿QUÉ puedo hacer?       -> acciones sobre el programa
+ *
+ * La versión anterior mostraba lista y detalle en dos columnas, con todo
+ * compitiendo a la vez y una fila por dato. Esto solo cambia la disposición
+ * y el aspecto: los handlers y las condiciones que deciden qué se ve son
+ * exactamente los mismos.
+ */
 class DevicePanel extends React.Component {
     handleSelectDevice = (index) => {
         this.props.onSelectDevice(index);
@@ -29,7 +42,6 @@ class DevicePanel extends React.Component {
         const {
             devices,
             selectedDeviceIndex,
-            stageSize,
             onConnect,
             onDisconnect,
             onUpdateFirmware,
@@ -43,7 +55,10 @@ class DevicePanel extends React.Component {
         } = this.props;
 
         const selectedDevice = devices && devices[selectedDeviceIndex] ? devices[selectedDeviceIndex] : null;
-        const isSmall = stageSize === 'small';
+        // El ancho ya no se decide con el prop stageSize: device-panel.css usa
+        // container queries, que miden el contenedor real. Es más fiable (y
+        // además inmune al zoom del navegador) que un flag heredado del
+        // tamaño del escenario.
 
         // Dispositivos flasheables desde PlayCode (ESP32, vía esptool-js). Los
         // que no están aquí (p. ej. PlayBoard/Arduino UNO = ATmega328p, que se
@@ -52,10 +67,6 @@ class DevicePanel extends React.Component {
         const canUpdateFirmware = selectedDevice &&
             FIRMWARE_UPDATABLE.includes(selectedDevice.extensionId);
 
-        // Dispositivos que pueden ejecutar un programa compilado por su cuenta
-        // (sin el computador conectado). Se amplía por fases a medida que cada
-        // firmware incorpora el intérprete de bytecode.
-        //
         // En producción permanece oculto mientras dura la prueba de campo con
         // la PlayGo "pelada" (oculta en cascada subir/detener/borrar programa y
         // el control remoto, sin tocar el JSX de abajo). En local (npm start)
@@ -73,224 +84,210 @@ class DevicePanel extends React.Component {
         const hasProgram = programStatus &&
             (programStatus.st === 'running' || programStatus.st === 'loaded');
         const PROGRAM_STATE_LABELS = {
-            running: 'Corriendo en el robot',
-            loaded: 'Cargado (detenido)',
+            running: 'Corriendo',
+            loaded: 'Cargado',
             empty: 'Sin programa',
             error: 'Con error'
         };
 
-        return (
-            <div className={classNames(styles.devicePanelWrapper, {
-                [styles.devicePanelWrapperSmall]: isSmall
-            })}>
-                {/* Panel izquierdo - Lista de dispositivos (Flexible) */}
-                <div className={classNames(styles.deviceListPanel, {
-                    [styles.deviceListPanelSmall]: isSmall
-                })}>
-                    <div className={styles.deviceListHeader}>
-                        <h3 className={styles.deviceListTitle}>
-                            Dispositivos
-                        </h3>
-                    </div>
-
-                    <div className={styles.deviceList}>
-                        {devices && devices.length > 0 ? (
-                            devices.map((device, index) => (
-                                <div
-                                    key={device.id}
-                                    className={styles.deviceListItemWrapper}
-                                >
-                                    <button
-                                        className={classNames(styles.deviceListItem, {
-                                            [styles.deviceListItemActive]: selectedDeviceIndex === index
-                                        })}
-                                        onClick={() => this.handleSelectDevice(index)}
-                                    >
-                                        <div className={styles.deviceListItemContent}>
-                                            {device.icon && (
-                                                <img
-                                                    className={styles.deviceListItemIcon}
-                                                    src={device.icon}
-                                                    draggable={false}
-                                                />
-                                            )}
-                                            <span className={styles.deviceListItemName}>
-                                                {device.name}
-                                            </span>
-                                        </div>
-                                        <span
-                                            className={styles.deviceListItemStatus}
-                                            style={{
-                                                backgroundColor: device.isConnected ? '#51C141' : '#FF6B6B'
-                                            }}
-                                        />
-                                    </button>
-                                    <button
-                                        className={styles.deviceListItemDelete}
-                                        title="Eliminar dispositivo"
-                                        onClick={e => { e.stopPropagation(); onRemoveDevice(index); }}
-                                    >
-                                        {'×'}
-                                    </button>
-                                </div>
-                            ))
-                        ) : null}
-                        {/* Botón "+ Añadir" inmediatamente después de las cards, dentro
-                            del scroll, para que sea siempre visible junto a los devices. */}
+        if (!selectedDevice) {
+            return (
+                <div className={styles.panel}>
+                    <div className={styles.empty}>
+                        <span className={styles.emptyArt}>{'🔌'}</span>
+                        <p className={styles.emptyTitle}>{'Sin dispositivos'}</p>
+                        <p className={styles.emptyText}>{'Añade tu robot para empezar a programarlo'}</p>
                         <button
-                            className={styles.addDeviceButtonList}
+                            className={classNames(styles.key, styles.keyPrimary)}
                             onClick={onAddDevice}
                         >
-                            + Añadir Dispositivo
+                            {'+ Añadir dispositivo'}
                         </button>
                     </div>
                 </div>
+            );
+        }
 
-                {/* Panel derecho - Detalles del dispositivo (70%) */}
-                <div className={styles.deviceDetailsPanel}>
-                    {selectedDevice ? (
-                        <div className={styles.deviceDetails}>
-                            <div className={styles.detailsHeader}>
-                                <h2 className={styles.detailsTitle}>
-                                    {selectedDevice.name}
-                                </h2>
-                            </div>
+        return (
+            <div className={styles.panel}>
 
-                            <div className={styles.detailsInfo}>
-                                <div className={styles.infoSection}>
-                                    <h3 className={styles.infoSectionTitle}>
-                                        Conexión
-                                    </h3>
-
-                                    <div className={styles.infoRow}>
-                                        <span className={styles.infoLabel}>
-                                            Estado
-                                        </span>
-                                        <span className={styles.infoValue}>
-                                            <span
-                                                className={styles.statusDot}
-                                                style={{
-                                                    backgroundColor: selectedDevice.isConnected ? '#51C141' : '#FF6B6B'
-                                                }}
-                                            />
-                                            {selectedDevice.isConnected ? 'Conectado' : 'Desconectado'}
-                                        </span>
-                                    </div>
-
-                                    <div className={styles.infoRow}>
-                                        <span className={styles.infoLabel}>
-                                            Puerto
-                                        </span>
-                                        <span className={styles.infoValue}>
-                                            {selectedDevice.port || 'Sin puerto seleccionado'}
-                                        </span>
-                                    </div>
-
-                                    {canUploadProgram && selectedDevice.isConnected && programStatus && (
-                                        <div className={styles.infoRow}>
-                                            <span className={styles.infoLabel}>
-                                                Programa
-                                            </span>
-                                            <span className={styles.infoValue}>
-                                                {PROGRAM_STATE_LABELS[programStatus.st] || '—'}
-                                                {programStatus.sz > 0 && ` · ${programStatus.sz} B`}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                </div>
-
-                                <div className={styles.buttonGroup}>
-                                    {!selectedDevice.isConnected ? (
-                                        <button
-                                            className={classNames(styles.button, styles.connectButton)}
-                                            onClick={onConnect}
-                                        >
-                                            Conectar
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <button
-                                                className={classNames(styles.button, styles.disconnectButton)}
-                                                onClick={onDisconnect}
-                                            >
-                                                Desconectar
-                                            </button>
-
-                                            {/* Acción primaria: una vez existe, es lo más
-                                                importante que se puede hacer con el robot. */}
-                                            {canUploadProgram && (
-                                                <button
-                                                    className={classNames(styles.button, styles.uploadButton)}
-                                                    onClick={onUploadProgram}
-                                                    title="Envía tus bloques al robot para que funcione sin el computador"
-                                                >
-                                                    {'⬆ Subir a la placa'}
-                                                </button>
-                                            )}
-
-                                            {canUploadProgram && isProgramRunning && (
-                                                <button
-                                                    className={classNames(styles.button, styles.stopProgramButton)}
-                                                    onClick={onStopProgram}
-                                                >
-                                                    {'■ Detener programa'}
-                                                </button>
-                                            )}
-
-                                            {/* Borrar solo aparece si hay algo que borrar. Sin esto,
-                                                un programa subido acompaña al robot para siempre:
-                                                arranca solo cada vez que se enciende. */}
-                                            {/* El control es util en los DOS modos: en vivo
-                                                y con el programa autonomo corriendo. Por eso no
-                                                depende de que haya programa subido. */}
-                                            {canUploadProgram && (
-                                                <button
-                                                    className={classNames(styles.button, styles.remoteButton)}
-                                                    onClick={onOpenRemote}
-                                                    title="Manda botones al robot desde la pantalla o el teclado"
-                                                >
-                                                    {'🎮 Control remoto'}
-                                                </button>
-                                            )}
-
-                                            {canUploadProgram && hasProgram && (
-                                                <button
-                                                    className={classNames(styles.button, styles.eraseProgramButton)}
-                                                    onClick={onEraseProgram}
-                                                    title="Quita el programa de la memoria del robot"
-                                                >
-                                                    {'🗑 Borrar programa'}
-                                                </button>
-                                            )}
-
-                                            {canUpdateFirmware && (
-                                                <button
-                                                    className={classNames(styles.button, styles.firmwareButton)}
-                                                    onClick={onUpdateFirmware}
-                                                >
-                                                    Actualizar Firmware
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className={styles.emptyState}>
-                            <span className={styles.emptyStateIcon}>{'🔌'}</span>
-                            <p className={styles.emptyStateTitle}>{'Sin dispositivos'}</p>
-                            <p className={styles.emptyStateText}>{'Agrega un dispositivo para comenzar'}</p>
+                {/* 1. ¿CUÁL es mi robot? */}
+                <div className={styles.strip}>
+                    {devices.map((device, index) => (
+                        <span
+                            className={styles.chipWrap}
+                            key={device.id}
+                        >
                             <button
-                                className={styles.emptyStateAddButton}
-                                onClick={onAddDevice}
+                                className={classNames(styles.chip, {
+                                    [styles.chipOn]: selectedDeviceIndex === index
+                                })}
+                                onClick={() => this.handleSelectDevice(index)}
+                                title={device.name}
                             >
-                                {'+ Añadir dispositivo'}
+                                {device.icon && (
+                                    <img
+                                        className={styles.chipIcon}
+                                        src={device.icon}
+                                        draggable={false}
+                                        alt=""
+                                    />
+                                )}
+                                <span className={styles.chipName}>{device.name}</span>
+                                <span
+                                    className={classNames(styles.chipDot, {
+                                        [styles.chipDotOn]: device.isConnected
+                                    })}
+                                />
                             </button>
+                            <button
+                                className={styles.chipRemove}
+                                title="Quitar dispositivo"
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onRemoveDevice(index);
+                                }}
+                            >
+                                {'×'}
+                            </button>
+                        </span>
+                    ))}
+                    <button
+                        className={styles.chipAdd}
+                        onClick={onAddDevice}
+                        title="Añadir dispositivo"
+                    >
+                        {'+'}
+                    </button>
+                </div>
+
+                {/* 2. ¿EN QUÉ ESTADO está?
+                    En fila y no apilado: la columna del escenario es corta y un
+                    pódium alto empujaba las acciones fuera de la vista. */}
+                <div className={classNames(styles.hero, {[styles.heroLive]: selectedDevice.isConnected})}>
+                    <div className={styles.heroRow}>
+                        <div className={styles.pod}>
+                            {selectedDevice.icon ? (
+                                <img
+                                    className={styles.podArt}
+                                    src={selectedDevice.icon}
+                                    draggable={false}
+                                    alt=""
+                                />
+                            ) : (
+                                <span className={styles.podFallback}>{'🤖'}</span>
+                            )}
                         </div>
+                        <div className={styles.heroText}>
+                            <p className={styles.heroName}>{selectedDevice.name}</p>
+                            <p className={styles.heroState}>
+                                <span
+                                    className={classNames(styles.beat, {
+                                        [styles.beatOn]: selectedDevice.isConnected
+                                    })}
+                                />
+                                {selectedDevice.isConnected ? 'Conectado' : 'Desconectado'}
+                            </p>
+                            {selectedDevice.port && (
+                                <span className={styles.heroTag}>{selectedDevice.port}</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {selectedDevice.isConnected ? (
+                        <button
+                            className={classNames(styles.key, styles.keyGhost, styles.keyDanger)}
+                            onClick={onDisconnect}
+                        >
+                            {'Desconectar'}
+                        </button>
+                    ) : (
+                        <button
+                            className={classNames(styles.key, styles.keyPrimary)}
+                            onClick={onConnect}
+                        >
+                            {'Conectar'}
+                        </button>
                     )}
                 </div>
+
+                {/* 3. ¿QUÉ puedo hacer? */}
+                {selectedDevice.isConnected && (
+                    <div className={styles.acts}>
+
+                        {canUploadProgram && programStatus && (
+                            <div className={styles.progRow}>
+                                {'Programa en la placa'}
+                                <span
+                                    className={classNames(
+                                        styles.progBadge,
+                                        styles[`progBadge${(programStatus.st || 'empty')
+                                            .replace(/^./, c => c.toUpperCase())}`]
+                                    )}
+                                >
+                                    {PROGRAM_STATE_LABELS[programStatus.st] || '—'}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Acción primaria: una vez existe, es lo más
+                            importante que se puede hacer con el robot. */}
+                        {canUploadProgram && (
+                            <button
+                                className={classNames(styles.key, styles.keyPrimary)}
+                                onClick={onUploadProgram}
+                                title="Envía tus bloques al robot para que funcione sin el computador"
+                            >
+                                {'Subir a la placa'}
+                            </button>
+                        )}
+
+                        {canUploadProgram && (
+                            <div className={styles.duo}>
+                                {isProgramRunning && (
+                                    <button
+                                        className={classNames(styles.key, styles.keyGhost, styles.keyWarn)}
+                                        onClick={onStopProgram}
+                                    >
+                                        {'Detener'}
+                                    </button>
+                                )}
+                                {/* El control es util en los DOS modos: en vivo
+                                    y con el programa autonomo corriendo. Por eso no
+                                    depende de que haya programa subido. */}
+                                <button
+                                    className={classNames(styles.key, styles.keyGhost, styles.keyRemote)}
+                                    onClick={onOpenRemote}
+                                    title="Manda botones al robot desde la pantalla o el teclado"
+                                >
+                                    {'Mando'}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Borrar solo aparece si hay algo que borrar. Sin esto,
+                            un programa subido acompaña al robot para siempre:
+                            arranca solo cada vez que se enciende. */}
+                        {canUploadProgram && hasProgram && (
+                            <button
+                                className={classNames(styles.key, styles.keyGhost, styles.keyErase)}
+                                onClick={onEraseProgram}
+                                title="Quita el programa de la memoria del robot"
+                            >
+                                {'Borrar programa'}
+                            </button>
+                        )}
+
+                        {canUpdateFirmware && (
+                            <button
+                                className={classNames(styles.key, styles.keyGhost, styles.keyFirmware)}
+                                onClick={onUpdateFirmware}
+                            >
+                                {'Actualizar firmware'}
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         );
     }

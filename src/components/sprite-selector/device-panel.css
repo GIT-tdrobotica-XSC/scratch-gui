@@ -1,560 +1,471 @@
-@import "../../css/colors.css";
+/*
+    Panel de dispositivos — línea gráfica "Taller".
+    Los valores vienen de src/css/taller.css; aquí no se inventan colores.
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DEVICE PANEL — Layout B (2 columnas lateral, estilo mBlock)
-   Mismo diseño en chico y grande; los tamaños escalan via container queries.
-   No usa info-section boxes ni labels redundantes (Estado/Puerto/CONEXIÓN/PlayIoT title).
-   ═══════════════════════════════════════════════════════════════════════════ */
+    Estructura: tira selectora -> héroe -> acciones. Una pregunta por bloque.
+*/
 
-.device-panel-wrapper {
+.panel {
     display: flex;
-    flex-direction: row;
-    flex: 1;
-    min-height: 0;
+    flex-direction: column;
     height: 100%;
-    background-color: #ffffff;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-    overflow: hidden;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--tl-tray, #fff);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--tl-ink, #241F22);
     container-type: inline-size;
     container-name: devicepanel;
 }
 
-/* Estos modificadores legacy ya no aplican estilos significativos —
-   los tamaños se controlan via container query. Solo conservamos el
-   selector para compatibilidad con la prop stageSize. */
-.device-panel-wrapper-small,
-.device-list-panel-small {
-    /* sin overrides */
-}
-
-/* ─── COLUMNA IZQUIERDA: Lista de dispositivos ────────────────────────────── */
-
-.device-list-panel {
-    flex: 0 0 35%;
-    min-width: 100px;
-    max-width: 180px;
+/* ============================================================
+   1. TIRA SELECTORA — ¿cuál es mi robot?
+   ============================================================ */
+.strip {
     display: flex;
-    flex-direction: column;
-    border-right: 1px solid rgba(0, 0, 0, 0.08);
-    background-color: #fcfcfc;
-    min-height: 0;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--tl-tray-2, #F4EFEC);
+    border-bottom: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    overflow-x: auto;
+    flex: none;
+    /* la barra de scroll horizontal no debe empujar el contenido */
+    scrollbar-width: thin;
 }
 
-.device-list-header {
-    padding: 0.6rem 0.8rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    background-color: #ffffff;
-    flex-shrink: 0;
-}
-
-.device-list-title {
-    margin: 0;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #4c97ff;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.device-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem;
-    min-height: 0;
-}
-
-.device-list-item-wrapper {
+.chip-wrap {
     position: relative;
-    margin-bottom: 0.5rem;
-    flex-shrink: 0;
+    flex: none;
+    display: flex;
 }
 
-.device-list-item {
-    width: 100%;
+.chip {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    padding: 0.6rem 0.4rem;
-    border: 1.5px solid transparent;
-    border-radius: 10px;
-    background-color: #ffffff;
+    gap: 7px;
+    padding: 6px 12px 6px 7px;
+    border-radius: var(--tl-r-pill, 999px);
+    border: 1.5px solid var(--tl-line, rgba(36,31,34,.15));
+    background: var(--tl-tray, #fff);
+    color: var(--tl-ink-soft, #74676C);
+    font-size: 12px;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.18s ease;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    min-height: 70px;
+    transition: border-color .16s, color .16s, transform .16s;
 }
 
-.device-list-item:hover {
-    background-color: #f5f9ff;
-    border-color: #cce0ff;
+.chip:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
+    color: var(--tl-ink, #241F22);
 }
 
-.device-list-item-active {
-    background-color: #eef5ff;
-    border-color: #4c97ff;
-    box-shadow: 0 4px 12px rgba(76, 151, 255, 0.2);
+.chip-on {
+    border-color: var(--tl-red, #CC0000);
+    color: var(--tl-ink, #241F22);
+    background: rgba(204, 0, 0, .06);
+    box-shadow: 0 0 0 3px rgba(204, 0, 0, .13);
 }
 
-.device-list-item-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    width: 100%;
-    min-width: 0;
-}
-
-.device-list-item-icon {
-    width: 38px;
-    height: 38px;
+.chip-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
     object-fit: contain;
-    border-radius: 6px;
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 3px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    flex: none;
 }
 
-.device-list-item-name {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #3d4255;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.chip-name {
     white-space: nowrap;
 }
 
-/* Dot de estado en la esquina de la card */
-.device-list-item-status {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 8px;
-    height: 8px;
+.chip-dot {
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+    background: #C7BEBA;
+    flex: none;
 }
 
-/* Botón eliminar (X) en hover */
-.device-list-item-delete {
+.chip-dot-on {
+    background: var(--tl-ok, #2F9E44);
+}
+
+/* la × solo aparece al pasar por encima: no compite con el nombre */
+.chip-remove {
     position: absolute;
     top: -5px;
-    left: -5px;
-    width: 18px;
-    height: 18px;
+    right: -4px;
+    width: 17px;
+    height: 17px;
     border-radius: 50%;
-    background-color: #ff4d4d;
-    color: white;
-    border: 2px solid #ffffff;
-    font-size: 0.75rem;
+    border: 1.5px solid var(--tl-tray, #fff);
+    background: var(--tl-danger, #C92A2A);
+    color: #fff;
+    font-size: 11px;
     line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    z-index: 2;
-    padding: 0;
-    box-shadow: 0 2px 5px rgba(255, 77, 77, 0.4);
+    transition: opacity .15s;
 }
 
-.device-list-item-wrapper:hover .device-list-item-delete {
+.chip-wrap:hover .chip-remove,
+.chip-remove:focus-visible {
     opacity: 1;
 }
 
-.device-list-item-delete:hover {
-    transform: scale(1.15);
-    background-color: #e03030;
-}
-
-.add-device-button-list {
-    /* Ahora vive DENTRO de .device-list, justo tras las cards */
-    width: 100%;
-    padding: 0.55rem;
-    margin: 0;
-    border: 2px dashed #4c97ff;
-    border-radius: 8px;
-    background-color: transparent;
-    color: #4c97ff;
-    font-size: 0.72rem;
+.chip-add {
+    flex: none;
+    width: 34px;
+    height: 32px;
+    border-radius: var(--tl-r-pill, 999px);
+    border: 1.5px dashed rgba(116, 103, 108, .45);
+    background: transparent;
+    color: var(--tl-ink-soft, #74676C);
+    font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.18s ease;
-    flex-shrink: 0;
+    transition: color .16s, border-color .16s, transform .16s;
 }
 
-.add-device-button-list:hover {
-    background-color: #eef5ff;
-    border-style: solid;
+.chip-add:hover {
+    color: var(--tl-red, #CC0000);
+    border-color: var(--tl-red, #CC0000);
+    transform: translateY(-1px);
 }
 
-/* ─── COLUMNA DERECHA: Acción ─────────────────────────────────────────────── */
-
-.device-details-panel {
-    flex: 1;
+/* ============================================================
+   2. HÉROE — ¿en qué estado está?
+   ============================================================ */
+/*
+    En FILA, no apilado. La columna del escenario es corta y un pódium alto
+    empujaba las acciones fuera de la vista: el panel hacía scroll pero lo
+    importante quedaba bajo el pliegue. Así ocupa aprox. la mitad de alto.
+*/
+.hero {
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    padding: 0.8rem;
-    background-color: #ffffff;
-    min-height: 0;
+    padding: 11px 12px 12px;
+    flex: none;
 }
 
-.device-details {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
-}
-
-/* Título PlayIoT (redundante con la card) — oculto */
-.details-header {
-    display: none;
-}
-
-.details-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    min-height: 0;
-}
-
-/* Sección "Conexión" — sin caja, plana */
-.info-section {
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    flex-shrink: 0;
-}
-
-/* Título "CONEXIÓN" — oculto, redundante */
-.info-section-title {
-    display: none;
-}
-
-/* Status inline (Estado: ● Desconectado) */
-.info-row {
+.hero-row {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    gap: 0.5rem;
-    padding: 0.3rem 0;
-    border: none;
-    font-size: 0.78rem;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--tl-r, 12px);
+    background: var(--tl-tray-2, #F4EFEC);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    position: relative;
+    overflow: hidden;
 }
 
-/* Ocultar la fila del Puerto (segunda info-row) — info técnica innecesaria */
-.info-row:nth-of-type(2) {
-    display: none;
+/* halo verde solo cuando está conectado: el estado se ve sin leer */
+.hero-live .hero-row::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 12% 120%, rgba(47, 158, 68, .20), transparent 58%);
+    pointer-events: none;
 }
 
-.info-label {
-    color: #718096;
-    font-weight: 600;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
+.pod {
+    flex: none;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--tl-r-sm, 9px);
+    display: grid;
+    place-items: center;
+    background: var(--tl-tray, #fff);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    position: relative;
+    z-index: 1;
 }
 
-.info-value {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: #2d3748;
-    font-weight: 700;
+.pod-art {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
 }
 
-.status-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
+.pod-fallback {
+    font-size: 26px;
+    line-height: 1;
 }
 
-/* Grupo de botones — sin auto-margin, fluyen tras el status */
-.button-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-    margin-top: 0.4rem;
-}
-
-.button {
-    width: 100%;
+.hero-text {
     min-width: 0;
-    padding: 0.7rem 0.9rem;
-    border: none;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-name {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 0;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hero-state {
     display: flex;
     align-items: center;
+    gap: 6px;
+    margin: 1px 0 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--tl-ink-soft, #74676C);
+}
+
+.beat {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #C7BEBA;
+    flex: none;
+}
+
+.beat-on {
+    background: var(--tl-ok, #2F9E44);
+    animation: tl-beat 2s ease-in-out infinite;
+}
+
+@keyframes tl-beat {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(47, 158, 68, .55); }
+    50%      { box-shadow: 0 0 0 7px rgba(47, 158, 68, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .beat-on { animation: none; }
+}
+
+.hero-tag {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 9px;
+    letter-spacing: .09em;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: var(--tl-tray, #fff);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    border-radius: 5px;
+    padding: 1px 5px;
+    color: var(--tl-ink-soft, #74676C);
+    font-variant-numeric: tabular-nums;
+}
+
+.hero .key {
+    width: 100%;
+    justify-content: center;
+    margin-top: 9px;
+}
+
+/* ============================================================
+   3. ACCIONES — ¿qué puedo hacer?
+   ============================================================ */
+.acts {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 0 12px 12px;
+}
+
+.duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* si "Detener" no está, "Mando" ocupa el ancho completo por sí solo */
+.duo > .key {
     justify-content: center;
 }
 
-.button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+.prog-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 11px;
+    border-radius: var(--tl-r, 12px);
+    background: var(--tl-tray-2, #F4EFEC);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--tl-ink-soft, #74676C);
 }
 
-.button:active:not(:disabled) {
-    transform: translateY(0);
+.prog-badge {
+    margin-left: auto;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--tl-r-pill, 999px);
+    border: 1px solid transparent;
 }
 
-.button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    background-color: #e2e8f0;
-    color: #a0aec0;
+.prog-badge-running {
+    background: rgba(47, 158, 68, .15);
+    color: var(--tl-ok-deep, #217A35);
+    border-color: rgba(47, 158, 68, .32);
 }
 
-.connect-button {
-    background: linear-gradient(135deg, #51C141 0%, #3ebb2d 100%);
-    color: white;
-    box-shadow: 0 3px 8px rgba(81, 193, 65, 0.25);
+.prog-badge-loaded {
+    background: rgba(47, 107, 216, .13);
+    color: #2456A8;
+    border-color: rgba(47, 107, 216, .30);
 }
 
-.disconnect-button {
-    background: linear-gradient(135deg, #FF6B6B 0%, #ee5253 100%);
-    color: white;
-    box-shadow: 0 3px 8px rgba(255, 107, 107, 0.25);
+.prog-badge-empty {
+    background: rgba(116, 103, 108, .13);
+    color: var(--tl-ink-soft, #74676C);
+    border-color: rgba(116, 103, 108, .26);
 }
 
-.firmware-button {
-    background: linear-gradient(135deg, #4c97ff 0%, #2f80ed 100%);
-    color: white;
-    box-shadow: 0 3px 8px rgba(76, 151, 255, 0.25);
+.prog-badge-error {
+    background: rgba(201, 42, 42, .13);
+    color: var(--tl-danger, #C92A2A);
+    border-color: rgba(201, 42, 42, .30);
 }
 
-/* Acción primaria del panel: subir el programa a la placa para que el robot
-   funcione sin el computador. Se destaca más que los demás botones porque,
-   una vez existe, es lo más importante que se puede hacer aquí. */
-.upload-button {
-    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
-    color: white;
-    box-shadow: 0 3px 10px rgba(46, 204, 113, 0.35);
-    font-size: 0.9rem;
+/* ============================================================
+   TECLAS — piezas que se pulsan
+   ============================================================ */
+.key {
+    --tl-tone: var(--tl-red, #CC0000);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 11px 13px;
+    border: 0;
+    border-radius: var(--tl-r, 12px);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    background: var(--tl-tone);
+    transition: transform .1s, box-shadow .1s, background .15s;
 }
 
-.stop-program-button {
-    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
-    color: white;
-    box-shadow: 0 3px 8px rgba(237, 137, 54, 0.25);
+.key:focus-visible {
+    outline: 3px solid var(--tl-ink, #241F22);
+    outline-offset: 2px;
 }
 
-/* Borrar es destructivo pero no urgente: se deja discreto (contorno, no
-   relleno) para que no compita con "Subir" ni se pulse por error. */
-.remote-button {
-    background: linear-gradient(135deg, #9F7AEA 0%, #7C5BD9 100%);
-    color: white;
-    box-shadow: 0 3px 8px rgba(124, 91, 217, 0.25);
+/* relieve solo para la acción principal */
+.key-primary {
+    --tl-tone: var(--tl-ok, #2F9E44);
+    background: linear-gradient(180deg, #3DBA55 0%, var(--tl-ok, #2F9E44) 100%);
+    box-shadow:
+        var(--tl-bevel, inset 0 1.5px 0 rgba(255,255,255,.42)),
+        0 3px 0 var(--tl-ok-deep, #217A35),
+        0 5px 12px rgba(47, 158, 68, .34);
 }
 
-.erase-program-button {
-    background: transparent;
-    color: #a0aec0;
-    border: 1px solid #cbd5e0;
+.key-primary:hover {
+    transform: translateY(-1px);
+}
+
+/* se hunde: confirma la pulsación sin esperar al robot */
+.key-primary:active {
+    transform: translateY(3px);
+    box-shadow: var(--tl-bevel, inset 0 1.5px 0 rgba(255,255,255,.3)) , 0 0 0 var(--tl-ok-deep, #217A35);
+}
+
+/* secundarias: planas, con el color de su función */
+.key-ghost {
+    background: rgba(0, 0, 0, .04);
+    color: var(--tl-tone);
+    border: 1.5px solid transparent;
     box-shadow: none;
-    font-weight: 600;
 }
 
-.erase-program-button:hover:not(:disabled) {
-    background-color: #fff5f5;
-    border-color: #fc8181;
-    color: #c53030;
-    box-shadow: none;
+.key-ghost:hover {
+    transform: translateY(-1px);
+    background: rgba(0, 0, 0, .07);
 }
 
-/* ─── Empty state (cuando no hay dispositivos) ────────────────────────────── */
+.key-ghost:active {
+    transform: translateY(1px);
+}
 
-.empty-state {
+.key-danger   { --tl-tone: var(--tl-danger, #C92A2A); }
+.key-warn     { --tl-tone: var(--tl-warn, #E07B14); }
+.key-remote   { --tl-tone: #7D4BD6; }
+.key-erase    { --tl-tone: var(--tl-ink-soft, #74676C); }
+.key-firmware { --tl-tone: #2F6BD8; }
+
+.key-ghost.key-danger   { background: rgba(201, 42, 42, .09);  border-color: rgba(201, 42, 42, .26); }
+.key-ghost.key-warn     { background: rgba(224, 123, 20, .10); border-color: rgba(224, 123, 20, .28); }
+.key-ghost.key-remote   { background: rgba(125, 75, 214, .10); border-color: rgba(125, 75, 214, .26); }
+.key-ghost.key-erase    { background: rgba(116, 103, 108, .08); border-color: rgba(116, 103, 108, .24); }
+.key-ghost.key-firmware { background: rgba(47, 107, 216, .10); border-color: rgba(47, 107, 216, .26); }
+
+/* ============================================================
+   ESTADO VACÍO
+   ============================================================ */
+.empty {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    color: #a0aec0;
+    gap: 4px;
+    padding: 30px 22px;
     text-align: center;
-    gap: 0.5rem;
 }
 
-.empty-state-icon {
-    font-size: 2rem;
-    margin-bottom: 0.3rem;
+.empty-art {
+    font-size: 42px;
+    line-height: 1;
+    margin-bottom: 6px;
+    opacity: .75;
 }
 
-.empty-state-title {
+.empty-title {
     margin: 0;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #4a5568;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -.02em;
 }
 
-.empty-state-text {
-    margin: 0;
-    font-size: 0.75rem;
-    color: #a0aec0;
+.empty-text {
+    margin: 0 0 14px;
+    font-size: 12px;
+    color: var(--tl-ink-soft, #74676C);
+    max-width: 26ch;
 }
 
-.empty-state-add-button {
-    margin-top: 0.6rem;
-    padding: 0.55rem 1.1rem;
-    background: linear-gradient(135deg, #4c97ff 0%, #2f80ed 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.18s ease;
+/* ============================================================
+   PANEL ESTRECHO
+   El escenario pequeño deja esta columna muy angosta: se compacta
+   con container queries, que miden el CONTENEDOR y no la ventana
+   (inmunes al zoom del navegador).
+   ============================================================ */
+@container devicepanel (max-width: 260px) {
+    .pod { width: 42px; height: 42px; }
+    .pod-art { width: 32px; height: 32px; }
+    .hero-name { font-size: 13.5px; }
+    .duo { grid-template-columns: 1fr; }
+    .chip-name { display: none; }
 }
 
-.empty-state-add-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(76, 151, 255, 0.3);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ESCALADO UNIFORME — los tamaños suben en pantallas grandes (panel ancho)
-   y bajan en pantallas pequeñas, manteniendo el mismo diseño.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Panel ULTRA chico (< 360px): ocultar labels que se cortan, máxima compactación.
-   El dot de la card del dispositivo y el dot del status row ya muestran conexión. */
-@container devicepanel (max-width: 360px) {
-    /* Header "DISPOSITIVOS" — quita ruido textual */
-    .device-list-header {
-        display: none;
-    }
-    /* Label "ESTADO" — el dot + texto inline ya basta */
-    .info-label {
-        display: none;
-    }
-    /* Lista más estrecha para dejar más ancho al panel derecho */
-    .device-list-panel {
-        flex: 0 0 30%;
-        min-width: 80px;
-    }
-    /* Cards más compactas: solo icono visible (texto hidden) */
-    .device-list-item {
-        min-height: 56px;
-        padding: 0.4rem 0.3rem;
-    }
-    .device-list-item-icon {
-        width: 32px;
-        height: 32px;
-    }
-    .device-list-item-name {
-        font-size: 0.65rem;
-    }
-    .add-device-button-list {
-        padding: 0.45rem 0.3rem;
-        font-size: 0.65rem;
-    }
-    /* Status row más compacto */
-    .info-row {
-        font-size: 0.72rem;
-        padding: 0.2rem 0;
-    }
-    .device-details-panel {
-        padding: 0.6rem;
-    }
-    .button {
-        padding: 0.6rem 0.7rem;
-        font-size: 0.78rem;
-    }
-}
-
-/* Panel mediano (≥ 480px): tamaños base + un poco más de padding */
-@container devicepanel (min-width: 480px) {
-    .device-list-panel {
-        flex: 0 0 32%;
-    }
-    .device-list-header {
-        padding: 0.7rem 0.9rem;
-    }
-    .device-list {
-        padding: 0.6rem;
-    }
-    .device-list-item {
-        padding: 0.7rem 0.5rem;
-        min-height: 80px;
-    }
-    .device-list-item-icon {
-        width: 42px;
-        height: 42px;
-    }
-    .device-list-item-name {
-        font-size: 0.78rem;
-    }
-    .add-device-button-list {
-        padding: 0.65rem;
-        font-size: 0.78rem;
-    }
-    .device-details-panel {
-        padding: 1rem;
-    }
-    .info-row {
-        font-size: 0.85rem;
-    }
-    .button {
-        padding: 0.8rem 1rem;
-        font-size: 0.9rem;
-    }
-}
-
-/* Panel grande (≥ 700px): full size */
-@container devicepanel (min-width: 700px) {
-    .device-list-panel {
-        flex: 0 0 180px;
-    }
-    .device-list-header {
-        padding: 0.8rem 1rem;
-    }
-    .device-list-title {
-        font-size: 0.82rem;
-    }
-    .device-list-item {
-        padding: 0.9rem 0.5rem;
-        min-height: 100px;
-    }
-    .device-list-item-icon {
-        width: 48px;
-        height: 48px;
-    }
-    .device-list-item-name {
-        font-size: 0.85rem;
-    }
-    .add-device-button-list {
-        padding: 0.75rem;
-        font-size: 0.82rem;
-    }
-    .device-details-panel {
-        padding: 1.2rem;
-    }
-    .info-row {
-        font-size: 0.9rem;
-    }
-    .info-label {
-        font-size: 0.75rem;
-    }
-    .button {
-        padding: 0.9rem 1.2rem;
-        font-size: 0.95rem;
-    }
+/*
+    Columna baja (portátiles): el escenario ya se come el alto disponible.
+    Se recorta lo prescindible antes que dejar las acciones bajo el pliegue,
+    porque un botón que no se ve es un botón que no existe.
+*/
+@media (max-height: 800px) {
+    .hero { padding: 9px 12px 10px; }
+    .hero-row { padding: 8px 10px; }
+    .pod { width: 44px; height: 44px; }
+    .pod-art { width: 34px; height: 34px; }
+    .key { padding: 9px 12px; }
+    .acts { gap: 6px; }
 }
