@@ -41,9 +41,9 @@
 }
 
 .stage-size-row > *, .unselect-wrapper {
-    /* Fondo blanco para mantener visibilidad */
-    background-color: $ui-white;
-    border-radius: $form-radius;
+    /* Fondo claro para mantener visibilidad sobre el banco */
+    background-color: var(--tl-tray, #fff);
+    border-radius: var(--tl-r-sm, 9px);
 }
 
 [dir="ltr"] .stage-size-toggle-group {
@@ -54,28 +54,40 @@
     margin-left: .2rem;
 }
 
+/*
+    Teclas de la cabecera del escenario — línea gráfica "Taller".
+    Mismo tratamiento que las teclas del panel de dispositivos: se levantan al
+    pasar el ratón y se hunden al pulsarlas, para que la respuesta se sienta.
+*/
 .stage-button {
     display: block;
-    border: 1px solid $ui-black-transparent;
-    border-radius: $form-radius;
+    border: 1px solid var(--tl-line, rgba(36, 31, 34, .15));
+    border-radius: var(--tl-r-sm, 9px);
     width: calc(2rem + 2px);
     height: calc(2rem + 2px);
-    background: $ui-white;
+    background: var(--tl-tray, #fff);
     padding: 0.375rem;
     user-select: none;
     cursor: pointer;
-    transition: background-color 0.2s, box-shadow 0.2s;
+    transition: background-color .16s, box-shadow .16s, transform .1s;
 }
 
-/* Cuando se mantiene presionado o activo */
-.stage-button:active {
-    background-color: hsla(0, 100%, 60%, 0.35); /* Rojo translúcido */
-    box-shadow: 0 0 0 2px hsla(0, 100%, 60%, 0.25);
-}
-
-/* Hover sutil en rojo */
 .stage-button:hover {
-    background-color: hsla(0, 100%, 60%, 0.15);
+    background-color: rgba(204, 0, 0, .08);
+    border-color: rgba(204, 0, 0, .28);
+    transform: translateY(-1px);
+    box-shadow: var(--tl-sh-1, 0 1px 2px rgba(20, 12, 16, .06), 0 6px 18px rgba(20, 12, 16, .09));
+}
+
+.stage-button:active {
+    transform: translateY(1px);
+    background-color: rgba(204, 0, 0, .16);
+    box-shadow: inset 0 2px 4px rgba(20, 12, 16, .16);
+}
+
+.stage-button:focus-visible {
+    outline: 2.5px solid var(--tl-red, #CC0000);
+    outline-offset: 2px;
 }
 
 /* Icono dentro del botón */
