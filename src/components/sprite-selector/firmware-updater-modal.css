@@ -1,5 +1,11 @@
-@import "../../css/z-index.css";
-@import "../../css/compiler-tokens.css";
+/*
+    Modal de actualización de firmware — línea gráfica "Taller".
+    Valores desde src/css/taller.css.
+
+    Bandeja clara con franja roja, igual que el modal de subida: informa de un
+    proceso, no manipula el robot (a diferencia del mando, que sí es un chasis
+    oscuro porque se toca).
+*/
 
 .modalOverlay {
     position: fixed;
@@ -7,207 +13,229 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--compiler-modal-overlay);
+    background-color: rgba(20, 12, 16, .55);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 510; /* z-index.css: $z-index-modal -- hardcodeado, ver nota en compiler-tokens.css */
+    z-index: 510; /* z-index.css: $z-index-modal */
+    padding: 16px;
 }
 
 .modal {
-    background-color: white;
-    border-radius: var(--compiler-radius-md);
-    width: 450px;
-    padding: 24px;
-    box-shadow: var(--compiler-modal-shadow);
     position: relative;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+    border-radius: var(--tl-r-lg, 15px);
+    background: var(--tl-tray, #fff);
+    box-shadow: var(--tl-sh-3, 0 4px 12px rgba(20,12,16,.22), 0 26px 54px rgba(20,12,16,.30));
+    color: var(--tl-ink, #241F22);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.modal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: var(--tl-r-lg, 15px) var(--tl-r-lg, 15px) 0 0;
+    background: linear-gradient(90deg,
+        var(--tl-red, #CC0000) 0%,
+        var(--tl-red-lift, #FF3B3B) 48%,
+        var(--tl-red, #CC0000) 100%);
 }
 
 .header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .title {
     margin: 0;
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -.02em;
 }
 
 .closeButton {
-    background: none;
-    border: none;
-    font-size: 24px;
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--tl-r-sm, 9px);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    background: var(--tl-tray-2, #F4EFEC);
+    color: var(--tl-ink-soft, #74676C);
+    font-size: 13px;
+    line-height: 1;
     cursor: pointer;
-    color: #999;
+    transition: background .15s, color .15s;
 }
 
 .closeButton:hover {
-    color: #666;
+    background: var(--tl-line, rgba(36,31,34,.15));
+    color: var(--tl-ink, #241F22);
 }
 
-.selectionArea {
+/* ============================================================
+   PASO DE PREPARACIÓN (BOOT)
+   Solo lo ven las placas que lo necesitan: PlayGo tiene auto-reset
+   por DTR y se salta este paso.
+   ============================================================ */
+.bootStep {
     text-align: center;
+    padding: 4px 0 8px;
 }
 
-.selectionText {
-    color: #666;
-    margin-bottom: 20px;
-}
-
-.buttonGrid {
-    display: flex;
-    gap: 15px;
+.bootStepIcon {
+    font-size: 34px;
+    line-height: 1;
     margin-bottom: 10px;
 }
 
-.extensionButton {
-    flex: 1;
-    padding: 20px;
-    border-radius: 10px;
-    background-color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-}
-
-.playIot {
-    border: 2px solid #3498db;
-}
-
-.playIot:hover {
-    background-color: #ebf5fb;
-}
-
-.playMe {
-    border: 2px solid #9b59b6;
-}
-
-.playMe:hover {
-    background-color: #f5eef8;
-}
-
-.label {
+.bootStepTitle {
+    margin: 0 0 14px;
     font-size: 14px;
-    color: #888;
-    margin-bottom: 5px;
+    font-weight: 800;
+    letter-spacing: -.01em;
 }
 
-.extensionName {
-    display: block;
-    font-weight: bold;
-    font-size: 16px;
+.bootStepList {
+    text-align: left;
+    margin: 0 0 18px;
+    padding-left: 20px;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--tl-ink-soft, #74676C);
 }
 
-.playIot .extensionName {
-    color: #2980b9;
+.bootStepList strong {
+    color: var(--tl-ink, #241F22);
+    font-weight: 700;
 }
 
-.playMe .extensionName {
-    color: #8e44ad;
+/* ============================================================
+   IDENTIFICACIÓN
+   ============================================================ */
+.selectionArea {
+    text-align: center;
+    padding: 8px 0 4px;
 }
 
+.selectionText {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--tl-ink-soft, #74676C);
+}
+
+/* ============================================================
+   PROGRESO
+   ============================================================ */
 .progressArea {
-    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
 }
 
 .statusText {
-    font-size: 13px;
-    color: #888;
-    margin-bottom: 8px;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--tl-ink, #241F22);
 }
 
 .progressBarContainer {
     height: 10px;
-    background-color: #ecf0f1;
-    border-radius: 5px;
+    border-radius: var(--tl-r-pill, 999px);
+    background: var(--tl-tray-2, #F4EFEC);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
     overflow: hidden;
-    margin-bottom: 5px;
+    box-shadow: inset 0 1px 3px rgba(20, 12, 16, .12);
 }
 
 .progressBar {
     height: 100%;
-    background-color: #3498db;
-    transition: width 0.3s ease;
+    border-radius: var(--tl-r-pill, 999px);
+    background: linear-gradient(90deg, #2F6BD8, #4C97FF);
+    transition: width .3s ease;
 }
 
 .progressPercent {
     text-align: right;
-    font-size: 12px;
-    color: #999;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--tl-ink-soft, #74676C);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   RESULTADO
+   La barra lateral distingue error de éxito de un vistazo, sin leer.
+   ============================================================ */
+.error,
+.success {
+    padding: 11px 13px;
+    border-radius: var(--tl-r, 12px);
+    margin-bottom: 18px;
+    font-size: 12.5px;
+    font-weight: 600;
 }
 
 .error {
-    padding: 12px;
-    background-color: #fdecea;
-    color: #c0392b;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    border-left: 4px solid #c0392b;
+    background: rgba(201, 42, 42, .07);
+    border: 1px solid rgba(201, 42, 42, .22);
+    border-left: 3px solid var(--tl-danger, #C92A2A);
+    color: var(--tl-danger, #C92A2A);
 }
 
 .success {
-    padding: 12px;
-    background-color: #e9f7ef;
-    color: #186a3b;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    border-left: 4px solid #186a3b;
+    background: rgba(47, 158, 68, .09);
+    border: 1px solid rgba(47, 158, 68, .26);
+    border-left: 3px solid var(--tl-ok, #2F9E44);
+    color: var(--tl-ok-deep, #217A35);
 }
 
+/* ============================================================
+   PIE
+   ============================================================ */
 .footer {
     display: flex;
     justify-content: flex-end;
 }
 
-/* Alineado al resto de la familia (subir/control remoto): degradado +
-   sombra de color, no un relleno plano -- era el único botón de acción de
-   las 5 piezas sin ese tratamiento. Azul porque firmware es mantenimiento,
-   no la acción primaria (verde queda reservado para "Subir a la placa"). */
+/* Azul y no verde: actualizar firmware es mantenimiento, no la acción
+   principal del editor. El verde queda reservado a "Subir a la placa". */
 .actionButton {
-    padding: 10px 20px;
-    background: linear-gradient(135deg, var(--compiler-info) 0%, var(--compiler-info-deep) 100%);
-    box-shadow: var(--compiler-shadow-rest);
-    color: white;
-    border: none;
-    border-radius: var(--compiler-radius-sm);
-    cursor: pointer;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: var(--tl-r, 12px);
+    font-family: inherit;
+    font-size: 12.5px;
     font-weight: 700;
-    transition: box-shadow 0.18s ease;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(180deg, #4C97FF 0%, #2F6BD8 100%);
+    box-shadow:
+        var(--tl-bevel, inset 0 1.5px 0 rgba(255,255,255,.42)),
+        0 3px 0 #2454AB,
+        0 5px 12px rgba(47, 107, 216, .30);
+    transition: transform .1s, box-shadow .1s;
 }
 
 .actionButton:hover {
-    box-shadow: var(--compiler-shadow-hover);
+    transform: translateY(-1px);
 }
 
-.bootStep {
-    text-align: center;
-    padding: 8px 0 16px;
+.actionButton:active {
+    transform: translateY(3px);
+    box-shadow: var(--tl-bevel, inset 0 1.5px 0 rgba(255,255,255,.3)), 0 0 0 #2454AB;
 }
 
-.bootStepIcon {
-    font-size: 36px;
-    margin-bottom: 10px;
-}
-
-.bootStepTitle {
-    font-size: 15px;
-    font-weight: 700;
-    color: #333;
-    margin: 0 0 14px;
-}
-
-.bootStepList {
-    text-align: left;
-    font-size: 13px;
-    color: #555;
-    line-height: 1.8;
-    margin: 0 0 20px;
-    padding-left: 20px;
+.actionButton:focus-visible {
+    outline: 3px solid var(--tl-ink, #241F22);
+    outline-offset: 2px;
 }

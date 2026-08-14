@@ -173,10 +173,10 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: white;
-    border-radius: 12px;
+    background: var(--tl-tray, #fff);
+    border-radius: var(--tl-r, 12px);
     padding: 12px 18px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    box-shadow: var(--tl-sh-2, 0 3px 10px rgba(20, 12, 16, .14));
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     animation: slideInRight 0.25s ease;
 }
@@ -185,7 +185,7 @@
     width: 18px;
     height: 18px;
     border: 2px solid #e0e0e0;
-    border-top-color: #4C97FF;
+    border-top-color: var(--tl-red, #CC0000);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     flex-shrink: 0;
@@ -215,7 +215,7 @@
     position: fixed;
     inset: 0;
     z-index: 10000;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(20, 12, 16, .60);
     display: flex;
     align-items: center;
     justify-content: center;

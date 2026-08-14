@@ -1,9 +1,11 @@
-/* Modal de "Subir a la placa".
-   Sigue el mismo lenguaje visual que firmware-updater-modal.css para que las
-   dos operaciones sobre el dispositivo se sientan de la misma familia. */
+/*
+    Modal de subida a la placa — línea gráfica "Taller".
+    Valores desde src/css/taller.css.
 
-@import "../../css/z-index.css";
-@import "../../css/compiler-tokens.css";
+    Es una BANDEJA clara, no un chasis oscuro como el mando: aquí no se
+    manipula el robot, se informa de un proceso. La identidad se concentra en
+    la franja roja superior, igual que en la barra de menú.
+*/
 
 .modal-overlay {
     position: fixed;
@@ -11,254 +13,332 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--compiler-modal-overlay);
+    background-color: rgba(20, 12, 16, .55);
     display: flex;
     justify-content: center;
     align-items: center;
-    /* $z-index-modal (510), no 10000: ese valor coincidía por accidente con
-       $z-index-context-menu, el nivel más alto del sistema -- un modal no
-       debería competir con un menú contextual de Blockly por encima. */
-    z-index: 510; /* z-index.css: $z-index-modal -- hardcodeado, ver nota en compiler-tokens.css */
+    z-index: 510; /* z-index.css: $z-index-modal */
+    padding: 16px;
 }
 
 .modal {
-    background-color: white;
-    border-radius: var(--compiler-radius-md);
-    width: 460px;
-    max-width: 92vw;
+    position: relative;
+    width: 100%;
+    max-width: 440px;
     max-height: 88vh;
     overflow-y: auto;
-    padding: 24px;
-    box-shadow: var(--compiler-modal-shadow);
-    position: relative;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    padding: 20px;
+    border-radius: var(--tl-r-lg, 15px);
+    background: var(--tl-tray, #fff);
+    box-shadow: var(--tl-sh-3, 0 4px 12px rgba(20,12,16,.22), 0 26px 54px rgba(20,12,16,.30));
+    color: var(--tl-ink, #241F22);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.modal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: var(--tl-r-lg, 15px) var(--tl-r-lg, 15px) 0 0;
+    background: linear-gradient(90deg,
+        var(--tl-red, #CC0000) 0%,
+        var(--tl-red-lift, #FF3B3B) 48%,
+        var(--tl-red, #CC0000) 100%);
 }
 
 .header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
 .title {
     margin: 0;
-    font-size: 18px;
-    color: #333;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -.02em;
 }
 
 .close-button {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #999;
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--tl-r-sm, 9px);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
+    background: var(--tl-tray-2, #F4EFEC);
+    color: var(--tl-ink-soft, #74676C);
+    font-size: 13px;
+    line-height: 1;
     cursor: pointer;
-    padding: 4px 8px;
+    transition: background .15s, color .15s;
 }
 
 .close-button:hover {
-    color: #333;
+    background: var(--tl-line, rgba(36,31,34,.15));
+    color: var(--tl-ink, #241F22);
 }
 
-/* ─── Progreso ──────────────────────────────────────────────────────────── */
-
+/* ============================================================
+   PROGRESO
+   ============================================================ */
 .progress-area {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .device-line {
-    font-size: 13px;
-    color: #555;
-    margin: 0 0 12px;
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--tl-ink-soft, #74676C);
+}
+
+.device-line strong {
+    color: var(--tl-ink, #241F22);
+    font-weight: 700;
 }
 
 .ble-hint {
-    color: #888;
-    font-style: italic;
+    color: var(--tl-warn, #E07B14);
+    font-weight: 600;
 }
 
 .status-text {
-    font-size: 14px;
-    color: #444;
-    margin-bottom: 12px;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--tl-ink, #241F22);
 }
 
 .progress-bar-container {
-    width: 100%;
-    height: 12px;
-    background-color: #e9edf2;
-    border-radius: 6px;
+    height: 10px;
+    border-radius: var(--tl-r-pill, 999px);
+    background: var(--tl-tray-2, #F4EFEC);
+    border: 1px solid var(--tl-line, rgba(36,31,34,.15));
     overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(20, 12, 16, .12);
 }
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(135deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
-    transition: width 0.25s ease;
+    border-radius: var(--tl-r-pill, 999px);
+    background: linear-gradient(90deg, var(--tl-ok, #2F9E44), #3DBA55);
+    transition: width .25s ease;
 }
 
 .progress-percent {
-    margin-top: 8px;
-    font-size: 13px;
-    color: #666;
-    font-weight: 600;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--tl-ink-soft, #74676C);
+    font-variant-numeric: tabular-nums;
 }
 
-/* ─── Errores de compilación ────────────────────────────────────────────── */
+.stats-line {
+    margin: 0;
+    font-size: 11px;
+    color: var(--tl-ink-soft, #74676C);
+    font-variant-numeric: tabular-nums;
+}
 
+/* ============================================================
+   ERRORES
+   ============================================================ */
 .error-area {
-    background-color: #fff5f5;
-    border: 1px solid #ffd6d6;
-    border-radius: var(--compiler-radius-md);
-    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .error-heading {
-    margin: 0 0 12px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #c53030;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--tl-danger, #C92A2A);
 }
 
 .error-list {
-    list-style: none;
     margin: 0;
     padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .error-item {
-    padding: 10px 0;
-    border-top: 1px solid #ffe0e0;
-}
-
-.error-item:first-child {
-    border-top: none;
-    padding-top: 0;
+    padding: 10px 12px;
+    border-radius: var(--tl-r, 12px);
+    background: rgba(201, 42, 42, .07);
+    border: 1px solid rgba(201, 42, 42, .22);
+    /* barra lateral: distingue de un vistazo error de aviso */
+    border-left: 3px solid var(--tl-danger, #C92A2A);
 }
 
 .error-message {
-    font-size: 13.5px;
-    color: #2d3748;
-    line-height: 1.45;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--tl-ink, #241F22);
 }
 
 .error-hint {
-    margin-top: 5px;
-    font-size: 12.5px;
-    color: #718096;
-    line-height: 1.4;
+    margin-top: 3px;
+    font-size: 11.5px;
+    color: var(--tl-ink-soft, #74676C);
 }
 
 .show-block-button {
-    margin-top: 8px;
-    background-color: #fff;
-    border: 1px solid #fc8181;
-    color: #c53030;
-    border-radius: 8px;
-    padding: 5px 12px;
-    font-size: 12px;
+    margin-top: 6px;
+    padding: 5px 11px;
+    border-radius: var(--tl-r-sm, 9px);
+    border: 1px solid rgba(201, 42, 42, .28);
+    background: var(--tl-tray, #fff);
+    color: var(--tl-danger, #C92A2A);
+    font-family: inherit;
+    font-size: 11px;
     font-weight: 700;
     cursor: pointer;
+    transition: background .15s;
 }
 
 .show-block-button:hover {
-    background-color: #fed7d7;
+    background: rgba(201, 42, 42, .08);
 }
 
-/* ─── Éxito ─────────────────────────────────────────────────────────────── */
+/* ============================================================
+   AVISOS
+   ============================================================ */
+.warnings-box {
+    border-radius: var(--tl-r, 12px);
+    background: rgba(224, 123, 20, .07);
+    border: 1px solid rgba(224, 123, 20, .24);
+    border-left: 3px solid var(--tl-warn, #E07B14);
+    overflow: hidden;
+}
 
+.warnings-toggle {
+    width: 100%;
+    padding: 9px 12px;
+    border: 0;
+    background: transparent;
+    color: #A85B0E;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.warnings-toggle:hover {
+    background: rgba(224, 123, 20, .07);
+}
+
+.warning-list {
+    margin: 0;
+    padding: 0 12px 10px 26px;
+    font-size: 11.5px;
+    color: var(--tl-ink-soft, #74676C);
+}
+
+.warning-item {
+    margin-bottom: 3px;
+}
+
+/* ============================================================
+   ÉXITO
+   ============================================================ */
 .success-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    padding: 6px 0;
+    gap: 4px;
+    padding: 10px 0 4px;
 }
 
 .success-icon {
     font-size: 40px;
     line-height: 1;
+    margin-bottom: 4px;
 }
 
 .success-title {
-    margin: 10px 0 6px;
-    font-size: 16px;
-    font-weight: 700;
-    color: #276749;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--tl-ok-deep, #217A35);
 }
 
 .success-text {
     margin: 0;
-    font-size: 13.5px;
-    color: #4a5568;
-    line-height: 1.5;
-}
-
-.stats-line {
-    margin: 12px 0 0;
-    font-size: 12px;
-    color: #a0aec0;
-}
-
-.warnings-box {
-    margin-top: 14px;
-    text-align: left;
-}
-
-.warnings-toggle {
-    background: none;
-    border: none;
-    color: #b7791f;
     font-size: 12.5px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 0;
+    color: var(--tl-ink-soft, #74676C);
+    max-width: 34ch;
 }
 
-.warning-list {
-    margin: 8px 0 0;
-    padding-left: 18px;
-}
-
-.warning-item {
-    font-size: 12.5px;
-    color: #744210;
-    line-height: 1.45;
-    margin-bottom: 4px;
-}
-
-/* ─── Pie ───────────────────────────────────────────────────────────────── */
-
+/* ============================================================
+   PIE
+   ============================================================ */
 .footer {
-    margin-top: 20px;
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    margin-top: 16px;
 }
 
+/* tecla principal con relieve, igual que en el panel de dispositivos */
 .action-button {
-    background: linear-gradient(135deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
-    color: white;
-    border: none;
-    border-radius: var(--compiler-radius-sm);
-    padding: 8px 20px;
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: var(--tl-r, 12px);
+    font-family: inherit;
+    font-size: 12.5px;
     font-weight: 700;
+    color: #fff;
     cursor: pointer;
+    background: linear-gradient(180deg, #3DBA55 0%, var(--tl-ok, #2F9E44) 100%);
+    box-shadow:
+        var(--tl-bevel, inset 0 1.5px 0 rgba(255,255,255,.42)),
+        0 3px 0 var(--tl-ok-deep, #217A35),
+        0 5px 12px rgba(47, 158, 68, .30);
+    transition: transform .1s, box-shadow .1s;
 }
 
 .action-button:hover {
-    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.action-button:active {
+    transform: translateY(3px);
+    box-shadow: var(--tl-bevel, inset 0 1.5px 0 rgba(255,255,255,.3)), 0 0 0 var(--tl-ok-deep, #217A35);
+}
+
+.action-button:focus-visible {
+    outline: 3px solid var(--tl-ink, #241F22);
+    outline-offset: 2px;
 }
 
 .retry-button {
-    background-color: #edf2f7;
-    color: #4a5568;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 10px 18px;
+    border-radius: var(--tl-r, 12px);
+    border: 1.5px solid rgba(201, 42, 42, .28);
+    background: rgba(201, 42, 42, .08);
+    color: var(--tl-danger, #C92A2A);
+    font-family: inherit;
+    font-size: 12.5px;
     font-weight: 700;
     cursor: pointer;
+    transition: background .15s, transform .1s;
 }
 
 .retry-button:hover {
-    background-color: #e2e8f0;
+    background: rgba(201, 42, 42, .14);
+    transform: translateY(-1px);
 }

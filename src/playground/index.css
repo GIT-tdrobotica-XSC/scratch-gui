@@ -1,3 +1,8 @@
+/* Sistema visual del rediseño. Se importa aquí (punto de entrada global)
+   para que los tokens de :root estén disponibles en toda la app, sin que
+   cada componente dependa de importarlos por su cuenta. */
+@import "../css/taller.css";
+
 html,
 body,
 .app {

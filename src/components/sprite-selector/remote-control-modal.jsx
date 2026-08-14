@@ -101,10 +101,13 @@ const RemoteControlModal = ({ peripheral, deviceName, onClose }) => {
     const renderButton = btn => {
         const isDown = pressed.has(btn.index);
         const hint = btn.keys[0].replace('Arrow', '').replace('Key', '');
+        // El estado pulsado usa la clase `pressed`, NO `down`: el botón ▼ ya
+        // usa `down` como su área en la rejilla de la cruceta, y compartir
+        // nombre lo dejaba pintado como pulsado de forma permanente.
         return (
             <button
                 key={btn.index}
-                className={`${styles.padButton} ${styles[btn.area]} ${isDown ? styles.down : ''}`}
+                className={`${styles.padButton} ${styles[btn.area]} ${isDown ? styles.pressed : ''}`}
                 title={`${btn.label} · tecla ${hint}`}
                 aria-label={btn.label}
                 aria-pressed={isDown}

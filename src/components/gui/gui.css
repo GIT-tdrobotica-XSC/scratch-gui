@@ -7,7 +7,15 @@
 }
 
 .body-wrapper {
-    height: calc(100% - $menu-bar-height);
+    /*
+        var() y no $menu-bar-height: ese $var no resuelve en el bundle, así que
+        este calc() era una declaración inválida que el navegador descartaba.
+        El resultado era `height: auto`, y con eso los `height: 100%` de las
+        columnas de dentro tampoco resolvían — de ahí que el contenido
+        desbordara en vez de hacer scroll donde corresponde.
+        Ver nota en css/taller.css.
+    */
+    height: calc(100% - var(--tl-menubar-h, 46px));
     background-color: $ui-primary;
     /* Patrón de puntos sutil */
     background-image: radial-gradient(circle, hsla(220, 30%, 75%, 0.35) 1px, transparent 1px);

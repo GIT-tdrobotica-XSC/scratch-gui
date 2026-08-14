@@ -20,17 +20,22 @@
     cursor: pointer;
 
     user-select: none;
+    /* se levanta al pasar el ratón, igual que las piezas y las teclas */
+    transition: transform .16s, box-shadow .16s, border-color .16s;
 }
 
 .sprite-selector-item.is-selected {
-    box-shadow: 0px 0px 0px 4px $looks-transparent;
-    border: 2px solid $looks-secondary;
-    background: $ui-white;
+    border: 2px solid var(--tl-red, #CC0000);
+    background: var(--tl-tray, #fff);
+    box-shadow: 0 0 0 3px rgba(204, 0, 0, .16),
+                var(--tl-sh-1, 0 1px 2px rgba(20, 12, 16, .06), 0 6px 18px rgba(20, 12, 16, .09));
 }
 
 .sprite-selector-item:hover {
-    border: 2px solid $looks-secondary;
-    background: $ui-white;
+    border: 2px solid rgba(204, 0, 0, .45);
+    background: var(--tl-tray, #fff);
+    transform: translateY(-2px);
+    box-shadow: var(--tl-sh-1, 0 1px 2px rgba(20, 12, 16, .06), 0 6px 18px rgba(20, 12, 16, .09));
 }
 
 .sprite-selector-item:hover .sprite-image, .is-selected .sprite-image {
@@ -88,8 +93,9 @@
 }
 
 .is-selected .sprite-info {
-    background: $looks-secondary;
+    background: var(--tl-red, #CC0000);
     color: $ui-white;
+    font-weight: 700;
 }
 
 .delete-button {

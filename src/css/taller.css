@@ -1,0 +1,90 @@
+/*
+    TALLER — sistema visual de PlayCode
+    ===================================
+
+    Un solo sitio donde viven color, radio, sombra y el tratamiento de
+    "pieza moldeada". Toda superficie rediseñada consume estos tokens en vez
+    de inventar sus propios valores; así la línea gráfica no se desalinea
+    entre paneles con el tiempo.
+
+    CONCEPTO
+    El editor es un banco de trabajo: el marco es el chasis de la máquina en
+    rojo tdrobotica, los paneles son bandejas, y los bloques y botones son
+    piezas con material (canto biselado arriba, labio oscuro abajo).
+
+    POR QUÉ CUSTOM PROPERTIES Y NO $var
+    Este proyecto usa postcss-simple-vars, pero se comprobó que sus `$var`
+    NO se resuelven en el bundle servido (quedan como texto literal). Las
+    custom properties de CSS sí funcionan porque las resuelve el navegador
+    en tiempo de ejecución, no el build. No cambiar a $var.
+*/
+
+:root {
+    /* ---- identidad tdrobotica (no tocar) ---- */
+    --tl-red:        #CC0000;
+    --tl-red-deep:   #8E0000;
+    --tl-red-lift:   #FF3B3B;
+
+    /* ---- chasis y bandejas ---- */
+    --tl-chassis:    #2B2427;
+    --tl-chassis-2:  #3A3135;
+    --tl-bench:      #DED6D2;
+    --tl-tray:       #FFFFFF;
+    --tl-tray-2:     #F4EFEC;
+
+    /* ---- tinta ----
+       Neutros con sesgo cálido hacia el rojo de marca, no grises puros. */
+    --tl-ink:        #241F22;
+    --tl-ink-soft:   #74676C;
+    --tl-line:       rgba(36, 31, 34, .15);
+
+    /* ---- semánticos (independientes del acento de marca) ---- */
+    --tl-ok:         #2F9E44;
+    --tl-ok-deep:    #217A35;
+    --tl-warn:       #E07B14;
+    --tl-danger:     #C92A2A;
+
+    /*
+        Alto de la barra superior.
+
+        Existe aquí porque el `$menu-bar-height` de units.css NO se resuelve:
+        aparece como texto literal en el bundle, así que `height:
+        $menu-bar-height` y `calc(100% - $menu-bar-height)` son declaraciones
+        inválidas que el navegador descarta. Eso dejaba .body-wrapper en
+        `height: auto` y rompía toda la cadena de alturas en porcentaje del
+        layout. Con una custom property sí resuelve.
+    */
+    --tl-menubar-h:  46px;
+
+    /* ---- radios ---- */
+    --tl-r-sm:        9px;
+    --tl-r:          12px;
+    --tl-r-lg:       15px;
+    --tl-r-pill:    999px;
+
+    /* ---- elevación ---- */
+    --tl-sh-1:       0 1px 2px rgba(20, 12, 16, .06), 0 6px 18px rgba(20, 12, 16, .09);
+    --tl-sh-2:       0 3px 10px rgba(20, 12, 16, .14);
+    --tl-sh-3:       0 4px 12px rgba(20, 12, 16, .22), 0 26px 54px rgba(20, 12, 16, .30);
+    --tl-inset:      inset 0 2px 8px rgba(20, 12, 16, .13);
+}
+
+/*
+    PIEZA MOLDEADA
+    Los tres ingredientes que hacen que un botón o un bloque parezca una
+    pieza física en vez de un rectángulo pintado. Se aplican sobre un
+    elemento que defina --tl-tone con su color.
+
+    Uso:
+      .mi-boton { --tl-tone: var(--tl-ok); }
+      y luego composición manual de background/box-shadow con estos tokens.
+*/
+:root {
+    /* brillo del canto superior */
+    --tl-bevel:      inset 0 1.5px 0 rgba(255, 255, 255, .42);
+    /* sombra interior del borde inferior */
+    --tl-bevel-low:  inset 0 -1px 0 rgba(0, 0, 0, .16);
+    /* socket hundido: para valores editables dentro de una pieza */
+    --tl-socket:     inset 0 2px 4px rgba(0, 0, 0, .42), inset 0 -1px 0 rgba(255, 255, 255, .14);
+    --tl-socket-bg:  rgba(0, 0, 0, .26);
+}

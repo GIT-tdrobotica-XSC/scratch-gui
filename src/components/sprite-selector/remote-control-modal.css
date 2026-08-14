@@ -1,14 +1,11 @@
-/* Control remoto en pantalla. Sigue el lenguaje visual de los otros modales
-   del panel de dispositivos, pero con forma de mando: los botones son grandes
-   y separados porque se usan con el dedo y a toda velocidad, no se leen.
+/*
+    Mando en pantalla — línea gráfica "Taller".
+    Los valores vienen de src/css/taller.css.
 
-   El acento (verde, radio 16px) coincide a propósito con el de la página
-   suelta del mando para el celular (playground/control.css) -- misma
-   función, mismo color de identidad, aunque los dos no sean pixel a pixel
-   idénticos (ese sigue oscuro, pensado para uso táctil al sol/de noche). */
-
-@import "../../css/z-index.css";
-@import "../../css/compiler-tokens.css";
+    Se trata como un mando FÍSICO: chasis grafito con la franja roja de marca,
+    cruceta que se hunde y botones de acción con labio inferior que desaparece
+    al pulsarlos. Coherente con los bloques, que también son piezas moldeadas.
+*/
 
 .modal-overlay {
     position: fixed;
@@ -16,78 +13,115 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--compiler-modal-overlay);
+    background-color: rgba(20, 12, 16, .55);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 510; /* z-index.css: $z-index-modal -- hardcodeado, ver nota en compiler-tokens.css */
+    z-index: 510; /* z-index.css: $z-index-modal */
+    padding: 16px;
 }
 
 .modal {
-    background-color: white;
-    border-radius: var(--compiler-radius-lg);
-    width: 430px;
-    max-width: 94vw;
-    padding: 22px;
-    box-shadow: var(--compiler-modal-shadow);
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    /* El control se maneja con los dedos: seleccionar texto sin querer al
-       arrastrar sobre los botones arruina la experiencia. */
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: manipulation;
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    padding: 16px;
+    border-radius: 22px;
+    background: linear-gradient(178deg, var(--tl-chassis-2, #3A3135) 0%, var(--tl-chassis, #2B2427) 62%, #211B1E 100%);
+    box-shadow:
+        inset 0 1.5px 0 rgba(255, 255, 255, .14),
+        inset 0 -2px 0 rgba(0, 0, 0, .40),
+        var(--tl-sh-3, 0 4px 12px rgba(20,12,16,.22), 0 26px 54px rgba(20,12,16,.30));
+    color: #fff;
+    overflow: hidden;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* franja de marca del chasis */
+.modal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--tl-red, #CC0000) 0%, var(--tl-red-lift, #FF3B3B) 48%, var(--tl-red, #CC0000) 100%);
 }
 
 .header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 10px;
+    margin-bottom: 3px;
 }
 
 .title {
     margin: 0;
-    font-size: 18px;
-    color: #333;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -.01em;
 }
 
 .close-button {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #999;
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--tl-r-sm, 9px);
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(255, 255, 255, .08);
+    color: rgba(255, 255, 255, .72);
+    font-size: 13px;
+    line-height: 1;
     cursor: pointer;
-    padding: 4px 8px;
+    transition: background .15s, color .15s;
 }
 
 .close-button:hover {
-    color: #333;
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
 }
 
 .subtitle {
-    margin: 8px 0 18px;
-    font-size: 12.5px;
+    margin: 0 0 14px;
+    font-size: 11px;
     line-height: 1.5;
-    color: #718096;
+    color: rgba(255, 255, 255, .58);
 }
 
-/* ─── El mando ────────────────────────────────────────────────────────── */
+.subtitle strong {
+    color: #FFC4C4;
+    font-weight: 700;
+}
 
+/* ============================================================
+   CONSOLA DE BOTONES
+   ============================================================ */
 .pad {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1.5rem;
-    padding: 0.5rem 0 1rem;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, .26);
+    border: 1px solid rgba(255, 255, 255, .07);
+    box-shadow: inset 0 3px 10px rgba(0, 0, 0, .42);
 }
 
+/*
+    Cruceta en rejilla 3x3 con áreas NOMBRADAS, no posiciones absolutas:
+    no puede descuadrarse ni superponerse aunque cambien tamaños o idioma.
+*/
 .dpad {
     display: grid;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 44px);
     grid-template-areas:
         ".    up    ."
-        "left .     right"
+        "left mid right"
         ".    down  .";
-    gap: 6px;
+    gap: 3px;
+    flex: none;
 }
 
 .up    { grid-area: up; }
@@ -95,87 +129,149 @@
 .left  { grid-area: left; }
 .right { grid-area: right; }
 
+/* centro hueco de la cruceta */
+.dpad::before {
+    content: "";
+    grid-area: mid;
+    background: #221C1F;
+    border-radius: 5px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, .6);
+}
+
 .actions {
     display: grid;
-    grid-template-columns: repeat(2, auto);
-    gap: 8px;
+    grid-template-columns: repeat(2, 54px);
+    gap: 11px;
+    flex: none;
 }
 
+/* ============================================================
+   BOTONES
+   ============================================================ */
 .pad-button {
-    width: 58px;
-    height: 58px;
-    border: none;
-    border-radius: var(--compiler-radius-lg);
+    position: relative;
+    display: grid;
+    place-items: center;
+    border: 0;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1px;
-    background: linear-gradient(180deg, #4A5568 0%, #2D3748 100%);
-    color: white;
-    box-shadow: 0 3px 0 #1A202C, 0 4px 8px rgba(0, 0, 0, 0.18);
-    transition: transform 0.05s ease, box-shadow 0.05s ease;
-    touch-action: none;
+    color: #fff;
+    font-family: inherit;
+    background: linear-gradient(180deg, #55494E 0%, #3D3438 100%);
+    box-shadow:
+        inset 0 1.5px 0 rgba(255, 255, 255, .24),
+        0 3px 0 #241E21,
+        0 5px 10px rgba(0, 0, 0, .36);
+    transition: transform .08s, box-shadow .08s, background .15s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
 }
 
-/* Verde, no azul -- para que la cruceta comparta el acento de identidad del
-   control remoto con la página del mando del celular (control.css). */
-.dpad .pad-button {
-    background: linear-gradient(180deg, var(--compiler-accent) 0%, var(--compiler-accent-deep) 100%);
-    box-shadow: 0 3px 0 #1B7A43, 0 4px 8px rgba(46, 204, 113, 0.3);
-}
-
-/* Hundido: el botón baja y pierde su sombra inferior, como una tecla real.
-   El movimiento es la única confirmación cuando se pulsa a ciegas. */
-.pad-button.down {
-    transform: translateY(3px);
-    box-shadow: 0 0 0 #1A202C, 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.dpad .pad-button.down {
-    box-shadow: 0 0 0 #1B7A43, 0 1px 3px rgba(46, 204, 113, 0.35);
+.pad-button:hover {
+    background: linear-gradient(180deg, #635559 0%, #473C41 100%);
 }
 
 .pad-button:focus-visible {
-    outline: 3px solid #F6AD55;
-    outline-offset: 2px;
+    outline: 2.5px solid var(--tl-red-lift, #FF3B3B);
+    outline-offset: 3px;
+    z-index: 2;
 }
 
 .glyph {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 15px;
     line-height: 1;
+    pointer-events: none;
 }
 
 .key-hint {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    opacity: 0.6;
+    position: absolute;
+    bottom: 4px;
+    font-size: 7.5px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: rgba(255, 255, 255, .34);
+    pointer-events: none;
 }
 
-/* ─── Pie ─────────────────────────────────────────────────────────────── */
+/* forma de cada tecla de la cruceta */
+.dpad .up    { border-radius: 11px 11px 3px 3px; }
+.dpad .down  { border-radius: 3px 3px 11px 11px; }
+.dpad .left  { border-radius: 11px 3px 3px 11px; }
+.dpad .right { border-radius: 3px 11px 11px 3px; }
 
-.footer {
-    border-top: 1px solid #edf2f7;
-    padding-top: 12px;
+/* botones de acción: redondos y con color propio, para poder decir
+   "el verde" en vez de "el D" */
+.actions .pad-button {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 82%, #fff) 0%, var(--tone) 58%, color-mix(in srgb, var(--tone) 82%, #000) 100%);
+    box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, .42),
+        inset 0 -2px 0 rgba(0, 0, 0, .24),
+        0 4px 0 color-mix(in srgb, var(--tone) 52%, #000),
+        0 6px 13px rgba(0, 0, 0, .34);
 }
 
-.hint {
-    margin: 0 0 4px;
-    font-size: 12px;
-    color: #4a5568;
+.actions .pad-button:hover { filter: brightness(1.08); }
+.actions .glyph { font-size: 19px; font-weight: 900; }
+
+.a { --tone: var(--tl-red, #CC0000); }
+.b { --tone: #2F6BD8; }
+.c { --tone: #E0A80C; }
+.d { --tone: #3FA34D; }
+
+/*
+    Estado pulsado. La clase es `pressed`, NO `down`: el botón ▼ usa `down`
+    como su área en la rejilla, y compartir nombre lo dejaba permanentemente
+    pintado como pulsado.
+*/
+.pad-button.pressed {
+    transform: translateY(3px);
+    background: linear-gradient(180deg, var(--tl-red, #CC0000) 0%, var(--tl-red-deep, #8E0000) 100%);
+    box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, .45),
+        0 0 18px rgba(204, 0, 0, .55);
 }
 
-.safety {
-    margin: 0;
-    font-size: 11.5px;
-    color: #a0aec0;
+.pad-button.pressed .key-hint { color: rgba(255, 255, 255, .6); }
+
+.actions .pad-button.pressed {
+    transform: translateY(4px);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 76%, #000) 0%, color-mix(in srgb, var(--tone) 92%, #000) 100%);
+    box-shadow:
+        inset 0 2px 7px rgba(0, 0, 0, .5),
+        0 0 22px color-mix(in srgb, var(--tone) 60%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .pad-button {
-        transition: none;
-    }
+    .pad-button { transition: none; }
+}
+
+/* ============================================================
+   PIE
+   ============================================================ */
+.footer {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hint,
+.safety {
+    margin: 0;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.hint {
+    color: rgba(255, 255, 255, .46);
+}
+
+/* el aviso de seguridad se lee distinto del resto a propósito:
+   es la promesa de que el robot no se queda embistiendo una pared */
+.safety {
+    color: rgba(255, 180, 180, .62);
 }
